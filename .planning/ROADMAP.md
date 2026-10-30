@@ -15,7 +15,7 @@ None
 - Decimal phases (2.1, 2.2): Urgent insertions (marked with INSERTED)
 
 - [x] **Phase 1: Foundation** - Next.js skeleton, design system, art manifest with placeholders, on-device storage, mock mode
-- [ ] **Phase 2: Comic Experience** - Record, progress, comic reader with RTL bubbles, check-in card, day weather and cast, all on mock data
+- [x] **Phase 2: Comic Experience** - Record, progress, comic reader with RTL bubbles, check-in card, day weather and cast, all on mock data
 - [ ] **Phase 3: Meta Model Pipeline** - Real Voice Transcribe, Spark, Image and SAM 3.1 calls with the consistency fix loop and a spending guard
 - [ ] **Phase 4: Magazine and Art** - Monthly flip-through comic book, Muse-generated site art and sprites, sample days and demo content
 - [ ] **Phase 5: Ship** - Vercel deploy with rate limits, README, voice-note scripts, demo video prep and submission
@@ -41,7 +41,7 @@ Plans:
 Plans:
 - [x] 02-01: Recorder (mic and upload) and the "making your comic" progress screen
 - [x] 02-02: Comic reader with panels, Arabic and English speech bubbles, day weather icon
-- [ ] 02-03: Check-in card, safety helpline card, cast screen, Sprite component (CSS steps sprite-sheet player) with placeholder sheets
+- [x] 02-03: Check-in card, safety helpline card, cast screen, Sprite component (CSS steps sprite-sheet player) with placeholder sheets
 
 ### Phase 3: Meta Model Pipeline
 **Goal**: Real calls replace the mocks: transcription, comic script with mood and heavy-day detection, character reference sheets, panels, and the SAM 3.1 check-and-redraw loop with visible before and after, protected by a spending guard
@@ -82,7 +82,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation | 2/2 | Complete | 2026-10-30 |
-| 2. Comic Experience | 2/3 | In progress | - |
-| 3. Meta Model Pipeline | 0/3 | Not started | - |
+| 2. Comic Experience | 3/3 | Complete | 2026-10-30 |
+| 3. Meta Model Pipeline | 0/3 | In progress | - |
 | 4. Magazine and Art | 0/2 | Not started | - |
 | 5. Ship | 0/1 | Not started | - |

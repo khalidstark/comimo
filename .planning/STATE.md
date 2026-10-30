@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-10-30)
 
 **Core value:** Talking about your day for a minute gives you back a comic that feels like your life, with the same faces in every panel; the check-in card and monthly magazine matter equally.
-**Current focus:** Phase 2 — Comic Experience
+**Current focus:** Phase 3 — Meta Model Pipeline
 
 ## Current Position
 
-Phase: 2 of 5 (Comic Experience)
-Plan: 2 of 3 in current phase
-Status: In progress
-Last activity: 2026-10-30 — Completed 02-02-PLAN.md (comic reader, bidi bubbles, SAM before/after)
+Phase: 3 of 5 (Meta Model Pipeline)
+Plan: Not started (3 plans ready)
+Status: Ready to execute
+Last activity: 2026-10-30 — Phase 2 complete; API key verified; Phase 3 planned
 
-Progress: ████░░░░░░ 36% (4 of 11 plans)
+Progress: █████░░░░░ 45% (5 of 11 plans)
 
 ## Performance Metrics
 
@@ -60,7 +60,7 @@ Recent decisions affecting current work:
 
 ### Blockers/Concerns
 
-- Phase 3 needs the $150 credits (form submitted 2026-10-30, waiting for the batch).
+- Credits arrived ($150) and the key works. Free credits: Meta may use submitted content, so test with invented days.
 - Billing spend alert was set to $500; user asked to lower it to $140.
 
 ## Session Continuity

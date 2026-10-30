@@ -20,6 +20,11 @@
 - **Detail:** 01-01 removed the default Next.js favicon and nothing replaced it. Harmless, but it is the only console error on a clean run. Add an icon through the art pipeline (app/icon) when site art is made.
 - **Address in:** 04-02 (site art)
 
+### ISS-007: Deleted custom character shows as an id in old comics
+- **Found:** Phase 2, plan 02-03
+- **Detail:** Keep a name snapshot on each panel's dialogue/characters, or a tombstone record on delete.
+- **Address in:** Phase 4 polish
+
 ## Closed
 
 ### ISS-001: Mixed Arabic/English bubble text misplaces punctuation
