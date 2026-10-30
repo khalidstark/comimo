@@ -1,0 +1,77 @@
+.cover {
+  position: relative;
+  display: block;
+  inline-size: min(78%, 22rem);
+  aspect-ratio: 4 / 5;
+  border: var(--panel-border) solid var(--line);
+  rotate: -3deg;
+  color: #1b2148;
+  text-decoration: none;
+  overflow: hidden;
+  box-shadow:
+    7px 7px 0 -2px var(--surface),
+    7px 7px 0 0 var(--line),
+    14px 14px 0 -2px var(--surface),
+    14px 14px 0 0 var(--line);
+  transition:
+    rotate var(--dur-panel) var(--ease-ink),
+    translate var(--dur-panel) var(--ease-ink);
+}
+
+.linked:hover,
+.linked:focus-visible {
+  rotate: 0deg;
+  translate: 0 -6px;
+}
+
+.art {
+  position: absolute;
+  inset: 0;
+  inline-size: 100%;
+  block-size: 100%;
+  object-fit: cover;
+}
+
+.masthead {
+  position: absolute;
+  inset-block-start: 0.6rem;
+  inset-inline: 0;
+  text-align: center;
+  font-family: var(--font-display-stack);
+  font-size: clamp(2.6rem, 2rem + 3vw, 3.6rem);
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.03em;
+}
+
+.issue {
+  position: absolute;
+  inset-block-start: 4.2rem;
+  inset-inline-start: 50%;
+  translate: -50% 0;
+  padding: 0.1rem 0.6rem;
+  background: #ffffff;
+  border: 2px solid #1b2148;
+  font-family: var(--font-display-stack);
+  font-size: var(--step--1);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+:global(:root[dir="rtl"]) .issue {
+  translate: 50% 0;
+}
+
+.lines {
+  position: absolute;
+  inset-inline: 0;
+  inset-block-end: 0;
+  display: grid;
+  gap: 0.1rem;
+  padding: 0.6rem 0.9rem 0.75rem;
+  background: #1b2148;
+  color: #ffffff;
+  font-family: var(--font-lettering-stack);
+  font-size: 0.82rem;
+  line-height: 1.25;
+}

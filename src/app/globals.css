@@ -328,8 +328,10 @@ select {
   inline-size: 0.95em;
   block-size: 0.95em;
   background: var(--bubble-bg);
-  border-inline-end: var(--panel-border-thin) solid var(--bubble-line);
-  border-block-end: var(--panel-border-thin) solid var(--bubble-line);
+  /* Physical sides on purpose: after the 45deg turn, right + bottom always
+     form the downward point, whatever the text direction. */
+  border-right: var(--panel-border-thin) solid var(--bubble-line);
+  border-bottom: var(--panel-border-thin) solid var(--bubble-line);
   transform: rotate(45deg) skew(12deg, 12deg);
 }
 
@@ -346,7 +348,7 @@ select {
   display: block;
   font-size: 0.72em;
   font-weight: 700;
-  color: var(--accent-text);
+  color: #c2134f; /* bubbles stay light in dark mode, so the name does too */
   line-height: 1.2;
 }
 
@@ -549,4 +551,29 @@ select {
     animation-duration: 0s !important;
     animation-delay: 0s !important;
   }
+}
+
+/* ---------- Page header for inner pages ---------- */
+.page-head {
+  display: grid;
+  gap: var(--space-xs);
+  padding-block: var(--space-m) var(--space-l);
+}
+
+@media (min-width: 48rem) {
+  .page-head {
+    padding-block: var(--space-l);
+  }
+}
+
+.page-head h1 {
+  font-size: var(--step-4);
+  max-inline-size: 16ch;
+}
+
+.page-head__lede {
+  max-inline-size: 46ch;
+  color: var(--ink-soft);
+  font-size: var(--step-1);
+  line-height: 1.45;
 }
