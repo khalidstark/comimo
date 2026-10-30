@@ -1,0 +1,638 @@
+/* ==========================================================================
+   "Making your comic": a full-screen comic page that fills in panel by panel.
+   Reuses the zine tokens: ink borders, halftone, yellow captions, riso pink
+   and sunflower. Motion is wipes, stamps and flips (no fades or irises), and
+   the global reduced-motion rule turns all of it into instant swaps.
+   ========================================================================== */
+
+.dialog {
+  inline-size: 100%;
+  block-size: 100%;
+  max-inline-size: 100%;
+  max-block-size: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: var(--paper);
+  color: var(--ink);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.dialog[open] {
+  animation: sheet-in 620ms var(--ease-ink) both;
+}
+
+.dialog::backdrop {
+  background: transparent;
+}
+
+/* Keep the page behind still while the sheet is up */
+:global(html):has(.dialog[open]) {
+  overflow: hidden;
+}
+
+/* The new sheet is wiped in from the reading end with a hard ink edge,
+   like the site's page turn. */
+@keyframes sheet-in {
+  from {
+    clip-path: polygon(100% 0, 100% 0, 100% 100%, 100% 100%);
+  }
+  to {
+    clip-path: polygon(-12% 0, 100% 0, 100% 100%, 0% 100%);
+  }
+}
+
+:global(:root[dir="rtl"]) .dialog[open] {
+  animation-name: sheet-in-rtl;
+}
+
+@keyframes sheet-in-rtl {
+  from {
+    clip-path: polygon(0 0, 0 0, 0 100%, 0 100%);
+  }
+  to {
+    clip-path: polygon(0 0, 112% 0, 100% 100%, 0 100%);
+  }
+}
+
+.sheet {
+  display: grid;
+  align-content: start;
+  gap: var(--space-s);
+  inline-size: 100%;
+  max-inline-size: 64rem;
+  min-block-size: 100%;
+  margin-inline: auto;
+  padding: var(--space-xs) var(--page-pad) calc(var(--space-l) + env(safe-area-inset-bottom));
+}
+
+@media (min-width: 48rem) {
+  .sheet {
+    gap: var(--space-m);
+    padding-block-start: var(--space-m);
+  }
+}
+
+/* ---------- Top bar ---------- */
+.top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-s);
+}
+
+.kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2xs);
+  font-family: var(--font-display-stack);
+  font-size: var(--step--1);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+/* A little "on air" dot while the pipeline runs */
+.recDot {
+  inline-size: 0.7em;
+  block-size: 0.7em;
+  border-radius: 50%;
+  background: var(--ink-soft);
+}
+
+.recDot[data-live] {
+  background: var(--accent);
+  animation: blink 1.1s steps(2, jump-none) infinite;
+}
+
+@keyframes blink {
+  50% {
+    background: transparent;
+    box-shadow: inset 0 0 0 2px var(--accent);
+  }
+}
+
+.cancel {
+  min-block-size: 2.75rem;
+  padding-inline: 1em;
+  font-size: var(--step--1);
+}
+
+/* ---------- Heading and live caption ---------- */
+.head {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-2xs);
+}
+
+.title {
+  font-size: var(--step-3);
+}
+
+.title:focus {
+  outline: none;
+}
+
+.caption {
+  min-block-size: 2.1em;
+  font-size: var(--step-0);
+  rotate: -1deg;
+}
+
+.caption[data-tone="error"] {
+  background: var(--surface);
+  color: var(--ink);
+  border-color: var(--accent);
+  border-style: dashed;
+}
+
+/* ---------- Stage: comic page + steps ---------- */
+.stage {
+  display: grid;
+  gap: var(--space-m);
+}
+
+@media (min-width: 56rem) {
+  .stage {
+    grid-template-columns: minmax(0, 1.65fr) minmax(15rem, 1fr);
+    align-items: start;
+    gap: var(--space-l);
+  }
+}
+
+/* The page: printed paper with ink border and halftone in the corner */
+.page {
+  --dot-color: color-mix(in srgb, var(--highlight) 55%, transparent);
+  --dot-angle: 160deg;
+  --dot-fade: 45%;
+  display: grid;
+  gap: var(--gutter);
+  padding: var(--gutter);
+  background: var(--surface);
+  border: var(--panel-border) solid var(--line);
+  border-radius: var(--radius-panel);
+  box-shadow: var(--shadow-panel);
+}
+
+/* ---------- Title strip ---------- */
+.titleFrame {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--space-s);
+  min-block-size: 6.5rem;
+  padding: var(--space-xs) var(--space-s);
+  background: var(--paper);
+  border: var(--panel-border-thin) solid var(--line);
+  border-radius: var(--radius-panel);
+  overflow: hidden;
+}
+
+.titleFrame[data-stage="title"] {
+  animation: wipe-in 640ms var(--ease-ink) both;
+}
+
+.mascot {
+  flex: none;
+  inline-size: 4.5rem;
+  block-size: auto;
+}
+
+.titleBubble {
+  max-inline-size: 30ch;
+  font-size: var(--step--1);
+}
+
+.heard {
+  animation: stamp-in 420ms var(--ease-pop) both;
+}
+
+/* Three little sound bars after "Listening" */
+.ear {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 2px;
+  block-size: 0.9em;
+  margin-inline-start: 0.4em;
+}
+
+.ear span {
+  inline-size: 3px;
+  block-size: 100%;
+  background: currentColor;
+  border-radius: 2px;
+  transform-origin: bottom;
+  animation: ear 900ms var(--ease-ink) infinite alternate;
+}
+
+.ear span:nth-child(2) {
+  animation-delay: -300ms;
+}
+
+.ear span:nth-child(3) {
+  animation-delay: -600ms;
+}
+
+@keyframes ear {
+  from {
+    transform: scaleY(0.25);
+  }
+  to {
+    transform: scaleY(1);
+  }
+}
+
+.titleCard {
+  display: grid;
+  gap: var(--space-3xs);
+}
+
+.comicTitle {
+  font-size: var(--step-2);
+}
+
+.weather {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2xs);
+  font-family: var(--font-display-stack);
+  font-weight: 700;
+  font-size: var(--step--1);
+}
+
+.weatherIcon {
+  inline-size: 1.8rem;
+  block-size: 1.8rem;
+}
+
+.pause {
+  max-inline-size: 40ch;
+  font-size: var(--step-0);
+  line-height: 1.45;
+}
+
+/* ---------- Panels ---------- */
+.frames {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--gutter);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.frame {
+  position: relative;
+  aspect-ratio: 3 / 2;
+  background: var(--paper);
+  border: var(--panel-border-thin) solid var(--line);
+  border-radius: var(--radius-panel);
+  overflow: hidden;
+  perspective: 900px;
+  transition:
+    transform var(--dur-panel) var(--ease-ink),
+    box-shadow var(--dur-panel) var(--ease-ink);
+}
+
+/* An odd last panel spans the page, like a closing wide shot */
+.frame:last-child:nth-child(odd) {
+  grid-column: 1 / -1;
+  aspect-ratio: 3 / 1.25;
+}
+
+/* Pencilled: dashed border, the scene written in blue-pencil lettering */
+.frame[data-status="waiting"] {
+  background:
+    repeating-linear-gradient(
+      -45deg,
+      transparent 0 9px,
+      color-mix(in srgb, var(--ink) 6%, transparent) 9px 10px
+    ),
+    var(--paper);
+  border-style: dashed;
+  border-color: color-mix(in srgb, var(--ink) 45%, transparent);
+}
+
+.frameNo {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-start: 0;
+  z-index: 3;
+  display: grid;
+  place-items: center;
+  min-inline-size: 1.6rem;
+  block-size: 1.6rem;
+  padding-inline: 0.3rem;
+  background: var(--ink);
+  color: var(--paper);
+  border-end-end-radius: 6px;
+  font-family: var(--font-display-stack);
+  font-size: var(--step--1);
+  font-weight: 800;
+  line-height: 1;
+}
+
+.sketch {
+  position: absolute;
+  inset: 1.9rem 0.6rem 0.5rem;
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
+  line-clamp: 4;
+  color: var(--ink-soft);
+  font-family: var(--font-lettering-stack);
+  font-size: 0.72rem;
+  line-height: 1.35;
+  animation: wipe-in 520ms var(--ease-ink) both;
+}
+
+@media (min-width: 30rem) {
+  .sketch {
+    font-size: var(--step--1);
+  }
+}
+
+/* Drawing: the camera pushes in on this panel, action lines spin behind */
+.frame[data-status="drawing"] {
+  z-index: 2;
+  transform: scale(1.035) rotate(-0.6deg);
+  box-shadow: 4px 4px 0 var(--accent);
+}
+
+.speed {
+  position: absolute;
+  inset: -60%;
+  background: repeating-conic-gradient(
+    from 0deg,
+    color-mix(in srgb, var(--ink) 22%, transparent) 0deg 1.4deg,
+    transparent 1.4deg 8deg
+  );
+  mask-image: radial-gradient(circle, transparent 14%, #000 46%);
+  animation: spin 9s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    rotate: 360deg;
+  }
+}
+
+.drawingTag {
+  position: absolute;
+  inset-block-end: 0.5rem;
+  inset-inline-end: 0.5rem;
+  z-index: 2;
+  rotate: 2deg;
+}
+
+/* Inked: the drawn panel is wiped in on a diagonal, then the frame settles */
+.frame[data-status="done"] {
+  animation: settle 480ms var(--ease-pop) both;
+}
+
+.ink,
+.face {
+  position: absolute;
+  inset: 0;
+  inline-size: 100%;
+  block-size: 100%;
+  object-fit: cover;
+}
+
+.ink {
+  animation: wipe-in 680ms var(--ease-ink) both;
+}
+
+@keyframes wipe-in {
+  from {
+    clip-path: polygon(0 0, 0 0, -14% 100%, -14% 100%);
+  }
+  to {
+    clip-path: polygon(0 0, 114% 0, 100% 100%, -14% 100%);
+  }
+}
+
+@keyframes settle {
+  from {
+    transform: scale(1.035) rotate(-0.6deg);
+  }
+  to {
+    transform: none;
+  }
+}
+
+/* Face fix: before image under a pink stamp, then a card flip to the after */
+.flipper {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+  transition: transform 760ms var(--ease-ink);
+}
+
+.flipper[data-flipped] {
+  transform: rotateY(180deg);
+}
+
+.face {
+  backface-visibility: hidden;
+}
+
+.back {
+  transform: rotateY(180deg);
+}
+
+.fixStamp {
+  position: absolute;
+  inset-block-start: 14%;
+  inset-inline-start: 50%;
+  z-index: 2;
+  translate: -50% 0;
+  max-inline-size: 88%;
+  padding: 0.25em 0.6em 0.3em;
+  background: var(--accent);
+  color: #1b2148;
+  border: var(--panel-border-thin) solid #1b2148;
+  border-radius: 4px 6px 3px 5px;
+  box-shadow: 2px 2px 0 #1b2148;
+  font-family: var(--font-display-stack);
+  font-size: var(--step--1);
+  font-weight: 800;
+  line-height: 1.15;
+  text-align: center;
+  rotate: -6deg;
+  animation: stamp-in 380ms var(--ease-pop) both;
+}
+
+/* After the flip the stamp shrinks to a corner tag on the fixed panel */
+.fixStamp[data-flipped] {
+  inset-block: auto 0.4rem;
+  inset-inline: auto 0.4rem;
+  translate: none;
+  background: var(--highlight);
+  font-size: 0.7rem;
+  rotate: 3deg;
+}
+
+:global(:root[dir="rtl"]) .fixStamp:not([data-flipped]) {
+  translate: 50% 0;
+}
+
+@keyframes stamp-in {
+  from {
+    scale: 1.7;
+    rotate: -14deg;
+  }
+}
+
+.frameError {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: var(--accent-text);
+  font-family: var(--font-display-stack);
+  font-weight: 800;
+  font-size: var(--step--1);
+}
+
+.frame[data-status="error"] {
+  border-style: dashed;
+  border-color: var(--accent);
+}
+
+/* Finished: a sunflower burst slapped on the bottom corner of the page */
+.page {
+  position: relative;
+}
+
+.doneStamp {
+  position: absolute;
+  inset-block-end: -1.6rem;
+  inset-inline-end: -0.8rem;
+  z-index: 4;
+  display: grid;
+  place-items: center;
+  inline-size: 5.4rem;
+  block-size: 5.4rem;
+  background: var(--highlight);
+  color: #1b2148;
+  clip-path: polygon(50% 0%, 61% 14%, 79% 8%, 80% 26%, 98% 30%, 88% 46%, 100% 60%, 82% 68%, 84% 87%, 66% 84%, 55% 100%, 43% 86%, 25% 94%, 22% 76%, 3% 70%, 13% 54%, 0% 38%, 18% 31%, 19% 12%, 37% 15%);
+  font-family: var(--font-display-stack);
+  font-size: var(--step-0);
+  font-weight: 800;
+  rotate: 10deg;
+  animation: stamp-in 420ms var(--ease-pop) both;
+}
+
+.doneStamp span {
+  rotate: -8deg;
+}
+
+/* ---------- Steps ---------- */
+.side {
+  display: grid;
+  gap: var(--space-s);
+  align-content: start;
+}
+
+.steps {
+  display: grid;
+  gap: var(--space-3xs);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: none;
+}
+
+.step {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: var(--space-xs);
+  min-block-size: 2.6rem;
+  padding: var(--space-3xs) var(--space-2xs);
+  border-radius: 10px 12px 9px 11px;
+  transition: background var(--dur-quick);
+}
+
+.stepMark {
+  display: grid;
+  place-items: center;
+  inline-size: 1.9rem;
+  block-size: 1.9rem;
+  border: var(--panel-border-thin) solid var(--line);
+  border-radius: 50%;
+  background: var(--surface);
+  font-family: var(--font-display-stack);
+  font-weight: 800;
+  font-size: var(--step--1);
+  line-height: 1;
+}
+
+.stepText {
+  display: grid;
+  line-height: 1.25;
+}
+
+.stepLabel {
+  font-family: var(--font-display-stack);
+  font-weight: 700;
+}
+
+.stepDetail {
+  color: var(--ink-soft);
+  font-size: var(--step--1);
+}
+
+.step[data-status="waiting"] .stepLabel,
+.step[data-status="skipped"] .stepLabel {
+  color: var(--ink-soft);
+}
+
+.step[data-status="skipped"] .stepLabel {
+  text-decoration: line-through;
+  text-decoration-thickness: 2px;
+}
+
+.step[data-status="active"] {
+  background: var(--surface);
+  box-shadow: inset 0 0 0 var(--panel-border-thin) var(--line);
+}
+
+.step[data-status="active"] .stepMark {
+  background: var(--accent);
+  color: var(--on-accent);
+  animation: spin-mark 1.6s var(--ease-ink) infinite;
+}
+
+@keyframes spin-mark {
+  50% {
+    rotate: 14deg;
+    scale: 1.08;
+  }
+}
+
+.step[data-status="done"] .stepMark {
+  background: var(--highlight);
+  color: var(--on-highlight);
+  animation: stamp-in 320ms var(--ease-pop) both;
+}
+
+.step[data-status="error"] {
+  background: var(--surface);
+  box-shadow: inset 0 0 0 var(--panel-border-thin) var(--accent);
+}
+
+.step[data-status="error"] .stepMark {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.retry {
+  min-block-size: 2.5rem;
+  padding-inline: 0.9em;
+  font-size: var(--step--1);
+}
