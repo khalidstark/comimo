@@ -1,11 +1,16 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { MAX_VOICE_NOTE_MS } from "@/lib/audio/toWav";
 
-/** Longest recording; the recorder stops itself here. */
-export const MAX_RECORDING_MS = 120_000;
-/** Same limit as /api/transcribe (kept under Vercel's 4.5 MB body limit). */
-export const MAX_AUDIO_BYTES = 4 * 1024 * 1024;
+/** Longest recording; the recorder stops itself here. Same cap as the WAV conversion. */
+export const MAX_RECORDING_MS = MAX_VOICE_NOTE_MS;
+/**
+ * Largest file taken as a voice note. It never travels as is: the pipeline
+ * converts it in the browser to 16 kHz mono WAV (about 3.8 MB for two
+ * minutes), so a bigger source file, like a stereo WAV, is fine.
+ */
+export const MAX_AUDIO_BYTES = 25 * 1024 * 1024;
 /** Speech stays clear at 32 kbps; two minutes is about 480 KB. */
 const BITRATE = 32_000;
 const MIN_RECORDING_MS = 1_000;

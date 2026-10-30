@@ -20,7 +20,7 @@ const PROBLEM_TEXT: Record<RecorderProblem, string> = {
   "no-mic": "No microphone found. Plug one in, or upload a voice note instead.",
   failed: "The recording didn't work. Try again, or upload a voice note.",
   "too-short": "That was very short. Tap Start and tell me a bit more.",
-  "too-big": "That file is over 4 MB. Try a shorter note (about two minutes) or a smaller format like m4a or mp3.",
+  "too-big": "That file is over 25 MB. Try a shorter note (up to two minutes) or a smaller format like m4a or mp3.",
   "not-audio": "That doesn't look like an audio file. Try m4a, mp3, wav, webm or ogg.",
   empty: "That file is empty. Try another one.",
 };
@@ -179,7 +179,7 @@ export function RecordPanel() {
           Upload a voice note
         </button>
         <p id={uploadHintId} className={styles.uploadHint}>
-          No mic? Any audio file up to 4 MB: m4a, mp3, wav, webm or ogg.
+          No mic? Any audio file up to two minutes: m4a, mp3, wav, webm or ogg.
         </p>
       </div>
 
