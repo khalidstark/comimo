@@ -22,13 +22,13 @@ type Loaded =
       next?: DayLink;
     };
 
-/** Neighbouring stored days by date, for the pager. */
+/** Neighbouring stored days by date, for the pager. Sample days kept only for their check-in answers are skipped. */
 function neighbours(days: Day[], day: Day): { previous?: DayLink; next?: DayLink } {
-  const ordered = [...days].sort((a, b) => a.date.localeCompare(b.date) || a.createdAt.localeCompare(b.createdAt));
+  const ordered = days.filter((d) => !d.sample).sort((a, b) => a.date.localeCompare(b.date) || a.createdAt.localeCompare(b.createdAt));
   const at = ordered.findIndex((d) => d.id === day.id);
   if (at === -1) return {};
   const link = (d: Day | undefined): DayLink | undefined =>
-    d ? { href: `/day/${d.id}`, title: d.safety === "crisis" ? "A paused day" : d.title } : undefined;
+    d ? { href: `/day/${d.id}`, title: d.safety === "crisis" ? "Your day" : d.title } : undefined;
   return { previous: link(ordered[at - 1]), next: link(ordered[at + 1]) };
 }
 
@@ -91,7 +91,7 @@ export function DayReader({ id }: { id: string }) {
         ? fixedFaces(day.panels, nameOf, (characterId) => portraits.get(characterId) ?? null)
         : null;
 
-      document.title = `${day.safety === "crisis" ? "A paused day" : day.title} | Comimo`;
+      document.title = `${day.safety === "crisis" ? "Your day" : day.title} | Comimo`;
       setLoaded({ status: "ready", day, panels, faces, ...(stored ? neighbours(days, day) : {}) });
     }
 

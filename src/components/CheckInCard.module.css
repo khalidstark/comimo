@@ -1,0 +1,91 @@
+/* The check-in card: the calm teal page after a heavy day's comic.
+   Softer corners than a panel, no offset shadow, nothing that shouts. */
+.card {
+  margin-block-start: var(--space-2xl);
+  padding: var(--space-m);
+  background: var(--calm-wash);
+  border: var(--panel-border-thin) solid var(--calm);
+  border-radius: var(--radius-card-soft);
+  max-inline-size: 44rem;
+}
+
+@media (min-width: 48rem) {
+  .card {
+    padding: var(--space-l);
+  }
+}
+
+.title {
+  font-family: var(--font-lettering-stack);
+  font-size: var(--step-2);
+  font-weight: 600;
+  line-height: 1.25;
+  color: var(--calm-text);
+}
+
+.lede {
+  margin-block-start: var(--space-2xs);
+  color: var(--ink-soft);
+}
+
+.form {
+  display: grid;
+  gap: var(--space-m);
+  margin-block-start: var(--space-l);
+}
+
+.question {
+  display: grid;
+  gap: var(--space-2xs);
+  font-weight: 600;
+}
+
+.question textarea {
+  inline-size: 100%;
+  min-block-size: 4.5rem;
+  padding: var(--space-xs);
+  border: var(--panel-border-thin) solid color-mix(in srgb, var(--calm) 70%, transparent);
+  border-radius: 12px;
+  background: var(--surface);
+  font-family: var(--font-lettering-stack);
+  line-height: 1.45;
+  resize: vertical;
+  field-sizing: content;
+  max-block-size: 16rem;
+}
+
+.question textarea:focus-visible {
+  outline: 3px solid var(--calm);
+  outline-offset: 2px;
+}
+
+.status {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2xs);
+  min-block-size: 1.6em;
+  margin-block-start: var(--space-m);
+  color: var(--ink-soft);
+  font-size: var(--step--1);
+}
+
+/* A small ink tick once the answers are kept */
+.status[data-status="saved"] {
+  color: var(--calm-text);
+  font-weight: 600;
+}
+
+.status[data-status="saved"]::before {
+  content: "";
+  inline-size: 0.55em;
+  block-size: 0.95em;
+  margin-inline-end: 0.15em;
+  border-right: 2.5px solid currentColor;
+  border-bottom: 2.5px solid currentColor;
+  rotate: 40deg;
+  translate: 0 -0.12em;
+}
+
+.status[data-status="failed"] {
+  color: var(--accent-text);
+}

@@ -36,7 +36,7 @@ function panel(
 /** Gentle reflection only: no advice, no diagnosis, no scores. */
 const DEADLINE_QUESTIONS = [
   "What took the most out of you today?",
-  "Is there one thing you can set down until tomorrow?",
+  "Was there a moment today, even a small one, that felt lighter?",
   "Who would you want to tell about today?",
 ];
 
