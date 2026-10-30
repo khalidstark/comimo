@@ -1,6 +1,6 @@
 import { artAt } from "@/art/manifest";
-import { starterCast } from "@/fixtures/cast";
-import { getDay, getImage, listCast, newId, putImage, saveCharacter, saveDay } from "./store";
+import { loadCast } from "./cast";
+import { getDay, getImage, newId, putImage, saveDay } from "./store";
 import type {
   ApiError,
   CastBrief,
@@ -157,17 +157,6 @@ async function loadReference(ref: ImageRef | null, signal: AbortSignal): Promise
 
 /* ---------- Cast ---------- */
 
-/**
- * The user's cast from the store. On first run the store is empty, so the
- * invented starter cast is saved there and used.
- */
-export async function loadCast(): Promise<Character[]> {
-  const cast = await listCast();
-  if (cast.length > 0) return cast;
-  await Promise.all(starterCast.map((character) => saveCharacter(character)));
-  return starterCast;
-}
-
 function toBrief({ id, name, role, look, personality }: Character): CastBrief {
   return { id, name, role, look, personality };
 }
@@ -319,7 +308,9 @@ export class ComicPipeline {
   private async writeScript(transcript: Transcript, signal: AbortSignal): Promise<ComicScript> {
     this.setStep("write", "active");
     this.cast ??= await loadCast();
-    const body: ScriptRequest = { transcript: transcript.text, cast: this.cast.slice(0, 20).map(toBrief) };
+    // An emptied cast is left out, so the server falls back to the starter cast instead of refusing the request.
+    const cast = this.cast.slice(0, 20).map(toBrief);
+    const body: ScriptRequest = { transcript: transcript.text, ...(cast.length > 0 ? { cast } : {}) };
     const { script } = await request<ScriptResponse>("write", "/api/script", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
