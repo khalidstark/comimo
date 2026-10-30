@@ -1,6 +1,7 @@
 import "server-only";
 import type { ComicModels } from "../index";
 import { mockModels } from "../mock";
+import { writeScript } from "./script";
 import { transcribe } from "./transcribe";
 
 /**
@@ -10,9 +11,9 @@ import { transcribe } from "./transcribe";
  */
 export const metaModels: ComicModels = {
   mode: "meta",
-  sources: { transcribe: "meta", writeScript: "mock", drawPanel: "mock", checkConsistency: "mock" },
+  sources: { transcribe: "meta", writeScript: "meta", drawPanel: "mock", checkConsistency: "mock" },
   transcribe,
-  writeScript: mockModels.writeScript,
+  writeScript,
   drawPanel: mockModels.drawPanel,
   checkConsistency: mockModels.checkConsistency,
 };
