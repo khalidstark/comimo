@@ -3,6 +3,8 @@
    raised pink stamp. From 48rem: one sticky top bar. */
 
 .header {
+  position: relative;
+  z-index: 60; /* keeps the fixed tab bar above page panels */
   view-transition-name: site-header;
 }
 

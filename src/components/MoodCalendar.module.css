@@ -1,0 +1,76 @@
+.calendar {
+  --cell-gap: 0.4rem;
+  font-family: var(--font-display-stack);
+}
+
+.weekdays,
+.grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: var(--cell-gap);
+}
+
+.weekdays {
+  margin-block-end: var(--space-2xs);
+  color: var(--ink-soft);
+  font-size: var(--step--1);
+  font-weight: 700;
+  text-align: center;
+}
+
+.grid {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.cell {
+  position: relative;
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1;
+  border: var(--panel-border-thin) dashed color-mix(in srgb, var(--ink) 28%, transparent);
+  border-radius: 6px 8px 5px 7px;
+}
+
+.filled {
+  background: var(--surface);
+  border-style: solid;
+  border-color: var(--line);
+  box-shadow: 2px 2px 0 var(--shadow);
+}
+
+.today {
+  border-style: solid;
+  border-color: var(--accent);
+  border-width: 3px;
+}
+
+.date {
+  position: absolute;
+  inset-block-start: 0.15rem;
+  inset-inline-start: 0.3rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--ink-soft);
+}
+
+.icon {
+  inline-size: 68%;
+  block-size: auto;
+  margin-block-start: 0.35rem;
+}
+
+.compact {
+  --cell-gap: 0.3rem;
+}
+
+.compact .date {
+  font-size: 0.6rem;
+}
+
+.compact .icon {
+  inline-size: 74%;
+  margin-block-start: 0.2rem;
+}

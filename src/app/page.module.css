@@ -1,0 +1,453 @@
+.main {
+  overflow-x: clip;
+}
+
+/* ---------- Hero: page one of the zine ---------- */
+.hero {
+  display: grid;
+  gap: calc(var(--gutter) + 4px);
+  padding-block: var(--space-m) var(--space-l);
+}
+
+@media (min-width: 48rem) {
+  .hero {
+    grid-template-columns: 1.25fr 1fr;
+    grid-template-areas:
+      "lead scene"
+      "lead week";
+    grid-template-rows: 1fr auto;
+    padding-block-start: var(--space-l);
+  }
+  .lead {
+    grid-area: lead;
+  }
+  .scene {
+    grid-area: scene;
+  }
+  .week {
+    grid-area: week;
+  }
+}
+
+/* One orchestrated entrance: panels are inked in reading order,
+   then the mascot and the speech bubble pop on. */
+.lead,
+.scene,
+.week {
+  animation: panel-in 620ms var(--ease-ink) backwards;
+  animation-delay: calc(var(--i, 0) * 150ms + 80ms);
+}
+
+@keyframes panel-in {
+  from {
+    clip-path: inset(-12px 100% -12px -12px);
+  }
+  to {
+    clip-path: inset(-12px -12px -12px -12px);
+  }
+}
+
+:global(:root[dir="rtl"]) .lead,
+:global(:root[dir="rtl"]) .scene,
+:global(:root[dir="rtl"]) .week {
+  animation-name: panel-in-rtl;
+}
+
+@keyframes panel-in-rtl {
+  from {
+    clip-path: inset(-12px -12px -12px 100%);
+  }
+  to {
+    clip-path: inset(-12px -12px -12px -12px);
+  }
+}
+
+.lead {
+  --dot-color: color-mix(in srgb, var(--accent) 38%, transparent);
+  --dot-angle: 320deg;
+  --dot-fade: 55%;
+  --dot-size: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-s);
+  padding: var(--space-m) var(--space-m) var(--space-l);
+}
+
+@media (min-width: 48rem) {
+  .lead {
+    padding: var(--space-l) var(--space-xl) var(--space-l);
+  }
+}
+
+.headline {
+  font-size: var(--step-5);
+  line-height: 0.92;
+  letter-spacing: -0.025em;
+  text-shadow: 0.04em 0.035em 0 color-mix(in srgb, var(--accent) 70%, transparent);
+  margin-block-start: var(--space-2xs);
+}
+
+.headline span {
+  display: block;
+}
+
+.intro {
+  max-inline-size: 34ch;
+  font-size: var(--step-1);
+  line-height: 1.45;
+  color: var(--ink-soft);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-xs) var(--space-l);
+  margin-block-start: auto;
+  padding-block-start: var(--space-s);
+}
+
+.mascot {
+  position: absolute;
+  inset-inline-end: -0.4rem;
+  inset-block-end: -1.25rem;
+  inline-size: clamp(5.5rem, 4rem + 6vw, 9.5rem);
+  padding: 0.35rem;
+  animation: pop-in 520ms var(--ease-pop) 640ms backwards;
+}
+
+@keyframes pop-in {
+  from {
+    scale: 0.2;
+    opacity: 0;
+  }
+}
+
+/* Scene panel */
+.scene {
+  margin: 0;
+  overflow: hidden;
+  aspect-ratio: 4 / 3;
+}
+
+@media (min-width: 48rem) {
+  .scene {
+    aspect-ratio: auto;
+    min-block-size: 20rem;
+  }
+}
+
+.sceneArt {
+  inline-size: 100%;
+  block-size: 100%;
+  object-fit: cover;
+}
+
+.sceneCaption {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-start: 0;
+  border-width: 0 var(--panel-border-thin) var(--panel-border-thin) 0;
+}
+
+.sceneBubble {
+  position: absolute;
+  inset-block-start: 3.25rem;
+  inset-inline-end: 1rem;
+  max-inline-size: min(17rem, 70%);
+  animation: pop-in 420ms var(--ease-pop) 900ms backwards;
+  transform-origin: bottom right;
+}
+
+/* Week panel */
+.week {
+  --dot-color: rgb(27 33 72 / 0.14);
+  --dot-angle: 180deg;
+  --dot-fade: 100%;
+  display: block;
+  padding: var(--space-s) var(--space-m) var(--space-m);
+  background: var(--highlight);
+  color: var(--on-highlight);
+  text-decoration: none;
+  transition: transform var(--dur-quick) var(--ease-ink);
+}
+
+.week:hover {
+  transform: rotate(-0.6deg) translateY(-2px);
+}
+
+.weekTitle {
+  font-size: var(--step-1);
+  margin-block-end: var(--space-xs);
+}
+
+.weekRow {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: var(--space-2xs);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.weekDay {
+  display: grid;
+  justify-items: center;
+  gap: 0.2rem;
+  font-family: var(--font-display-stack);
+  font-size: var(--step--1);
+  font-weight: 700;
+}
+
+.weekIcon,
+.weekBlank {
+  inline-size: 100%;
+  max-inline-size: 3rem;
+  aspect-ratio: 1;
+  block-size: auto;
+}
+
+.weekBlank {
+  display: block;
+  inline-size: 72%;
+  border: var(--panel-border-thin) dashed rgb(27 33 72 / 0.5);
+  border-radius: 50%;
+}
+
+/* ---------- How it works ---------- */
+.how {
+  padding-block-start: var(--space-3xl);
+}
+
+.steps {
+  display: grid;
+  gap: var(--space-l) calc(var(--gutter) + 4px);
+  margin: var(--space-xl) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+@media (min-width: 48rem) {
+  .steps {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.step {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2xs);
+  padding: var(--space-xs) var(--space-xs) var(--space-m);
+}
+
+.stepNumber {
+  position: absolute;
+  inset-block-start: -1rem;
+  inset-inline-start: -0.75rem;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  inline-size: 2.5rem;
+  block-size: 2.5rem;
+  background: var(--ink);
+  color: var(--paper);
+  border-radius: 50%;
+  font-family: var(--font-display-stack);
+  font-size: var(--step-1);
+  font-weight: 800;
+  line-height: 1;
+  padding-block-start: 0.15em;
+}
+
+.stepArt {
+  inline-size: 100%;
+  block-size: auto;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  border: var(--panel-border-thin) solid var(--line);
+  margin-block-end: var(--space-2xs);
+}
+
+.stepTitle {
+  font-size: var(--step-2);
+  padding-inline: var(--space-2xs);
+}
+
+.stepBody {
+  padding-inline: var(--space-2xs);
+  color: var(--ink-soft);
+  max-inline-size: 38ch;
+}
+
+/* ---------- Check-in ---------- */
+.checkin {
+  display: grid;
+  gap: var(--space-l);
+  align-items: center;
+}
+
+@media (min-width: 48rem) {
+  .checkin {
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-2xl);
+  }
+}
+
+.checkinCard {
+  padding: var(--space-l);
+  background: var(--calm-wash);
+  border: var(--panel-border-thin) solid var(--calm);
+  border-radius: var(--radius-card-soft);
+}
+
+.checkinHello {
+  font-family: var(--font-lettering-stack);
+  font-size: var(--step-1);
+  font-weight: 500;
+  line-height: 1.35;
+  color: var(--calm-text);
+}
+
+.checkinList {
+  display: grid;
+  gap: var(--space-s);
+  margin: var(--space-m) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.checkinList li {
+  position: relative;
+  padding-block-end: var(--space-xs);
+  padding-inline-start: 1.6rem;
+  border-block-end: 2px dotted color-mix(in srgb, var(--calm) 60%, transparent);
+  font-weight: 500;
+}
+
+.checkinList li::before {
+  content: "";
+  position: absolute;
+  inset-inline-start: 0;
+  inset-block-start: 0.45em;
+  inline-size: 0.7rem;
+  block-size: 0.7rem;
+  border-radius: 50%;
+  background: var(--calm);
+}
+
+/* ---------- Month magazine ---------- */
+.month {
+  display: grid;
+  gap: var(--space-xl);
+  align-items: center;
+}
+
+@media (min-width: 48rem) {
+  .month {
+    grid-template-columns: minmax(16rem, 22rem) 1fr;
+    gap: var(--space-2xl);
+  }
+}
+
+.cover {
+  position: relative;
+  display: block;
+  inline-size: min(78%, 22rem);
+  justify-self: center;
+  aspect-ratio: 4 / 5;
+  border: var(--panel-border) solid var(--line);
+  rotate: -3deg;
+  text-decoration: none;
+  color: var(--ink);
+  overflow: hidden;
+  box-shadow:
+    7px 7px 0 -2px var(--surface),
+    7px 7px 0 0 var(--line),
+    14px 14px 0 -2px var(--surface),
+    14px 14px 0 0 var(--line);
+  transition:
+    rotate var(--dur-panel) var(--ease-ink),
+    translate var(--dur-panel) var(--ease-ink);
+}
+
+.cover:hover {
+  rotate: 0deg;
+  translate: 0 -6px;
+}
+
+.coverArt {
+  position: absolute;
+  inset: 0;
+  inline-size: 100%;
+  block-size: 100%;
+  object-fit: cover;
+}
+
+.coverMasthead {
+  position: absolute;
+  inset-block-start: 0.6rem;
+  inset-inline: 0;
+  text-align: center;
+  font-family: var(--font-display-stack);
+  font-size: clamp(2.6rem, 2rem + 3vw, 3.6rem);
+  font-weight: 800;
+  line-height: 1;
+  color: #1b2148;
+  letter-spacing: -0.03em;
+}
+
+.coverIssue {
+  position: absolute;
+  inset-block-start: 4.2rem;
+  inset-inline-start: 50%;
+  translate: -50% 0;
+  padding: 0.1rem 0.6rem;
+  background: #ffffff;
+  color: #1b2148;
+  border: 2px solid #1b2148;
+  font-family: var(--font-display-stack);
+  font-size: var(--step--1);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.coverLines {
+  position: absolute;
+  inset-inline: 0;
+  inset-block-end: 0;
+  display: grid;
+  gap: 0.1rem;
+  padding: 0.6rem 0.9rem 0.75rem;
+  background: #1b2148;
+  color: #ffffff;
+  font-family: var(--font-lettering-stack);
+  font-size: 0.82rem;
+  line-height: 1.25;
+}
+
+.monthText {
+  display: grid;
+  gap: 0;
+}
+
+.glanceTitle {
+  margin-block: var(--space-l) var(--space-xs);
+  font-size: var(--step-1);
+}
+
+.monthText > :last-child {
+  max-inline-size: 26rem;
+}
+
+/* ---------- Footer ---------- */
+.footer {
+  padding-block: var(--space-l) var(--space-xl);
+  color: var(--ink-soft);
+  font-size: var(--step--1);
+}
+
+.footer p {
+  padding-block-start: var(--space-m);
+  border-block-start: 2px dashed color-mix(in srgb, var(--ink) 25%, transparent);
+}
