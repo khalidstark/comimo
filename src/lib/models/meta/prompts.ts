@@ -155,7 +155,7 @@ export function panelPrompt(scene: string, characters: PanelCharacter[], wide: b
       : "Composition: a medium shot with the characters clearly readable.",
   );
   lines.push(
-    `Leave the top third of the panel as plain, empty background (${art.emptyBand}) with no heads, faces or important details in it: captions and speech bubbles will cover that area later. Place the characters in the lower two thirds, heads fully inside the frame and below that empty band. No panel border.`,
+    `Leave the top third of the panel as plain, empty background (${art.emptyBand}) with no heads, faces or important details in it, painted as part of the same continuous scene (not a separate strip or border): captions and speech bubbles will cover that area later. Place the characters in the lower two thirds, heads fully inside the frame and below that empty band. No panel border.`,
   );
   lines.push(art.prompt);
   lines.push(NO_TEXT);
