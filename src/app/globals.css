@@ -1,49 +1,540 @@
+/* ==========================================================================
+   Comimo design system
+   A hand-printed comic zine about your own life: cool newsprint, navy ink,
+   riso pink, sunflower yellow and a calm teal. Panels are the layout grid.
+   All spacing uses logical properties so the layout mirrors for Arabic.
+   ========================================================================== */
+
+/* ---------- Tokens: light (default) ---------- */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  color-scheme: light;
+
+  /* Paper and ink */
+  --paper: #eceff2; /* cool newsprint, not cream */
+  --paper-deep: #dde2e8; /* gutters, wells */
+  --surface: #fafbfc; /* the white inside a panel */
+  --ink: #1b2148; /* deep ink navy */
+  --ink-soft: #4b5277;
+  --line: var(--ink);
+  --shadow: var(--ink);
+  --dot: rgb(27 33 72 / 0.16);
+
+  /* Accents */
+  --accent: #f2397a; /* riso pink */
+  --accent-text: #c2134f; /* pink that passes contrast as text */
+  --on-accent: #1b2148;
+  --highlight: #ffc738; /* sunflower */
+  --on-highlight: #1b2148;
+  --calm: #0f9e8e; /* teal, for check-in moments */
+  --calm-text: #0a6b61;
+  --calm-wash: #d4efea;
+
+  /* Day weather (mood) - semantic, never a score */
+  --mood-sunny: #ffc738;
+  --mood-cloudy: #a9b3c7;
+  --mood-rainy: #3d7fe0;
+  --mood-stormy: #3a4369;
+  --mood-rainbow: conic-gradient(from 200deg, #f2397a, #ffc738, #0f9e8e, #3d7fe0, #f2397a);
+
+  /* Type */
+  --font-display-stack: var(--font-display), "Baloo Bhaijaan 2", system-ui, sans-serif;
+  --font-body-stack: var(--font-body), "IBM Plex Sans Arabic", system-ui, sans-serif;
+  --font-lettering-stack: var(--font-lettering), "Playpen Sans Arabic", "Comic Sans MS", cursive;
+
+  --step--1: 0.875rem;
+  --step-0: 1.0625rem;
+  --step-1: 1.3125rem;
+  --step-2: 1.65rem;
+  --step-3: clamp(1.9rem, 1.45rem + 1.9vw, 2.75rem);
+  --step-4: clamp(2.5rem, 1.6rem + 4vw, 4.75rem);
+  --step-5: clamp(2.9rem, 1.6rem + 5.6vw, 6.4rem);
+
+  /* Space */
+  --space-3xs: 0.25rem;
+  --space-2xs: 0.5rem;
+  --space-xs: 0.75rem;
+  --space-s: 1rem;
+  --space-m: 1.5rem;
+  --space-l: 2rem;
+  --space-xl: 3rem;
+  --space-2xl: 4.5rem;
+  --space-3xl: 7rem;
+  --gutter: clamp(0.625rem, 0.4rem + 0.9vw, 1rem); /* the white strip between panels */
+  --page-pad: clamp(1rem, 0.5rem + 2.4vw, 2.5rem);
+  --page-max: 74rem;
+
+  /* Shape: different radii for different jobs */
+  --panel-border: 3px;
+  --panel-border-thin: 2px;
+  --radius-panel: 4px 7px 5px 6px; /* hand-cut panel corners */
+  --radius-sticker: 18px;
+  --radius-card-soft: 22px; /* check-in card, deliberately softer */
+  --radius-pill: 999px;
+  --shadow-x: 5px; /* flipped for RTL below */
+  --shadow-y: 5px;
+  --shadow-panel: var(--shadow-x) var(--shadow-y) 0 var(--shadow);
+  --shadow-small: calc(var(--shadow-x) * 0.6) calc(var(--shadow-y) * 0.6) 0 var(--shadow);
+
+  /* Motion */
+  --ease-ink: cubic-bezier(0.7, 0, 0.2, 1);
+  --ease-pop: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --dur-quick: 160ms;
+  --dur-panel: 520ms;
+
+  /* Chrome */
+  --tabbar-h: 4.5rem;
+  --topbar-h: 4.25rem;
 }
 
+/* ---------- Tokens: dark (same names, night-print values) ---------- */
 @media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --paper: #11152e;
+    --paper-deep: #0a0d21;
+    --surface: #1b2146;
+    --ink: #eef1f8;
+    --ink-soft: #b4bad6;
+    --line: #eef1f8;
+    --shadow: #f2397a;
+    --dot: rgb(238 241 248 / 0.1);
+    --accent: #ff5c93;
+    --accent-text: #ff8db4;
+    --on-accent: #11152e;
+    --highlight: #ffd15a;
+    --on-highlight: #11152e;
+    --calm: #34c3b1;
+    --calm-text: #74e2d3;
+    --calm-wash: #133a3d;
+    --mood-cloudy: #8e98b3;
+    --mood-stormy: #6b76a8;
   }
 }
 
-html {
-  height: 100%;
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --paper: #11152e;
+  --paper-deep: #0a0d21;
+  --surface: #1b2146;
+  --ink: #eef1f8;
+  --ink-soft: #b4bad6;
+  --line: #eef1f8;
+  --shadow: #f2397a;
+  --dot: rgb(238 241 248 / 0.1);
+  --accent: #ff5c93;
+  --accent-text: #ff8db4;
+  --on-accent: #11152e;
+  --highlight: #ffd15a;
+  --on-highlight: #11152e;
+  --calm: #34c3b1;
+  --calm-text: #74e2d3;
+  --calm-wash: #133a3d;
+  --mood-cloudy: #8e98b3;
+  --mood-stormy: #6b76a8;
 }
 
-html,
-body {
-  max-width: 100vw;
-  overflow-x: hidden;
+/* Offset shadows fall toward the reading direction's end */
+:root[dir="rtl"] {
+  --shadow-x: -5px;
 }
 
-body {
-  min-height: 100%;
-  display: flex;
-  flex-direction: column;
-  color: var(--foreground);
-  background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
-* {
+/* ---------- Base ---------- */
+*,
+*::before,
+*::after {
   box-sizing: border-box;
-  padding: 0;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  scroll-padding-block-start: calc(var(--topbar-h) + var(--space-s));
+}
+
+body {
   margin: 0;
+  min-block-size: 100dvh;
+  background-color: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-body-stack);
+  font-size: var(--step-0);
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: clip;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  margin: 0;
+  font-family: var(--font-display-stack);
+  font-weight: 800;
+  line-height: 1.02;
+  letter-spacing: -0.01em;
+  text-wrap: balance;
+}
+
+p {
+  margin: 0;
+  text-wrap: pretty;
 }
 
 a {
   color: inherit;
-  text-decoration: none;
 }
 
-@media (prefers-color-scheme: dark) {
-  html {
-    color-scheme: dark;
+img,
+svg {
+  display: block;
+  max-inline-size: 100%;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+  color: inherit;
+}
+
+:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+::selection {
+  background: var(--highlight);
+  color: var(--on-highlight);
+}
+
+/* ---------- Utilities ---------- */
+.visually-hidden {
+  position: absolute !important;
+  inline-size: 1px;
+  block-size: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.skip-link {
+  position: fixed;
+  inset-block-start: var(--space-xs);
+  inset-inline-start: var(--space-xs);
+  z-index: 1000;
+  padding: var(--space-2xs) var(--space-s);
+  background: var(--highlight);
+  color: var(--on-highlight);
+  border: var(--panel-border-thin) solid var(--ink);
+  font-family: var(--font-display-stack);
+  font-weight: 700;
+  text-decoration: none;
+  transform: translateY(-160%);
+  transition: transform var(--dur-quick) var(--ease-ink);
+}
+
+.skip-link:focus-visible {
+  transform: none;
+}
+
+.page {
+  inline-size: 100%;
+  max-inline-size: var(--page-max);
+  margin-inline: auto;
+  padding-inline: var(--page-pad);
+}
+
+/* Halftone: printed dots that fade out across the surface.
+   Put it on any positioned element; tune with --dot-size and --dot-fade. */
+.halftone {
+  position: relative;
+  isolation: isolate;
+}
+
+.halftone::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image: radial-gradient(var(--dot-color, var(--dot)) 30%, transparent 32%);
+  background-size: var(--dot-size, 9px) var(--dot-size, 9px);
+  mask-image: linear-gradient(var(--dot-angle, 135deg), #000 0%, transparent var(--dot-fade, 70%));
+  border-radius: inherit;
+}
+
+/* ---------- Primitives ---------- */
+
+/* A comic panel: ink border, hand-cut corners, solid offset shadow. */
+.panel {
+  position: relative;
+  background: var(--surface);
+  border: var(--panel-border) solid var(--line);
+  border-radius: var(--radius-panel);
+  box-shadow: var(--shadow-panel);
+}
+
+/* Yellow narration box, the comic "caption". */
+.caption {
+  display: inline-block;
+  padding: 0.15em 0.6em 0.2em;
+  background: var(--highlight);
+  color: var(--on-highlight);
+  border: var(--panel-border-thin) solid #1b2148;
+  font-family: var(--font-lettering-stack);
+  font-size: var(--step--1);
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+/* Speech bubble with a tail. The tail sits at the inline-start by default;
+   add .bubble--tail-end to move it. Text is always the lettering face. */
+.bubble {
+  --bubble-bg: #ffffff;
+  --bubble-line: #1b2148; /* bubbles are always printed paper, in any theme */
+  position: relative;
+  display: inline-block;
+  max-inline-size: 22ch;
+  padding: 0.55em 0.95em 0.6em;
+  background: var(--bubble-bg);
+  color: #1b2148;
+  border: var(--panel-border-thin) solid var(--bubble-line);
+  border-radius: 1.4em / 1.2em;
+  font-family: var(--font-lettering-stack);
+  font-size: var(--step-0);
+  font-weight: 500;
+  line-height: 1.3;
+  unicode-bidi: plaintext;
+}
+
+.bubble::after {
+  content: "";
+  position: absolute;
+  inset-block-end: calc(-0.5em - 1px);
+  inset-inline-start: 1.3em;
+  inline-size: 0.95em;
+  block-size: 0.95em;
+  background: var(--bubble-bg);
+  border-inline-end: var(--panel-border-thin) solid var(--bubble-line);
+  border-block-end: var(--panel-border-thin) solid var(--bubble-line);
+  transform: rotate(45deg) skew(12deg, 12deg);
+}
+
+.bubble--tail-end::after {
+  inset-inline-start: auto;
+  inset-inline-end: 1.3em;
+}
+
+.bubble--no-tail::after {
+  display: none;
+}
+
+.bubble__who {
+  display: block;
+  font-size: 0.72em;
+  font-weight: 700;
+  color: var(--accent-text);
+  line-height: 1.2;
+}
+
+/* Buttons. One shape per role: ink slab, quiet outline, plain text link. */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2xs);
+  min-block-size: 3rem;
+  padding: 0.55em 1.2em 0.6em;
+  border: var(--panel-border-thin) solid var(--line);
+  border-radius: 10px 12px 9px 11px;
+  font-family: var(--font-display-stack);
+  font-size: var(--step-0);
+  font-weight: 700;
+  line-height: 1;
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    transform var(--dur-quick) var(--ease-ink),
+    box-shadow var(--dur-quick) var(--ease-ink);
+}
+
+.btn--ink {
+  background: var(--ink);
+  color: var(--paper);
+  box-shadow: var(--shadow-small);
+  --shadow: var(--accent);
+}
+
+.btn--accent {
+  background: var(--accent);
+  color: var(--on-accent);
+  box-shadow: var(--shadow-small);
+}
+
+.btn--ghost {
+  background: transparent;
+  color: var(--ink);
+}
+
+.btn:hover {
+  transform: translate(-1px, -1px);
+}
+
+.btn:active {
+  transform: translate(2px, 2px);
+  box-shadow: none;
+}
+
+.btn[aria-disabled="true"] {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.link {
+  color: var(--accent-text);
+  font-weight: 600;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 0.2em;
+}
+
+/* Small pill for roles, labels and choices */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35em;
+  padding: 0.2em 0.75em 0.25em;
+  border: var(--panel-border-thin) solid var(--line);
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  font-size: var(--step--1);
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+/* Die-cut sticker: thick white border, slight tilt. */
+.sticker {
+  background: #ffffff;
+  border: var(--panel-border-thin) solid var(--ink);
+  border-radius: var(--radius-sticker);
+  box-shadow: var(--shadow-small);
+  rotate: var(--tilt, -2deg);
+}
+
+/* Section rhythm after the hero: airy, unbordered, lots of paper. */
+.section {
+  padding-block: var(--space-2xl);
+}
+
+.section__title {
+  font-size: var(--step-3);
+  max-inline-size: 18ch;
+}
+
+.section__lede {
+  margin-block-start: var(--space-xs);
+  max-inline-size: 52ch;
+  color: var(--ink-soft);
+  font-size: var(--step-1);
+  line-height: 1.45;
+}
+
+/* ---------- Page turn (route transition) ----------
+   Navigation links carry the "page-turn" type. The old page slides away
+   toward the inline-start like a turned leaf; the new page is wiped in
+   panel-style from the inline-end with a hard ink edge. */
+::view-transition {
+  pointer-events: none;
+}
+
+::view-transition-group(site-nav) {
+  animation: none;
+  z-index: 100;
+}
+
+::view-transition-old(site-nav) {
+  display: none;
+}
+
+::view-transition-new(site-nav) {
+  animation: none;
+}
+
+::view-transition-old(.page-turn) {
+  animation: page-leave 420ms var(--ease-ink) both;
+  transform-origin: 0% 50%;
+}
+
+::view-transition-new(.page-turn) {
+  animation: page-wipe 560ms var(--ease-ink) both;
+}
+
+@keyframes page-leave {
+  to {
+    translate: -14% 0;
+    rotate: y -18deg;
+    scale: 0.94;
+    filter: brightness(0.82);
+  }
+}
+
+@keyframes page-wipe {
+  from {
+    clip-path: polygon(100% 0, 100% 0, 100% 100%, 100% 100%);
+  }
+  to {
+    clip-path: polygon(-12% 0, 100% 0, 100% 100%, 0% 100%);
+  }
+}
+
+:root[dir="rtl"]::view-transition-new(.page-turn) {
+  animation-name: page-wipe-rtl;
+}
+
+:root[dir="rtl"]::view-transition-old(.page-turn) {
+  animation-name: page-leave-rtl;
+  transform-origin: 100% 50%;
+}
+
+@keyframes page-leave-rtl {
+  to {
+    translate: 14% 0;
+    rotate: y 18deg;
+    scale: 0.94;
+    filter: brightness(0.82);
+  }
+}
+
+@keyframes page-wipe-rtl {
+  from {
+    clip-path: polygon(0 0, 0 0, 0 100%, 0 100%);
+  }
+  to {
+    clip-path: polygon(0 0, 112% 0, 100% 100%, 0 100%);
+  }
+}
+
+/* ---------- Reduced motion ---------- */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    animation-delay: 0ms !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  ::view-transition-old(*),
+  ::view-transition-new(*),
+  ::view-transition-group(*) {
+    animation-duration: 0s !important;
+    animation-delay: 0s !important;
   }
 }
