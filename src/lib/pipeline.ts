@@ -1,0 +1,458 @@
+import { artAt } from "@/art/manifest";
+import { starterCast } from "@/fixtures/cast";
+import { getDay, getImage, listCast, newId, putImage, saveCharacter, saveDay } from "./store";
+import type {
+  ApiError,
+  CastBrief,
+  Character,
+  ComicScript,
+  Day,
+  ImageRef,
+  LanguageHint,
+  Panel,
+  PanelRequest,
+  PanelResponse,
+  ScriptRequest,
+  ScriptResponse,
+  TranscribeResponse,
+  Transcript,
+  WireImage,
+  WireReference,
+} from "./types";
+
+/**
+ * The client side of "make my comic": voice note -> transcript -> script ->
+ * panels -> a Day saved on this device.
+ *
+ * Every result is kept as it arrives, so after a failure `start()` resumes at
+ * the failed step (and only redraws the panels that failed). The progress
+ * screen reads the state through `subscribe` / `getSnapshot`
+ * (useSyncExternalStore).
+ */
+
+export const PIPELINE_STEPS = ["listen", "write", "draw", "check", "save"] as const;
+export type PipelineStep = (typeof PIPELINE_STEPS)[number];
+export type StepStatus = "waiting" | "active" | "done" | "skipped" | "error";
+
+export type PanelStatus = "waiting" | "drawing" | "done" | "error";
+
+export interface PanelProgress {
+  index: number;
+  status: PanelStatus;
+  /** Object URL of the final panel. */
+  imageUrl?: string;
+  /** Object URL of the panel before its face fix, when one was needed. */
+  beforeUrl?: string;
+  /** Names of the characters whose faces were fixed. */
+  fixedNames: string[];
+  error?: string;
+}
+
+export type PipelineStatus = "idle" | "running" | "error" | "cancelled" | "done";
+
+export interface PipelineState {
+  status: PipelineStatus;
+  steps: Record<PipelineStep, StepStatus>;
+  error: { step: PipelineStep; message: string } | null;
+  transcript: Transcript | null;
+  script: ComicScript | null;
+  panels: PanelProgress[];
+  /** Local date of the day being made (YYYY-MM-DD). */
+  date: string;
+  /** Set once the day is saved and read back from the store. */
+  dayId: string | null;
+}
+
+export interface PipelineInput {
+  audio: Blob;
+  language: LanguageHint;
+}
+
+/** Panels drawn at the same time. */
+const PANEL_CONCURRENCY = 2;
+
+/** A failure the progress screen can show as-is. */
+class StepError extends Error {
+  constructor(
+    readonly step: PipelineStep,
+    message: string,
+  ) {
+    super(message);
+    this.name = "StepError";
+  }
+}
+
+function isAbort(error: unknown): boolean {
+  return error instanceof DOMException && error.name === "AbortError";
+}
+
+/** Today in the speaker's own time zone. */
+export function localIsoDate(date = new Date()): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+/* ---------- Requests ---------- */
+
+async function request<T>(step: PipelineStep, url: string, init: RequestInit): Promise<T> {
+  let response: Response;
+  try {
+    response = await fetch(url, init);
+  } catch (error) {
+    if (isAbort(error)) throw error;
+    throw new StepError(step, "Couldn't reach Comimo. Check your connection and try again.");
+  }
+  let body: unknown = null;
+  try {
+    body = await response.json();
+  } catch {
+    // Handled below.
+  }
+  if (!response.ok || body === null) {
+    const message = (body as ApiError | null)?.error;
+    throw new StepError(step, message || `Something went wrong (${response.status}). Try again.`);
+  }
+  return body as T;
+}
+
+/* ---------- Images ---------- */
+
+function wireToBlob(image: WireImage): Blob {
+  const binary = atob(image.base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return new Blob([bytes], { type: image.mimeType });
+}
+
+function blobToWire(blob: Blob): Promise<WireImage> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const url = String(reader.result);
+      resolve({ mimeType: blob.type || "image/png", base64: url.slice(url.indexOf(",") + 1) });
+    };
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(blob);
+  });
+}
+
+/** A character's reference sheet as a wire image: a stored Blob or a manifest file. */
+async function loadReference(ref: ImageRef | null, signal: AbortSignal): Promise<WireImage | undefined> {
+  if (!ref) return undefined;
+  try {
+    if (ref.kind === "blob") {
+      const blob = await getImage(ref.id);
+      return blob ? blobToWire(blob) : undefined;
+    }
+    const response = await fetch(artAt(ref.path).src, { signal });
+    return response.ok ? blobToWire(await response.blob()) : undefined;
+  } catch (error) {
+    if (isAbort(error)) throw error;
+    // Draw from the written look alone rather than failing the panel.
+    return undefined;
+  }
+}
+
+/* ---------- Cast ---------- */
+
+/**
+ * The user's cast from the store. On first run the store is empty, so the
+ * invented starter cast is saved there and used.
+ */
+export async function loadCast(): Promise<Character[]> {
+  const cast = await listCast();
+  if (cast.length > 0) return cast;
+  await Promise.all(starterCast.map((character) => saveCharacter(character)));
+  return starterCast;
+}
+
+function toBrief({ id, name, role, look, personality }: Character): CastBrief {
+  return { id, name, role, look, personality };
+}
+
+/* ---------- Pipeline ---------- */
+
+function initialState(): PipelineState {
+  return {
+    status: "idle",
+    steps: { listen: "waiting", write: "waiting", draw: "waiting", check: "waiting", save: "waiting" },
+    error: null,
+    transcript: null,
+    script: null,
+    panels: [],
+    date: localIsoDate(),
+    dayId: null,
+  };
+}
+
+export class ComicPipeline {
+  private state: PipelineState = initialState();
+  private readonly listeners = new Set<() => void>();
+  private controller: AbortController | null = null;
+  private readonly dayId = newId();
+  private readonly createdAt = new Date().toISOString();
+  private cast: Character[] | null = null;
+  private readonly references = new Map<string, Promise<WireImage | undefined>>();
+  /** What each finished panel came back with, for building the Day. */
+  private readonly drawn = new Map<number, Panel["consistency"]>();
+  private readonly urls = new Set<string>();
+
+  constructor(private readonly input: PipelineInput) {}
+
+  subscribe = (listener: () => void): (() => void) => {
+    this.listeners.add(listener);
+    return () => this.listeners.delete(listener);
+  };
+
+  getSnapshot = (): PipelineState => this.state;
+
+  private set(patch: Partial<PipelineState>) {
+    this.state = { ...this.state, ...patch };
+    this.listeners.forEach((listener) => listener());
+  }
+
+  private setStep(step: PipelineStep, status: StepStatus) {
+    this.set({ steps: { ...this.state.steps, [step]: status } });
+  }
+
+  private setPanel(index: number, patch: Partial<PanelProgress>) {
+    this.set({ panels: this.state.panels.map((panel) => (panel.index === index ? { ...panel, ...patch } : panel)) });
+  }
+
+  private characterName(id: string): string {
+    return this.cast?.find((member) => member.id === id)?.name ?? id;
+  }
+
+  /**
+   * Run (or resume) the pipeline. Steps that already finished are skipped,
+   * so calling this after an error retries only the failed step.
+   */
+  async start(): Promise<void> {
+    if (this.controller || this.state.status === "done") return;
+    const controller = new AbortController();
+    this.controller = controller;
+    const { signal } = controller;
+    let step: PipelineStep = "listen";
+
+    const steps = { ...this.state.steps };
+    for (const key of PIPELINE_STEPS) if (steps[key] === "error" || steps[key] === "active") steps[key] = "waiting";
+    this.set({ status: "running", error: null, steps });
+
+    try {
+      step = "listen";
+      const transcript = this.state.transcript ?? (await this.transcribe(signal));
+
+      step = "write";
+      const script = this.state.script ?? (await this.writeScript(transcript, signal));
+
+      if (script.safety === "crisis") {
+        this.set({ steps: { ...this.state.steps, draw: "skipped", check: "skipped" } });
+      } else {
+        step = "draw";
+        await this.drawPanels(script, signal);
+      }
+
+      step = "save";
+      await this.save(transcript, script);
+      if (signal.aborted) return;
+      this.set({ status: "done" });
+    } catch (error) {
+      if (this.controller !== controller || signal.aborted || isAbort(error)) return;
+      const failed = error instanceof StepError ? error.step : step;
+      const message =
+        error instanceof StepError ? error.message : "Something went wrong on this step. Try again.";
+      if (!(error instanceof StepError)) console.error("Comimo: pipeline step failed", error);
+      const steps = { ...this.state.steps, [failed]: "error" as const };
+      if (failed === "draw" && steps.check === "active") steps.check = "waiting";
+      this.set({ status: "error", error: { step: failed, message }, steps });
+    } finally {
+      if (this.controller === controller) this.controller = null;
+    }
+  }
+
+  /** Stop any request in flight. Finished work is kept, so `start()` picks up from here. */
+  cancel() {
+    if (!this.controller) return;
+    this.controller.abort();
+    this.controller = null;
+    const steps = { ...this.state.steps };
+    for (const key of PIPELINE_STEPS) if (steps[key] === "active") steps[key] = "waiting";
+    const panels = this.state.panels.map((panel) =>
+      panel.status === "drawing" ? { ...panel, status: "waiting" as const } : panel,
+    );
+    this.set({ status: "cancelled", steps, panels });
+  }
+
+  /** Cancel and free the object URLs behind the panel previews. */
+  dispose() {
+    this.cancel();
+    this.urls.forEach((url) => URL.revokeObjectURL(url));
+    this.urls.clear();
+  }
+
+  private objectUrl(blob: Blob): string {
+    const url = URL.createObjectURL(blob);
+    this.urls.add(url);
+    return url;
+  }
+
+  /* ---------- Steps ---------- */
+
+  private async transcribe(signal: AbortSignal): Promise<Transcript> {
+    this.setStep("listen", "active");
+    const form = new FormData();
+    const type = this.input.audio.type || "audio/webm";
+    const extension = type.split("/")[1]?.split(";")[0] || "webm";
+    form.append("audio", this.input.audio, `voice-note.${extension}`);
+    form.append("language", this.input.language);
+    const { transcript } = await request<TranscribeResponse>("listen", "/api/transcribe", {
+      method: "POST",
+      body: form,
+      signal,
+    });
+    this.set({ transcript, steps: { ...this.state.steps, listen: "done" } });
+    return transcript;
+  }
+
+  private async writeScript(transcript: Transcript, signal: AbortSignal): Promise<ComicScript> {
+    this.setStep("write", "active");
+    this.cast ??= await loadCast();
+    const body: ScriptRequest = { transcript: transcript.text, cast: this.cast.slice(0, 20).map(toBrief) };
+    const { script } = await request<ScriptResponse>("write", "/api/script", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+      signal,
+    });
+    const panels: PanelProgress[] = script.panels.map((panel) => ({
+      index: panel.index,
+      status: "waiting",
+      fixedNames: [],
+    }));
+    this.set({ script, panels, steps: { ...this.state.steps, write: "done" } });
+    return script;
+  }
+
+  private referenceFor(characterId: string, signal: AbortSignal): Promise<WireImage | undefined> {
+    let pending = this.references.get(characterId);
+    if (!pending) {
+      const character = this.cast?.find((member) => member.id === characterId);
+      pending = loadReference(character?.referenceSheet ?? null, signal);
+      this.references.set(characterId, pending);
+      // Don't cache a failure caused by cancelling.
+      pending.catch(() => this.references.delete(characterId));
+    }
+    return pending;
+  }
+
+  private async drawPanels(script: ComicScript, signal: AbortSignal) {
+    this.cast ??= await loadCast();
+    const queue = script.panels.filter((panel) => this.state.panels.find((p) => p.index === panel.index)?.status !== "done");
+    for (const panel of queue) this.setPanel(panel.index, { status: "waiting", error: undefined });
+    this.set({ steps: { ...this.state.steps, draw: "active", check: "active" } });
+
+    let failed = 0;
+    const worker = async () => {
+      for (let next = queue.shift(); next; next = queue.shift()) {
+        if (signal.aborted) return;
+        try {
+          await this.drawPanel(next, signal);
+        } catch (error) {
+          if (signal.aborted || isAbort(error)) throw error;
+          failed += 1;
+          const message = error instanceof StepError ? error.message : "This panel didn't draw.";
+          this.setPanel(next.index, { status: "error", error: message });
+        }
+      }
+    };
+    await Promise.all(Array.from({ length: PANEL_CONCURRENCY }, worker));
+    if (signal.aborted) throw new DOMException("Cancelled", "AbortError");
+
+    if (failed > 0) {
+      throw new StepError("draw", failed === 1 ? "One panel didn't draw. Try it again." : `${failed} panels didn't draw. Try them again.`);
+    }
+    this.set({ steps: { ...this.state.steps, draw: "done", check: "done" } });
+  }
+
+  private async drawPanel(panel: ComicScript["panels"][number], signal: AbortSignal) {
+    this.setPanel(panel.index, { status: "drawing", error: undefined });
+
+    const references: WireReference[] = [];
+    for (const id of panel.characterIds) {
+      const character = this.cast?.find((member) => member.id === id);
+      if (!character) continue;
+      const image = await this.referenceFor(id, signal);
+      references.push({ characterId: id, name: character.name, look: character.look, ...(image ? { image } : {}) });
+    }
+
+    const body: PanelRequest = { panel, references };
+    const result = await request<PanelResponse>("draw", "/api/panel", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+      signal,
+    });
+
+    const image = wireToBlob(result.image);
+    const before = result.consistency.before ? wireToBlob(result.consistency.before) : null;
+    const imageId = `${this.dayId}-panel-${panel.index}`;
+    const beforeId = `${imageId}-before`;
+    const stored = (await putImage(imageId, image)) && (!before || (await putImage(beforeId, before)));
+    if (!stored) {
+      throw new StepError("draw", "Couldn't keep the panels on this device. Private windows can block storage.");
+    }
+
+    this.drawn.set(panel.index, {
+      checked: true,
+      driftedCharacterIds: result.consistency.driftedCharacterIds,
+      fixedCharacterIds: result.consistency.fixedCharacterIds,
+      beforeImage: before ? { kind: "blob", id: beforeId } : null,
+    });
+    this.setPanel(panel.index, {
+      status: "done",
+      imageUrl: this.objectUrl(image),
+      beforeUrl: before ? this.objectUrl(before) : undefined,
+      fixedNames: result.consistency.fixedCharacterIds.map((id) => this.characterName(id)),
+    });
+  }
+
+  private async save(transcript: Transcript, script: ComicScript) {
+    this.setStep("save", "active");
+    const crisis = script.safety === "crisis";
+    const day: Day = {
+      id: this.dayId,
+      date: this.state.date,
+      title: script.title.trim() || "Today",
+      transcript: transcript.text,
+      languages: transcript.languages,
+      panels: crisis
+        ? []
+        : script.panels.map((panel) => ({
+            ...panel,
+            image: { kind: "blob", id: `${this.dayId}-panel-${panel.index}` },
+            consistency: this.drawn.get(panel.index) ?? {
+              checked: false,
+              driftedCharacterIds: [],
+              fixedCharacterIds: [],
+              beforeImage: null,
+            },
+          })),
+      mood: script.mood,
+      heavy: script.heavy,
+      ...(script.heavy && script.checkInQuestions.length > 0
+        ? { checkIn: { questions: script.checkInQuestions, answers: [] } }
+        : {}),
+      safety: script.safety,
+      createdAt: this.createdAt,
+    };
+
+    // Read it back: only route to the day once it is really on the device.
+    const saved = (await saveDay(day)) && (await getDay(day.id));
+    if (!saved) {
+      throw new StepError("save", "Couldn't keep this day on this device. Private windows can block storage.");
+    }
+    this.set({ dayId: day.id, steps: { ...this.state.steps, save: "done" } });
+  }
+}
