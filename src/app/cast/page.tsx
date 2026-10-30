@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import { Art } from "@/art/Art";
 import { Icon } from "@/art/Icon";
-import { art } from "@/art/manifest";
+import { art, artAt } from "@/art/manifest";
 import { PageTurn } from "@/components/PageTurn";
-import { starterCast } from "@/lib/sample";
+import { starterCast } from "@/fixtures/cast";
 import styles from "./cast.module.css";
 
 export const metadata: Metadata = { title: "Your cast" };
@@ -26,13 +26,15 @@ export default function CastPage() {
           {starterCast.map((member, i) => (
             <li key={member.id} className={styles.member} style={{ "--tilt": TILTS[i % TILTS.length] } as React.CSSProperties}>
               <div className={`sticker ${styles.sprite}`}>
-                <Art asset={art.sprites[member.id]} alt="" sizes="(min-width: 48rem) 16rem, 45vw" />
+                {member.portrait.kind === "art" ? (
+                  <Art asset={artAt(member.portrait.path)} alt="" sizes="(min-width: 48rem) 16rem, 45vw" />
+                ) : null}
               </div>
               <div className={styles.info}>
                 <h2 className={styles.name} dir="auto">
                   {member.name}
                 </h2>
-                <p className="chip">{member.role}</p>
+                <p className="chip">{member.roleLabel}</p>
                 <p className={`bubble ${styles.line}`} dir="auto">
                   {member.line}
                 </p>
