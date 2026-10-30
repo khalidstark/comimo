@@ -7,6 +7,7 @@ import { art, artAt } from "@/art/manifest";
 import { BidiText } from "@/components/comic/BidiText";
 import { Sprite } from "@/components/Sprite";
 import { useTalkWhenShown } from "@/components/useTalkWhenShown";
+import { ART_STYLE_IDS, ART_STYLES, type ArtStyleId } from "@/lib/artStyles";
 import { firstStrongDir } from "@/lib/bidi";
 import {
   LIMITS,
@@ -94,7 +95,7 @@ export function CastEditor() {
 
   function sheetDrawn(character: Character) {
     setCast((current) => (current ?? []).map((m) => (m.id === character.id ? character : m)));
-    setNotice(`Drew ${character.name}'s reference sheet.`);
+    setNotice(`Drew a reference sheet for ${character.name}.`);
   }
 
   function cancel(returnTo: string) {
@@ -225,7 +226,7 @@ function CastCard({ member, tilt, confirming, onEdit, onAskRemove, onKeep, onRem
           </p>
         ) : null}
 
-        <ReferenceSheet member={member} onDrawn={onSheetDrawn} />
+        <ReferenceSheets member={member} onDrawn={onSheetDrawn} />
 
         {confirming ? (
           <div className={styles.confirm} role="group" aria-labelledby={`confirm-${member.id}`}>
@@ -283,18 +284,38 @@ function useSheetUrl(ref: ImageRef | null): string | null {
   return blobUrl?.id === ref.id ? blobUrl.url : null;
 }
 
+/** The character's reference sheets, one per art style. */
+function ReferenceSheets({ member, onDrawn }: { member: Character; onDrawn: (character: Character) => void }) {
+  return (
+    <div className={styles.sheets} role="group" aria-label={`${member.name}'s reference sheets`}>
+      {ART_STYLE_IDS.map((style) => (
+        <ReferenceSheet key={style} member={member} style={style} onDrawn={onDrawn} />
+      ))}
+    </div>
+  );
+}
+
 /**
- * The character's Muse Image reference sheet: a thumbnail when drawn, and a
- * button that draws (or redraws) it from their look. Panels use the sheet to
- * keep their face the same.
+ * One Muse Image reference sheet: a thumbnail when drawn, and a button that
+ * draws (or redraws) it from their look in that style. Panels in that style
+ * use the sheet to keep their face the same.
  */
-function ReferenceSheet({ member, onDrawn }: { member: Character; onDrawn: (character: Character) => void }) {
-  const sheet = referenceSheetFor(member);
-  const url = useSheetUrl(sheet);
+function ReferenceSheet({
+  member,
+  style,
+  onDrawn,
+}: {
+  member: Character;
+  style: ArtStyleId;
+  onDrawn: (character: Character) => void;
+}) {
+  const sheet = referenceSheetFor(member, style);
+  const url = useSheetUrl(sheet?.image ?? null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const controller = useRef<AbortController | null>(null);
-  const statusId = `sheet-status-${member.id}`;
+  const statusId = `sheet-status-${member.id}-${style}`;
+  const label = ART_STYLES[style].label;
 
   useEffect(() => () => controller.current?.abort(), []);
 
@@ -304,7 +325,7 @@ function ReferenceSheet({ member, onDrawn }: { member: Character; onDrawn: (char
     setError(null);
     controller.current = new AbortController();
     try {
-      onDrawn(await drawReferenceSheet(member, controller.current.signal));
+      onDrawn(await drawReferenceSheet(member, style, controller.current.signal));
     } catch (problem) {
       if (controller.current?.signal.aborted) return;
       setError(problem instanceof SheetError ? problem.message : "The sheet didn't draw. Try again.");
@@ -316,11 +337,18 @@ function ReferenceSheet({ member, onDrawn }: { member: Character; onDrawn: (char
 
   return (
     <div className={styles.sheet}>
+      <span className={styles.sheetLabel}>{label}</span>
       {url ? (
         // Object URLs and drawn sheets; next/image can't optimise Blobs.
         // eslint-disable-next-line @next/next/no-img-element
-        <img className={styles.sheetImage} src={url} alt={`${member.name}'s reference sheet, front and three-quarter views`} />
-      ) : null}
+        <img
+          className={styles.sheetImage}
+          src={url}
+          alt={`${member.name}'s ${label.toLowerCase()} reference sheet, front and three-quarter views`}
+        />
+      ) : (
+        <span className={styles.sheetEmpty}>Not drawn yet</span>
+      )}
       <button
         type="button"
         className={styles.textButton}
@@ -328,8 +356,11 @@ function ReferenceSheet({ member, onDrawn }: { member: Character; onDrawn: (char
         aria-disabled={busy || undefined}
         aria-describedby={statusId}
       >
-        {busy ? "Drawing…" : sheet ? "Redraw sheet" : "Draw reference sheet"}
-        <span className="visually-hidden"> for {member.name}</span>
+        {busy ? "Drawing…" : sheet ? "Redraw" : "Draw sheet"}
+        <span className="visually-hidden">
+          {" "}
+          {label.toLowerCase()} sheet for {member.name}
+        </span>
       </button>
       <p id={statusId} className={error ? styles.error : styles.sheetStatus} role={error ? "alert" : "status"}>
         {error ?? (busy ? `Drawing ${member.name}. This takes about a minute.` : "")}
@@ -511,9 +542,9 @@ function CharacterForm({ character, others, onSave, onCancel }: CharacterFormPro
         <div className={styles.refSlot}>
           <span className={styles.label}>Reference sheet</span>
           <p>
-            {character && referenceSheetFor(character)
-              ? "Drawn. Comimo uses it to keep their face the same. Changed how they look? Redraw the sheet from their card."
-              : "Once they're saved, draw it from their card. Comimo uses it to keep their face the same in every panel."}
+            {character && ART_STYLE_IDS.some((style) => referenceSheetFor(character, style))
+              ? "Drawn. Comimo uses their sheets to keep their face the same. Changed how they look? Redraw the sheets from their card."
+              : "Once they're saved, draw a sheet for each art style from their card. Comimo uses them to keep their face the same in every panel."}
           </p>
         </div>
       </div>
