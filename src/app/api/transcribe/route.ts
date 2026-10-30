@@ -1,17 +1,36 @@
+import { guard, guardResponse } from "@/lib/guard";
 import { getModels } from "@/lib/models";
 import { json, jsonError, modelErrorResponse } from "@/lib/models/wire";
 import type { LanguageHint, TranscribeResponse } from "@/lib/types";
 
+export const maxDuration = 60;
+
 /**
- * Largest voice note accepted. A minute of compressed audio is well under
- * 1 MB; 4 MB also stays below Vercel's 4.5 MB request body limit.
+ * Largest voice note accepted. The browser sends 16 kHz mono WAV, 32 KB a
+ * second, so two minutes is about 3.8 MB; 4 MB also stays below Vercel's
+ * 4.5 MB request body limit.
  */
 const MAX_AUDIO_BYTES = 4 * 1024 * 1024;
 const HINTS: LanguageHint[] = ["auto", "ar", "en"];
+const MAX_KEYWORDS = 20;
+
+/** Optional `keywords` field: a JSON list of names to hear right (the cast). Bad input is ignored. */
+function parseKeywords(value: FormDataEntryValue | null): string[] {
+  if (typeof value !== "string" || value.length > 2000) return [];
+  try {
+    const list: unknown = JSON.parse(value);
+    if (!Array.isArray(list)) return [];
+    const words = list.filter((word): word is string => typeof word === "string" && word.trim().length > 0 && word.length <= 40);
+    return [...new Set(words.map((word) => word.trim()))].slice(0, MAX_KEYWORDS);
+  } catch {
+    return [];
+  }
+}
 
 /**
  * POST /api/transcribe
- * multipart/form-data: `audio` (file), optional `language` (auto | ar | en)
+ * multipart/form-data: `audio` (file; 16 kHz or 24 kHz mono 16-bit WAV for the
+ * real model), optional `language` (auto | ar | en), optional `keywords` (JSON list)
  */
 export async function POST(request: Request) {
   let form: FormData;
@@ -26,7 +45,7 @@ export async function POST(request: Request) {
     return jsonError(400, "Missing `audio` file.");
   }
   if (audio.size > MAX_AUDIO_BYTES) {
-    return jsonError(413, "That voice note is too long. Keep it to about a minute.");
+    return jsonError(413, "That voice note is too long. Keep it to two minutes.");
   }
   if (audio.type && !/^(audio|video)\//.test(audio.type)) {
     return jsonError(415, "`audio` must be an audio file.");
@@ -38,14 +57,23 @@ export async function POST(request: Request) {
   }
 
   const models = getModels();
+  const source = models.sources.transcribe;
+  const check = guard(request, "transcribe", { real: source === "meta" });
+  if (!check.ok) return guardResponse(check);
+
   try {
-    const transcript = await models.transcribe({
-      mimeType: audio.type || "application/octet-stream",
-      data: new Uint8Array(await audio.arrayBuffer()),
-      languageHint: language as LanguageHint,
-    });
-    return json<TranscribeResponse>({ mode: models.mode, transcript }, models.mode);
+    const transcript = await models.transcribe(
+      {
+        mimeType: audio.type || "application/octet-stream",
+        data: new Uint8Array(await audio.arrayBuffer()),
+        languageHint: language as LanguageHint,
+        keywords: parseKeywords(form.get("keywords")),
+      },
+      { visitorId: check.visitorId, signal: request.signal },
+    );
+    return json<TranscribeResponse>({ mode: source, transcript }, source);
   } catch (error) {
+    check.undo();
     return modelErrorResponse(error);
   }
 }
