@@ -1,3 +1,4 @@
+import { artStyleOf, isArtStyleId } from "@/lib/artStyles";
 import { guard, guardResponse } from "@/lib/guard";
 import { getModels } from "@/lib/models";
 import { signFileId, signSheet } from "@/lib/models/fileTokens";
@@ -13,8 +14,8 @@ const MAX_LOOK = 600;
 
 /**
  * POST /api/character
- * JSON: { characterId, name, role, look }
- * Draws the character's reference sheet (front and three-quarter views, full
+ * JSON: { characterId, name, role, look, style? }  (style defaults to "zine")
+ * Draws the character's reference sheet in that art style (front and three-quarter views, full
  * body, plain background), uploads it to the Files API once, and returns the
  * image plus a signed file token the browser keeps on the character so panels
  * can point at the sheet instead of resending it.
@@ -23,7 +24,8 @@ export async function POST(request: Request) {
   const body = await readJson(request);
   if (!isRecord(body)) return jsonError(400, "Send JSON like {\"characterId\": \"...\", \"name\": \"...\", \"role\": \"friend\", \"look\": \"...\"}.");
 
-  const { characterId, name, role, look } = body;
+  const { characterId, name, role, look, style } = body;
+  if (style !== undefined && !isArtStyleId(style)) return jsonError(400, "`style` must be one of Comimo's art styles.");
   if (!isText(characterId, 100) || !isText(name, 100)) return jsonError(400, "`characterId` and `name` are required.");
   if (typeof role !== "string" || !ROLES.includes(role as CharacterRole)) return jsonError(400, "`role` must be one of the cast roles.");
   if (!isText(look, MAX_LOOK) || look.trim().length < MIN_LOOK) {
@@ -39,7 +41,7 @@ export async function POST(request: Request) {
   try {
     const context = { visitorId: check.visitorId, signal: request.signal, meter: check.meter };
     const image = await models.drawReferenceSheet(
-      { characterId, name: name.trim(), role: role as CharacterRole, look: look.trim() },
+      { characterId, name: name.trim(), role: role as CharacterRole, look: look.trim(), style: artStyleOf(style) },
       context,
     );
     // A failed upload isn't fatal: the sheet still works, panels send it inline and upload it then.

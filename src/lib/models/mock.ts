@@ -178,20 +178,20 @@ async function drawPanel(panel: ScriptPanel, references: CharacterReference[]): 
 /* ---------- Reference sheets ---------- */
 
 /** Two plain figures (front and three-quarter) with the name, so the cast flow can be built without credits. */
-function sheetSvg(name: string): string {
+function sheetSvg(name: string, style: string): string {
   const figure = (x: number, turn: number) =>
     `<g transform="translate(${x} 0)"><circle cx="${150 + turn}" cy="150" r="58" fill="${SUN}" stroke="${INK}" stroke-width="6"/><path d="M${92 + turn} 330 q58 -110 116 0 v170 h-116 z" fill="${PINK}" stroke="${INK}" stroke-width="6"/><path d="M110 500 v120 M190 500 v120" stroke="${INK}" stroke-width="10" stroke-linecap="round"/></g>`;
   return `<svg xmlns="http://www.w3.org/2000/svg" width="900" height="600" viewBox="0 0 900 600" font-family="system-ui, sans-serif">
 <rect width="900" height="600" fill="${PAPER}"/>
 ${figure(90, 0)}${figure(510, 18)}
 <rect x="300" y="540" width="300" height="40" fill="${INK}"/>
-<text x="450" y="567" text-anchor="middle" font-size="18" font-weight="700" fill="${PAPER}">MOCK SHEET: ${escapeXml(name)}</text>
+<text x="450" y="567" text-anchor="middle" font-size="18" font-weight="700" fill="${PAPER}">MOCK ${escapeXml(style.toUpperCase())} SHEET: ${escapeXml(name)}</text>
 </svg>`;
 }
 
 async function drawReferenceSheet(subject: SheetSubject): Promise<ModelImage> {
   await wait(DELAY_MS.draw * 2);
-  return { mimeType: SVG_TYPE, data: new TextEncoder().encode(sheetSvg(subject.name)) };
+  return { mimeType: SVG_TYPE, data: new TextEncoder().encode(sheetSvg(subject.name, subject.style)) };
 }
 
 /** Mock sheets are never uploaded anywhere. */

@@ -9,6 +9,7 @@ import type {
   ScriptPanel,
   Transcript,
 } from "@/lib/types";
+import type { ArtStyleId } from "@/lib/artStyles";
 import type { UsageMeter } from "@/lib/guard";
 import { metaModels } from "./meta";
 import { mockModels } from "./mock";
@@ -51,6 +52,13 @@ export interface SheetSubject {
   name: string;
   role: CharacterRole;
   look: string;
+  style: ArtStyleId;
+}
+
+/** How a panel is drawn: its shape on the page and the comic's art style. */
+export interface PanelOptions {
+  shape: PanelShape;
+  style: ArtStyleId;
 }
 
 export interface ConsistencyResult {
@@ -83,12 +91,12 @@ export interface ComicModels {
   transcribe(audio: AudioInput, context?: ModelCallContext): Promise<Transcript>;
   /** Transcript to a comic script with mood, heavy-day and safety flags. */
   writeScript(transcript: string, cast: CastBrief[], context?: ModelCallContext): Promise<ComicScript>;
-  /** Draw a character's reference sheet: front and three-quarter views, full body, plain background. */
+  /** Draw a character's reference sheet in a style: front and three-quarter views, full body, plain background. */
   drawReferenceSheet(subject: SheetSubject, context?: ModelCallContext): Promise<ModelImage>;
   /** Upload a reference sheet once so panels can point at it by id. Null when uploads aren't available. */
   uploadReference(image: ModelImage, context?: ModelCallContext): Promise<string | null>;
   /** Draw one panel using the reference sheets of the characters in it. */
-  drawPanel(panel: ScriptPanel, references: CharacterReference[], context?: ModelCallContext, shape?: PanelShape): Promise<ModelImage>;
+  drawPanel(panel: ScriptPanel, references: CharacterReference[], options: PanelOptions, context?: ModelCallContext): Promise<ModelImage>;
   /** Find characters that drifted from their reference sheet and redraw them. */
   checkConsistency(image: ModelImage, references: CharacterReference[], context?: ModelCallContext): Promise<ConsistencyResult>;
 }

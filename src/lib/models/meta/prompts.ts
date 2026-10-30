@@ -1,4 +1,5 @@
 import "server-only";
+import { ART_STYLES, type ArtStyleId } from "@/lib/artStyles";
 import { MOODS, type CastBrief } from "@/lib/types";
 
 /**
@@ -87,15 +88,8 @@ export function scriptSchema(castIds: string[]) {
 }
 
 /* ------------------------------------------------------------------ */
-/* Art (Muse Image)                                                    */
+/* Art (Muse Image); the styles live in src/lib/artStyles.ts           */
 /* ------------------------------------------------------------------ */
-
-/**
- * Comimo's one art style, matched to the approved zine design (globals.css):
- * navy ink, riso pink, sunflower and teal on cool newsprint. Every sheet and
- * panel ends with this exact text so they all print the same way.
- */
-export const ART_STYLE = `Art style, identical in every image: a hand-printed risograph zine comic. Bold, confident deep navy ink outlines (#1b2148) with a slightly uneven brush line. Flat riso colours with no gradients: deep navy #1b2148, riso pink #f2397a, sunflower yellow #ffc738 and teal #0f9e8e on cool newsprint off-white paper #eceff2. Any other colour is a tint or overprint of these inks (pink over yellow for orange, a pale pink wash for lilac, teal over yellow for olive). Light halftone dot shading in the shadows, a little paper grain, simple rounded shapes, warm and expressive faces with clear emotions.`;
 
 /** Said last in every art prompt: Comimo letters in HTML, so the art must carry no text at all. */
 const NO_TEXT = "No text anywhere in the image: no letters, words, numbers, signs, labels, logos, captions, speech bubbles or sound effects.";
@@ -105,18 +99,20 @@ export interface SheetPromptInput {
   look: string;
   /** Animals are drawn as the whole animal rather than "head to feet". */
   animal: boolean;
+  style: ArtStyleId;
 }
 
 /** A reference sheet: the same character twice (front, three-quarter), full body, plain light background. */
-export function sheetPrompt({ name, look, animal }: SheetPromptInput): string {
+export function sheetPrompt({ name, look, animal, style }: SheetPromptInput): string {
+  const art = ART_STYLES[style];
   const body = animal
     ? "The whole animal from ears to tail in both views, as a real animal of its kind: no clothes, collar or accessories unless the look mentions them. Identical markings, colours and proportions in both views."
     : "Full body from head to feet in both views, standing in a relaxed neutral pose. Identical outfit, hair, colours and proportions in both views.";
   return `Character reference sheet for an original comic character named ${name}.
 Look: ${look}
 Show the same character twice, side by side and at the same size: on the left a front view facing the viewer, on the right a clearly turned three-quarter view. ${body} Calm, friendly expression.
-Plain flat light newsprint background with nothing else on it: no scenery, no props except what they always carry, no frames, no colour swatches, no name labels.
-${ART_STYLE}
+${art.sheetBackground}, with nothing else on it: no scenery, no props except what they always carry, no frames, no colour swatches, no name labels.
+${art.prompt}
 ${NO_TEXT}`;
 }
 
@@ -131,7 +127,8 @@ export interface PanelCharacter {
  * One panel. `characters` is in characterIds order, which is also the order
  * left to right in the picture: the bubble tails in the app depend on it.
  */
-export function panelPrompt(scene: string, characters: PanelCharacter[], wide: boolean): string {
+export function panelPrompt(scene: string, characters: PanelCharacter[], wide: boolean, style: ArtStyleId): string {
+  const art = ART_STYLES[style];
   const lines: string[] = ["One panel of a diary comic, drawn as a single scene."];
 
   if (characters.length > 0) {
@@ -158,9 +155,9 @@ export function panelPrompt(scene: string, characters: PanelCharacter[], wide: b
       : "Composition: a medium shot with the characters clearly readable.",
   );
   lines.push(
-    "Leave the top third of the panel as plain, empty background (sky, wall or ceiling) with no heads, faces or important details in it: captions and speech bubbles will cover that area later. Place the characters in the lower two thirds, heads fully inside the frame and below that empty band. No panel border.",
+    `Leave the top third of the panel as plain, empty background (${art.emptyBand}) with no heads, faces or important details in it: captions and speech bubbles will cover that area later. Place the characters in the lower two thirds, heads fully inside the frame and below that empty band. No panel border.`,
   );
-  lines.push(ART_STYLE);
+  lines.push(art.prompt);
   lines.push(NO_TEXT);
   return lines.join("\n");
 }

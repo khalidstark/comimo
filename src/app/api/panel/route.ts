@@ -1,4 +1,5 @@
 import { starterCastById } from "@/fixtures/cast";
+import { artStyleOf, isArtStyleId } from "@/lib/artStyles";
 import { guard, guardResponse } from "@/lib/guard";
 import { getModels, type CharacterReference } from "@/lib/models";
 import { isTrustedSheet, signFileId, verifyFileToken } from "@/lib/models/fileTokens";
@@ -76,7 +77,7 @@ function staleReference(): Response {
 
 /**
  * POST /api/panel
- * JSON: { panel: ScriptPanel, references?: WireReference[], shape?: "wide" | "standard" }
+ * JSON: { panel: ScriptPanel, references?: WireReference[], shape?: "wide" | "standard", style?: ArtStyleId }
  * Draws the panel from the reference sheets of the characters in it, then
  * checks every character against their reference and redraws any that
  * drifted. Returns the final image, the before image, and tokens for any
@@ -102,6 +103,8 @@ export async function POST(request: Request) {
   }
   const inPanel = references.filter((ref) => panel.characterIds.includes(ref.characterId));
   const shape: PanelShape = body.shape === "wide" ? "wide" : "standard";
+  if (body.style !== undefined && !isArtStyleId(body.style)) return jsonError(400, "`style` must be one of Comimo's art styles.");
+  const style = artStyleOf(body.style);
 
   const models = getModels();
   const { drawPanel, checkConsistency } = models.sources;
@@ -132,7 +135,7 @@ export async function POST(request: Request) {
 
     let drawn;
     try {
-      drawn = await models.drawPanel(panel, inPanel, context, shape);
+      drawn = await models.drawPanel(panel, inPanel, { shape, style }, context);
     } catch (error) {
       if (!isMissingFileError(error)) throw error;
       // Uploaded sheets expire after 30 days; the browser resends the images and gets fresh tokens.

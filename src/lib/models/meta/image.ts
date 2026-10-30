@@ -1,7 +1,7 @@
 import "server-only";
 import { createHash } from "node:crypto";
-import type { PanelShape, ScriptPanel } from "@/lib/types";
-import type { CharacterReference, ModelCallContext, ModelImage, SheetSubject } from "../index";
+import type { ScriptPanel } from "@/lib/types";
+import type { CharacterReference, ModelCallContext, ModelImage, PanelOptions, SheetSubject } from "../index";
 import { MetaApiError, metaJson } from "./client";
 import { panelPrompt, sheetPrompt, type PanelCharacter } from "./prompts";
 
@@ -70,7 +70,7 @@ async function requestImage(path: "/images/generations" | "/images/edits", body:
 /* ---------- Reference sheets ---------- */
 
 export async function drawReferenceSheet(subject: SheetSubject, context?: ModelCallContext): Promise<ModelImage> {
-  const prompt = sheetPrompt({ name: subject.name, look: subject.look, animal: subject.role === "pet" });
+  const prompt = sheetPrompt({ name: subject.name, look: subject.look, animal: subject.role === "pet", style: subject.style });
   return requestImage("/images/generations", { ...baseRequest(context), size: SIZES.sheet, prompt }, context);
 }
 
@@ -143,8 +143,8 @@ export function pickReferences(panel: ScriptPanel, references: CharacterReferenc
 export async function drawPanel(
   panel: ScriptPanel,
   references: CharacterReference[],
+  { shape, style }: PanelOptions,
   context?: ModelCallContext,
-  shape: PanelShape = "standard",
 ): Promise<ModelImage> {
   const byId = new Map(references.map((ref) => [ref.characterId, ref]));
   const withSheet = pickReferences(panel, references);
@@ -162,7 +162,7 @@ export async function drawPanel(
     characters.push({ name: ref.name, look: ref.look, image });
   }
 
-  const prompt = panelPrompt(panel.scene, characters, shape === "wide");
+  const prompt = panelPrompt(panel.scene, characters, shape === "wide", style);
   const body = { ...baseRequest(context), size: SIZES[shape], prompt };
   // Edits need at least one image; a panel with no drawn characters is plain text-to-image.
   return images.length > 0
