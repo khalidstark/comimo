@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Art } from "@/art/Art";
 import { art, type MoodKey } from "@/art/manifest";
+import { BidiText } from "@/components/comic/BidiText";
 import { MagazineCover } from "@/components/MagazineCover";
 import { MoodCalendar } from "@/components/MoodCalendar";
 import { PAGE_TURN, PageTurn } from "@/components/PageTurn";
@@ -67,9 +68,9 @@ export default function Home() {
           <figure className={`panel ${styles.scene}`} style={{ "--i": 1 } as React.CSSProperties}>
             <Art asset={art.hero.scene} className={styles.sceneArt} priority sizes="(min-width: 48rem) 40vw, 100vw" />
             <p className={`caption ${styles.sceneCaption}`}>Thursday, 8:15 am</p>
-            <p className={`bubble bubble--tail-end ${styles.sceneBubble}`} dir="auto">
+            <p className={`bubble bubble--tail-end ${styles.sceneBubble}`} dir="rtl">
               <span className="bubble__who">Nour</span>
-              الباص اتأخر again… بس الشاورما أنقذت اليوم
+              <BidiText text="الباص اتأخر again… بس الشاورما أنقذت اليوم" />
             </p>
             <figcaption className="visually-hidden">A sample panel from a day in Comimo</figcaption>
           </figure>
