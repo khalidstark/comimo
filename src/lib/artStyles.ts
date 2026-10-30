@@ -44,7 +44,7 @@ export const ART_STYLES: Record<ArtStyleId, ArtStyle> = {
     label: "Painterly",
     blurb: "Cinematic painted panels",
     prompt:
-      "Art style, identical in every image: a semi-realistic digital painting from a graphic novel. Visible gouache and oil brushstrokes with soft painted edges and no hard ink outlines. Cinematic lighting that follows the time of day: warm natural light with soft shadows by day; by evening and night, warm amber lamp light and the cool glow of phone and laptop screens against deep, rich shadows, with city lights melting into soft bokeh. Grounded, realistic proportions and anatomy, natural skin tones, expressive realistic faces with subtle emotion. Rich, slightly muted colour and painted backgrounds with depth.",
+      "Art style, identical in every image: a semi-realistic digital painting from a graphic novel. Visible gouache and oil brushstrokes with soft painted edges and no hard ink outlines. Cinematic lighting that matches the scene's own time of day: in daytime scenes, warm natural sun or window light with soft shadows and daylight outside every window; in evening and night scenes, warm amber lamp light and the cool glow of phone and laptop screens against deep, rich shadows, with city lights melting into soft bokeh. Never put night lighting or night windows into a daytime scene. Grounded, realistic proportions and anatomy, natural skin tones, expressive realistic faces with subtle emotion. Rich, slightly muted colour and painted backgrounds with depth.",
     sheetBackground: "Plain, evenly lit mid-grey painted studio backdrop, soft light so the face and colours read clearly",
     emptyBand: "plain wall, ceiling, sky or soft dark shadow",
   },
