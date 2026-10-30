@@ -2,8 +2,10 @@ import type { Metadata } from "next";
 import { Art } from "@/art/Art";
 import { Icon } from "@/art/Icon";
 import { art, artAt } from "@/art/manifest";
+import { BidiText } from "@/components/comic/BidiText";
 import { PageTurn } from "@/components/PageTurn";
 import { starterCast } from "@/fixtures/cast";
+import { firstStrongDir } from "@/lib/bidi";
 import styles from "./cast.module.css";
 
 export const metadata: Metadata = { title: "Your cast" };
@@ -35,8 +37,8 @@ export default function CastPage() {
                   {member.name}
                 </h2>
                 <p className="chip">{member.roleLabel}</p>
-                <p className={`bubble ${styles.line}`} dir="auto">
-                  {member.line}
+                <p className={`bubble ${styles.line}`} dir={firstStrongDir(member.line ?? "") ?? "auto"}>
+                  {member.line ? <BidiText text={member.line} /> : null}
                 </p>
               </div>
             </li>
