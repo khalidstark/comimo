@@ -80,7 +80,7 @@ function captionFor(state: PipelineState, fixing: PanelProgress | undefined): st
   if (state.status === "cancelled") return "Stopped. Your voice note is still here.";
   if (fixing) return `Fixing ${facesOf(fixing.fixedNames)}…`;
   if (state.status === "done")
-    return crisis ? "We'll set the comic aside for today." : "Your comic is ready. Opening it…";
+    return crisis ? "Comimo didn't turn this note into a comic." : "Your comic is ready. Opening it…";
   const { steps } = state;
   if (steps.save === "active") return "Binding the pages…";
   if (steps.draw === "active") {
@@ -202,7 +202,7 @@ export function MakingComic({ audio, language, onClose }: MakingComicProps) {
 
         <div className={styles.head}>
           <h2 id="making-title" ref={headingRef} tabIndex={-1} className={styles.title}>
-            {crisis ? "Let's pause here" : finished ? "Your comic is ready" : "Making your comic"}
+            {crisis ? "No comic this time" : finished ? "Your comic is ready" : "Making your comic"}
           </h2>
           <p
             className={`caption ${styles.caption}`}
