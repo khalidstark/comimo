@@ -8,94 +8,61 @@
   color: var(--accent-text);
 }
 
-.weather {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2xs);
-  justify-self: start;
-  padding: 0.15rem 0.9rem 0.15rem 0.3rem;
-  border: var(--panel-border-thin) solid var(--line);
-  border-radius: var(--radius-pill);
-  background: var(--surface);
-  font-family: var(--font-display-stack);
-  font-weight: 700;
-}
-
-.weatherIcon {
-  inline-size: 2rem;
-}
-
-/* ---------- The comic page ---------- */
-.comic {
+/* ---------- Paused day (crisis) ---------- */
+.pause {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-s);
+  max-inline-size: 44rem;
+  padding: var(--space-l);
+  background: var(--calm-wash);
+  border: var(--panel-border-thin) solid var(--calm);
+  border-radius: var(--radius-card-soft);
+  font-size: var(--step-1);
+  line-height: 1.45;
+}
+
+/* ---------- Loading a stored day ---------- */
+.loadingTitle {
+  font-family: var(--font-display-stack);
+  font-size: var(--step-3);
+  font-weight: 800;
+  line-height: 1.05;
+  color: var(--ink-soft);
+}
+
+.loadingPage {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: calc(var(--gutter) + 4px);
   margin: 0;
   padding: var(--gutter);
   list-style: none;
   background: var(--surface);
-  border: var(--panel-border) solid var(--line);
-  box-shadow: var(--shadow-panel);
+  border: var(--panel-border) dashed color-mix(in srgb, var(--ink) 45%, transparent);
 }
 
-.frame {
-  overflow: hidden;
+.loadingFrame {
   aspect-ratio: 3 / 2;
-  box-shadow: none;
-}
-
-.frame:first-child,
-.frame:last-child {
-  grid-column: 1 / -1;
-  aspect-ratio: 2 / 1;
-}
-
-.frame:nth-child(2),
-.frame:nth-child(3) {
-  aspect-ratio: 4 / 5;
+  border: var(--panel-border-thin) dashed color-mix(in srgb, var(--ink) 40%, transparent);
+  border-radius: var(--radius-panel);
+  background: repeating-linear-gradient(
+      -45deg,
+      transparent 0 9px,
+      color-mix(in srgb, var(--ink) 6%, transparent) 9px 10px
+    ),
+    var(--paper);
 }
 
 @media (min-width: 48rem) {
-  .frame:nth-child(2),
-  .frame:nth-child(3) {
-    aspect-ratio: 4 / 3;
+  .loadingPage {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .frame:first-child,
-  .frame:last-child {
-    aspect-ratio: 5 / 2;
+  .loadingFrame:first-child,
+  .loadingFrame:last-child {
+    grid-column: 1 / -1;
+    aspect-ratio: 2 / 1;
   }
-}
-
-.frameArt {
-  position: absolute;
-  inset: 0;
-  inline-size: 100%;
-  block-size: 100%;
-  object-fit: cover;
-}
-
-.frameCaption {
-  position: absolute;
-  inset-block-start: 0;
-  inset-inline-start: 0;
-  border-width: 0 var(--panel-border-thin) var(--panel-border-thin) 0;
-  max-inline-size: 80%;
-}
-
-.frameBubble {
-  position: absolute;
-  inset-block-start: 2.6rem;
-  max-inline-size: min(16rem, 78%);
-  font-size: clamp(0.85rem, 0.75rem + 0.6vw, 1.1rem);
-}
-
-.frameBubble[data-side="start"] {
-  inset-inline-start: 0.75rem;
-}
-
-.frameBubble[data-side="end"] {
-  inset-inline-end: 0.75rem;
 }
 
 /* ---------- Check-in card ---------- */
