@@ -85,18 +85,19 @@ def person(skin, top, hair, extra="", face_extra=""):
             f'<circle cx="112" cy="190" r="8" fill="{PINK}" opacity=".45"/><circle cx="188" cy="190" r="8" fill="{PINK}" opacity=".45"/>'
             f'{face_extra}{extra}')
 
-sprite("sprite-nour.svg", "Nour (placeholder sprite)", person(SKIN1, YEL,
-  f'<path d="M86 156c-10-62 30-96 68-96 44 0 76 30 66 92-10-22-24-36-42-40-20 14-58 22-92 44z" fill="{INK}" {S}/>'
-  + "".join(f'<circle cx="{x}" cy="{y}" r="14" fill="{INK}"/>' for x,y in [(98,98),(126,74),(160,68),(192,80),(212,108)]),
-  f'<path d="M110 300h80" {S}/><path d="M150 252v40" {S}/>'))
-sprite("sprite-karim.svg", "Karim (placeholder sprite)", person(SKIN2, TEAL,
-  f'<path d="M86 140c0-48 28-72 64-72s64 24 64 72z" fill="{PINK}" {S}/><path d="M200 136h52c4 0 6 8 0 10l-60 6z" fill="{PINK}" {S}/><circle cx="150" cy="70" r="7" fill="{YEL}" {S3}/>',
-  f'<path d="M120 300l30-40 30 40" fill="none" {S}/>'))
-sprite("sprite-teta.svg", "Teta Samia (placeholder sprite)", person(SKIN3, PINK,
-  f'<path d="M80 176c-8-80 30-112 70-112s80 32 70 112c-8 34-22 66-30 82h-80c-8-16-22-48-30-82z" fill="{TEAL}" {S}/>'
-  f'<ellipse cx="150" cy="168" rx="50" ry="56" fill="{SKIN3}" {S}/>',
-  f'<circle cx="150" cy="300" r="10" fill="{YEL}" {S3}/>',
-  f'<circle cx="128" cy="168" r="13" fill="none" {S3}/><circle cx="172" cy="168" r="13" fill="none" {S3}/><path d="M141 168h18" {S3}/>'))
+NOUR_HAIR = (f'<path d="M86 156c-10-62 30-96 68-96 44 0 76 30 66 92-10-22-24-36-42-40-20 14-58 22-92 44z" fill="{INK}" {S}/>'
+  + "".join(f'<circle cx="{x}" cy="{y}" r="14" fill="{INK}"/>' for x,y in [(98,98),(126,74),(160,68),(192,80),(212,108)]))
+NOUR_TOP = f'<path d="M110 300h80" {S}/><path d="M150 252v40" {S}/>'
+KARIM_HAIR = f'<path d="M86 140c0-48 28-72 64-72s64 24 64 72z" fill="{PINK}" {S}/><path d="M200 136h52c4 0 6 8 0 10l-60 6z" fill="{PINK}" {S}/><circle cx="150" cy="70" r="7" fill="{YEL}" {S3}/>'
+KARIM_TOP = f'<path d="M120 300l30-40 30 40" fill="none" {S}/>'
+TETA_HAIR = (f'<path d="M80 176c-8-80 30-112 70-112s80 32 70 112c-8 34-22 66-30 82h-80c-8-16-22-48-30-82z" fill="{TEAL}" {S}/>'
+  f'<ellipse cx="150" cy="168" rx="50" ry="56" fill="{SKIN3}" {S}/>')
+TETA_TOP = f'<circle cx="150" cy="300" r="10" fill="{YEL}" {S3}/>'
+TETA_GLASSES = f'<circle cx="128" cy="168" r="13" fill="none" {S3}/><circle cx="172" cy="168" r="13" fill="none" {S3}/><path d="M141 168h18" {S3}/>'
+
+sprite("sprite-nour.svg", "Nour (placeholder sprite)", person(SKIN1, YEL, NOUR_HAIR, NOUR_TOP))
+sprite("sprite-karim.svg", "Karim (placeholder sprite)", person(SKIN2, TEAL, KARIM_HAIR, KARIM_TOP))
+sprite("sprite-teta.svg", "Teta Samia (placeholder sprite)", person(SKIN3, PINK, TETA_HAIR, TETA_TOP, TETA_GLASSES))
 sprite("sprite-mishmish.svg", "Mishmish the cat (placeholder sprite)",
   f'<path d="M232 300c50-10 40-80 4-70" fill="none" stroke="{INK}" stroke-width="16" stroke-linecap="round"/>'
   f'<path d="M232 300c50-10 40-80 4-70" fill="none" stroke="{YEL}" stroke-width="9" stroke-linecap="round"/>'
@@ -221,4 +222,155 @@ write("month-cover.svg", svg(480, 600,
  f'<circle cx="222" cy="330" r="6" fill="{INK}"/><circle cx="258" cy="330" r="6" fill="{INK}"/>'
  f'<path d="M0 520h480v80H0z" fill="{INK}"/>',
  defs=dots("cd", "rgba(27,33,72,.18)", 14, 3), title="Monthly magazine cover art (placeholder)"))
+# ---------- sprite sheets: 4 rows x 6 frames (idle, blink, talk, wave) ----------
+# Each frame is a clipped nested <svg>, so a raised arm never bleeds into the
+# next cell. Row order and frame counts must match src/art/sprites.ts.
+import math
+SHEET_COLS, SHEET_ROWS = 6, 4
+IDLE_BOB = [0, 2, 4, 5, 4, 2]          # head sinks a little as they breathe out
+IDLE_TILT = [0, -1, -2, -2, -1, 0]
+BLINK = ["open", "half", "shut", "shut", "half", "open"]
+TALK = ["shut", "small", "wide", "small", "round", "small"]
+WAVE = [125, 48, 24, 52, 24, 115]       # arm angle from straight up, clockwise
+
+def sheet(name, title, fw, fh, frame):
+    cells = ""
+    for row in range(SHEET_ROWS):
+        for col in range(SHEET_COLS):
+            cells += (f'<svg x="{col*fw}" y="{row*fh}" width="{fw}" height="{fh}" viewBox="0 0 {fw} {fh}" overflow="hidden">'
+                      f'{frame(row, col)}</svg>')
+    os.makedirs(os.path.join(OUT, "sprites"), exist_ok=True)
+    write(os.path.join("sprites", name), svg(fw * SHEET_COLS, fh * SHEET_ROWS, cells, lab=False, title=title))
+
+def frame_state(row, col):
+    """Bob, tilt, eyes, mouth and arm angle for one cell."""
+    return {
+        "bob": IDLE_BOB[col] if row == 0 else (IDLE_BOB[col] // 2 if row == 2 else 0),
+        "tilt": IDLE_TILT[col] if row == 0 else 0,
+        "eyes": BLINK[col] if row == 1 else "open",
+        "mouth": TALK[col] if row == 2 else ("grin" if row == 3 and 0 < col < 5 else "smile"),
+        "arm": WAVE[col] if row == 3 else None,
+    }
+
+def arm(sx, sy, angle, length, sleeve, hand, width=26):
+    a = math.radians(angle)
+    hx, hy = sx + length * math.sin(a), sy - length * math.cos(a)
+    return (f'<path d="M{sx} {sy}L{hx:.1f} {hy:.1f}" stroke="{INK}" stroke-width="{width+8}" stroke-linecap="round"/>'
+            f'<path d="M{sx} {sy}L{hx:.1f} {hy:.1f}" stroke="{sleeve}" stroke-width="{width}" stroke-linecap="round"/>'
+            f'<circle cx="{hx:.1f}" cy="{hy:.1f}" r="{width*0.55:.1f}" fill="{hand}" {S3}/>')
+
+def person_eyes(state, lx=128, rx=172, y=168):
+    e = state
+    if e == "open":
+        return f'<circle cx="{lx}" cy="{y}" r="6" fill="{INK}"/><circle cx="{rx}" cy="{y}" r="6" fill="{INK}"/>'
+    if e == "half":
+        return (f'<ellipse cx="{lx}" cy="{y+1}" rx="6.5" ry="2.6" fill="{INK}"/>'
+                f'<ellipse cx="{rx}" cy="{y+1}" rx="6.5" ry="2.6" fill="{INK}"/>')
+    return f'<path d="M{lx-8} {y}q8 6 16 0M{rx-8} {y}q8 6 16 0" fill="none" {S3}/>'
+
+def person_mouth(state, cx=150, cy=200):
+    if state == "smile":
+        return f'<path d="M{cx-16} {cy-2}q16 12 32 0" fill="none" {S}/>'
+    if state == "grin":
+        return f'<path d="M{cx-18} {cy-4}q18 20 36 0z" fill="{INK}" {S3}/><path d="M{cx-8} {cy+5}q8 4 16 0" fill="none" stroke="{PINK}" stroke-width="4" stroke-linecap="round"/>'
+    if state == "shut":
+        return f'<path d="M{cx-12} {cy}q12 5 24 0" fill="none" {S}/>'
+    rx, ry = {"small": (8, 5), "wide": (11, 10), "round": (6, 8)}[state]
+    return (f'<ellipse cx="{cx}" cy="{cy+2}" rx="{rx}" ry="{ry}" fill="{INK}" {S3}/>'
+            f'<ellipse cx="{cx}" cy="{cy+2+ry*0.45:.1f}" rx="{rx*0.55:.1f}" ry="{ry*0.35:.1f}" fill="{PINK}"/>')
+
+def person_frame(skin, top, hair, extra="", face_extra=""):
+    torso = (f'<path d="M70 352c4-70 36-104 80-104s76 34 80 104z" fill="{top}" {S}/>'
+             f'<path d="M132 230h36v26c-6 8-30 8-36 0z" fill="{skin}" {S}/>{extra}')
+    cheeks = f'<circle cx="112" cy="190" r="8" fill="{PINK}" opacity=".45"/><circle cx="188" cy="190" r="8" fill="{PINK}" opacity=".45"/>'
+    def frame(row, col):
+        st = frame_state(row, col)
+        out = torso
+        if st["arm"] is not None:
+            out += arm(206, 292, st["arm"], 86, top, skin)
+        head = (f'<ellipse cx="150" cy="160" rx="62" ry="70" fill="{skin}" {S}/>{hair}'
+                f'{person_eyes(st["eyes"])}{cheeks}{person_mouth(st["mouth"])}{face_extra}')
+        out += f'<g transform="translate(0 {st["bob"]}) rotate({st["tilt"]} 150 236)">{head}</g>'
+        return out
+    return frame
+
+sheet("nour.svg", "Nour sprite sheet (placeholder)", 300, 360, person_frame(SKIN1, YEL, NOUR_HAIR, NOUR_TOP))
+sheet("karim.svg", "Karim sprite sheet (placeholder)", 300, 360, person_frame(SKIN2, TEAL, KARIM_HAIR, KARIM_TOP))
+sheet("teta.svg", "Teta Samia sprite sheet (placeholder)", 300, 360, person_frame(SKIN3, PINK, TETA_HAIR, TETA_TOP, TETA_GLASSES))
+
+# Mishmish: tail swishes on idle, eyes are open ovals that squeeze shut, the mouth meows, a paw waves.
+TAIL_SWISH = [0, 6, 12, 14, 9, 3]
+def cat_frame(row, col):
+    st = frame_state(row, col)
+    swish = TAIL_SWISH[col] if row == 0 else 4
+    tail = (f'<g transform="rotate({swish} 226 300)"><path d="M232 300c50-10 40-80 4-70" fill="none" stroke="{INK}" stroke-width="16" stroke-linecap="round"/>'
+            f'<path d="M232 300c50-10 40-80 4-70" fill="none" stroke="{YEL}" stroke-width="9" stroke-linecap="round"/></g>')
+    body = f'<path d="M78 344c-6-70 22-120 72-120s78 50 72 120z" fill="{YEL}" {S}/><path d="M120 344v-30M180 344v-30" {S3}/>'
+    paw = arm(206, 268, st["arm"], 84, YEL, YEL, 22) if st["arm"] is not None else ""
+    e = st["eyes"]
+    if e == "open":
+        eyes = "".join(f'<ellipse cx="{x}" cy="168" rx="8" ry="10" fill="{INK}"/><circle cx="{x+3}" cy="164" r="2.6" fill="#fff"/>' for x in (126, 174))
+    elif e == "half":
+        eyes = "".join(f'<ellipse cx="{x}" cy="170" rx="8.5" ry="3.4" fill="{INK}"/>' for x in (126, 174))
+    else:
+        eyes = f'<path d="M118 170q8 6 16 0M166 170q8 6 16 0" fill="none" {S}/>'
+    m = st["mouth"]
+    if m in ("smile", "shut"):
+        mouth = f'<path d="M150 197q-8 12-18 4M150 197q8 12 18 4" fill="none" {S3}/>'
+    elif m == "grin":
+        mouth = f'<path d="M136 199q14 18 28 0z" fill="{INK}" {S3}/>'
+    else:
+        rx, ry = {"small": (7, 5), "wide": (10, 10), "round": (6, 8)}[m]
+        mouth = (f'<ellipse cx="150" cy="{203+ry*0.4:.1f}" rx="{rx}" ry="{ry}" fill="{INK}" {S3}/>'
+                 f'<ellipse cx="150" cy="{203+ry*0.85:.1f}" rx="{rx*0.5:.1f}" ry="{ry*0.3:.1f}" fill="{PINK}"/>')
+    head = (f'<path d="M88 150 76 64l54 40zM212 150l12-86-54 40z" fill="{YEL}" {S}/>'
+            f'<ellipse cx="150" cy="170" rx="74" ry="64" fill="{YEL}" {S}/>'
+            f'<path d="M150 108v20M132 112l6 16M168 112l-6 16" {S3}/>{eyes}'
+            f'<path d="M144 190h12l-6 7z" fill="{PINK}" {S3}/>{mouth}'
+            f'<path d="M84 188l-34-4M84 200l-32 8M216 188l34-4M216 200l32 8" {S3}/>')
+    return tail + body + paw + f'<g transform="translate(0 {st["bob"]}) rotate({st["tilt"]} 150 230)">{head}</g>'
+sheet("mishmish.svg", "Mishmish sprite sheet (placeholder)", 300, 360, cat_frame)
+
+# Mimo: hops on idle, blinks, talks, and waves a little gloved arm where the motion lines were.
+MIMO_HOP = [0, -3, -7, -9, -7, -3]
+def mimo_frame(row, col):
+    st = frame_state(row, col)
+    hop = MIMO_HOP[col] if row == 0 else (-4 if row == 3 else 0)
+    feet = f'<ellipse cx="50" cy="250" rx="18" ry="8" fill="{INK}"/><ellipse cx="146" cy="250" rx="18" ry="8" fill="{INK}"/>'
+    legs = f'<path d="M54 246L60 {200+hop}" {S}/><path d="M144 246V{200+hop}" {S}/>'
+    e = st["eyes"]
+    if e == "open":
+        eyes = (f'<ellipse cx="106" cy="124" rx="15" ry="19" fill="#fff" {S}/><ellipse cx="170" cy="124" rx="15" ry="19" fill="#fff" {S}/>'
+                f'<circle cx="110" cy="128" r="7" fill="{INK}"/><circle cx="174" cy="128" r="7" fill="{INK}"/>')
+    elif e == "half":
+        eyes = (f'<ellipse cx="106" cy="128" rx="15" ry="9" fill="#fff" {S}/><ellipse cx="170" cy="128" rx="15" ry="9" fill="#fff" {S}/>'
+                f'<circle cx="110" cy="130" r="5" fill="{INK}"/><circle cx="174" cy="130" r="5" fill="{INK}"/>')
+    else:
+        eyes = f'<path d="M92 128q14 9 28 0M156 128q14 9 28 0" fill="none" {S}/>'
+    m = st["mouth"]
+    if m in ("smile", "grin"):
+        mouth = f'<path d="M118 160q20 18 40 0" fill="{INK}" {S}/>'
+    elif m == "shut":
+        mouth = f'<path d="M124 162q14 8 28 0" fill="none" {S}/>'
+    else:
+        rx, ry = {"small": (12, 7), "wide": (16, 14), "round": (9, 11)}[m]
+        mouth = (f'<ellipse cx="138" cy="{164+ry*0.3:.1f}" rx="{rx}" ry="{ry}" fill="{INK}" {S3}/>'
+                 f'<ellipse cx="138" cy="{164+ry*0.8:.1f}" rx="{rx*0.55:.1f}" ry="{ry*0.3:.1f}" fill="{PINK}"/>')
+    if st["arm"] is not None:
+        a = math.radians(st["arm"])
+        hx, hy = 246 + 40 * math.sin(a), 140 - 40 * math.cos(a)
+        extra = (f'<path d="M244 140L{hx:.1f} {hy:.1f}" stroke="{INK}" stroke-width="7" stroke-linecap="round"/>'
+                 f'<circle cx="{hx:.1f}" cy="{hy:.1f}" r="12" fill="#fff" stroke="{INK}" stroke-width="4"/>'
+                 f'<path d="M{hx-5:.1f} {hy-3:.1f}v6M{hx:.1f} {hy-4:.1f}v6M{hx+5:.1f} {hy-3:.1f}v6" stroke="{INK}" stroke-width="2" stroke-linecap="round"/>')
+    else:
+        flick = 4 if (row == 0 and col in (2, 3)) or row == 2 and col in (1, 2, 4) else 0
+        extra = (f'<path d="M248 {112-flick}l16-10M250 136h{18+flick}M248 {160+flick}l16 10" '
+                 f'stroke="{YEL}" stroke-width="6" stroke-linecap="round"/>')
+    bubble = (f'<path d="M50 60h170a26 26 0 0 1 26 26v92a26 26 0 0 1-26 26H122l-46 38 10-38H50a26 26 0 0 1-26-26V86a26 26 0 0 1 26-26z" '
+              f'fill="{PINK}" stroke="{INK}" stroke-width="5" stroke-linejoin="round"/>'
+              f'<path d="M40 90a20 20 0 0 1 18-18" fill="none" stroke="#fff" stroke-width="6" stroke-linecap="round" opacity=".7"/>'
+              f'{eyes}{mouth}')
+    return feet + legs + f'<g transform="translate(0 {hop})">{bubble}{extra}</g>'
+sheet("mascot.svg", "Mimo sprite sheet (placeholder)", 300, 270, mimo_frame)
+
 print("ok")
