@@ -1,6 +1,7 @@
 import "server-only";
 import type { ComicModels } from "../index";
 import { mockModels } from "../mock";
+import { transcribe } from "./transcribe";
 
 /**
  * The Meta Model API implementation. Methods are connected one plan at a time;
@@ -9,8 +10,8 @@ import { mockModels } from "../mock";
  */
 export const metaModels: ComicModels = {
   mode: "meta",
-  sources: { transcribe: "mock", writeScript: "mock", drawPanel: "mock", checkConsistency: "mock" },
-  transcribe: mockModels.transcribe,
+  sources: { transcribe: "meta", writeScript: "mock", drawPanel: "mock", checkConsistency: "mock" },
+  transcribe,
   writeScript: mockModels.writeScript,
   drawPanel: mockModels.drawPanel,
   checkConsistency: mockModels.checkConsistency,
