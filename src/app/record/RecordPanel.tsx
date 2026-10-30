@@ -3,6 +3,7 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { Icon } from "@/art/Icon";
 import { RecordStamp } from "@/components/RecordStamp";
+import { ART_STYLE_IDS, ART_STYLES, DEFAULT_ART_STYLE, artStyleOf, type ArtStyleId } from "@/lib/artStyles";
 import type { LanguageHint } from "@/lib/types";
 import { MakingComic } from "./MakingComic";
 import styles from "./record.module.css";
@@ -24,6 +25,26 @@ const PROBLEM_TEXT: Record<RecorderProblem, string> = {
   "not-audio": "That doesn't look like an audio file. Try m4a, mp3, wav, webm or ogg.",
   empty: "That file is empty. Try another one.",
 };
+
+/** The last art style picked on this device (a convenience; the default is the zine style). */
+const STYLE_KEY = "comimo.artStyle";
+
+function storedStyle(): ArtStyleId {
+  if (typeof window === "undefined") return DEFAULT_ART_STYLE;
+  try {
+    return artStyleOf(window.localStorage.getItem(STYLE_KEY));
+  } catch {
+    return DEFAULT_ART_STYLE;
+  }
+}
+
+function rememberStyle(style: ArtStyleId) {
+  try {
+    window.localStorage.setItem(STYLE_KEY, style);
+  } catch {
+    // Private windows can block storage; the pick still applies to this comic.
+  }
+}
 
 /** Problems where the upload button becomes the main way forward. */
 const MIC_BLOCKED: RecorderProblem[] = ["denied", "unsupported", "no-mic"];
@@ -69,8 +90,11 @@ export function RecordPanel() {
   const recorder = useRecorder();
   const { status, problem, elapsedMs, take, analyser } = recorder;
   const [language, setLanguage] = useState<LanguageHint>("auto");
-  const [making, setMaking] = useState<{ audio: Blob; language: LanguageHint } | null>(null);
+  // The picker only shows on the review step, which never renders on the server, so reading storage here is safe.
+  const [style, setStyle] = useState<ArtStyleId>(storedStyle);
+  const [making, setMaking] = useState<{ audio: Blob; language: LanguageHint; style: ArtStyleId } | null>(null);
   const legendId = useId();
+  const styleLegendId = useId();
   const uploadHintId = useId();
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -114,11 +138,36 @@ export function RecordPanel() {
           <audio className={styles.player} src={take.url} controls preload="metadata">
             Your browser can&apos;t play this voice note back, but Comimo can still use it.
           </audio>
+          <fieldset className={styles.languages} aria-labelledby={styleLegendId}>
+            <legend id={styleLegendId} className={styles.legend}>
+              Draw it as
+            </legend>
+            <div className={styles.chips}>
+              {ART_STYLE_IDS.map((id) => (
+                <label key={id} className={styles.chip}>
+                  <input
+                    type="radio"
+                    name="art-style"
+                    value={id}
+                    checked={style === id}
+                    onChange={() => {
+                      setStyle(id);
+                      rememberStyle(id);
+                    }}
+                  />
+                  <span>
+                    {ART_STYLES[id].label}
+                    <span className="visually-hidden">: {ART_STYLES[id].blurb}</span>
+                  </span>
+                </label>
+              ))}
+            </div>
+          </fieldset>
           <div className={styles.reviewActions}>
             <button
               type="button"
               className={`btn btn--accent ${styles.make}`}
-              onClick={() => setMaking({ audio: take.blob, language })}
+              onClick={() => setMaking({ audio: take.blob, language, style })}
             >
               Make my comic
             </button>
@@ -184,7 +233,7 @@ export function RecordPanel() {
       </div>
 
       {making ? (
-        <MakingComic audio={making.audio} language={making.language} onClose={() => setMaking(null)} />
+        <MakingComic audio={making.audio} language={making.language} style={making.style} onClose={() => setMaking(null)} />
       ) : null}
     </div>
   );
