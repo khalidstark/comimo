@@ -1,6 +1,7 @@
 import "server-only";
 import type { ApiError, ModelMode, WireImage } from "@/lib/types";
-import { ModelsNotConnectedError, type ModelImage } from "./index";
+import { ModelInputError, type ModelImage } from "./index";
+import { MetaApiError } from "./meta/client";
 
 /** Helpers shared by the API routes: JSON responses, errors and image encoding. */
 
@@ -20,7 +21,14 @@ export function jsonError(status: number, error: string): Response {
 
 /** Turn a model failure into a response without leaking details to the client. */
 export function modelErrorResponse(error: unknown): Response {
-  if (error instanceof ModelsNotConnectedError) return jsonError(503, error.message);
+  if (error instanceof ModelInputError) return jsonError(400, error.message);
+  if (error instanceof MetaApiError) {
+    // The message holds status, type and code from Meta; never the key or the user's content.
+    console.error(`Comimo: ${error.message}`);
+    const response = jsonError(error.responseStatus, error.publicMessage);
+    if (error.retryAfterSec !== null) response.headers.set("Retry-After", String(Math.ceil(error.retryAfterSec)));
+    return response;
+  }
   console.error("Comimo: model call failed", error);
   return jsonError(502, "The model call failed. Please try again.");
 }

@@ -7,12 +7,13 @@ import type {
   ScriptPanel,
   Transcript,
 } from "@/lib/types";
+import { metaModels } from "./meta";
 import { mockModels } from "./mock";
 
 /**
  * The one interface every model call goes through. API routes ask
  * `getModels()` for an implementation and never know which one they got:
- * fixtures in mock mode now, the Meta Model API from Phase 3.
+ * fixtures in mock mode, the Meta Model API otherwise (src/lib/models/meta).
  *
  * Server only. The API key is read here and never leaves the server.
  */
@@ -27,6 +28,8 @@ export interface AudioInput {
   mimeType: string;
   data: Uint8Array;
   languageHint: LanguageHint;
+  /** Names worth hearing right, e.g. the cast. */
+  keywords?: string[];
 }
 
 /** A character's look and reference sheet, given to the image and SAM calls. */
@@ -44,38 +47,40 @@ export interface ConsistencyResult {
   fixedImage: ModelImage | null;
 }
 
+/** Who is asking, and when to give up. Passed by the API routes. */
+export interface ModelCallContext {
+  /** Hashed visitor id from the spending guard; sent to Meta as `safety_identifier`. */
+  visitorId?: string;
+  /** The incoming request's signal, so a closed tab stops the upstream call. */
+  signal?: AbortSignal;
+}
+
+export type ModelMethod = "transcribe" | "writeScript" | "drawPanel" | "checkConsistency";
+
 export interface ComicModels {
   readonly mode: ModelMode;
+  /**
+   * Which implementation answers each method. The Meta models are connected
+   * one at a time, so a method not built yet still answers from the mock.
+   */
+  readonly sources: Readonly<Record<ModelMethod, ModelMode>>;
   /** Voice note to text, Arabic, English or mixed. */
-  transcribe(audio: AudioInput): Promise<Transcript>;
+  transcribe(audio: AudioInput, context?: ModelCallContext): Promise<Transcript>;
   /** Transcript to a comic script with mood, heavy-day and safety flags. */
-  writeScript(transcript: string, cast: CastBrief[]): Promise<ComicScript>;
+  writeScript(transcript: string, cast: CastBrief[], context?: ModelCallContext): Promise<ComicScript>;
   /** Draw one panel using the reference sheets of the characters in it. */
   drawPanel(panel: ScriptPanel, references: CharacterReference[]): Promise<ModelImage>;
   /** Find characters that drifted from their reference sheet and redraw them. */
   checkConsistency(image: ModelImage, references: CharacterReference[]): Promise<ConsistencyResult>;
 }
 
-/** Thrown when the real models are selected but not built yet. */
-export class ModelsNotConnectedError extends Error {
-  constructor() {
-    super("The Meta model pipeline isn't connected yet. Set COMIMO_MOCK=1 to use mock mode.");
-    this.name = "ModelsNotConnectedError";
+/** Thrown when a voice note or other input can't be sent to a model as it is. */
+export class ModelInputError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "ModelInputError";
   }
 }
-
-function notConnected(): never {
-  throw new ModelsNotConnectedError();
-}
-
-/** Placeholder for the Phase 3 Meta client. Makes no network calls. */
-const metaModels: ComicModels = {
-  mode: "meta",
-  transcribe: async () => notConnected(),
-  writeScript: async () => notConnected(),
-  drawPanel: async () => notConnected(),
-  checkConsistency: async () => notConnected(),
-};
 
 /** Mock mode is on when COMIMO_MOCK=1 or when there is no API key. */
 export function isMockMode(): boolean {
