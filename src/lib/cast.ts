@@ -1,6 +1,16 @@
+import { artAt } from "@/art/manifest";
 import { starterCast, starterCastById } from "@/fixtures/cast";
-import { getMeta, listCast, newId, saveCharacter, setMeta } from "./store";
-import type { Character, CharacterRole, SpriteSheet } from "./types";
+import { getMeta, listCast, newId, putImage, saveCharacter, setMeta } from "./store";
+import type {
+  ApiError,
+  Character,
+  CharacterRole,
+  CharacterSheetRequest,
+  CharacterSheetResponse,
+  ImageRef,
+  SpriteSheet,
+} from "./types";
+import { wireToBlob } from "./wireImage";
 
 /* ---------- Loading and seeding ---------- */
 
@@ -41,6 +51,83 @@ export async function loadCast(): Promise<Character[]> {
 export function spriteSheetFor(character: Character): SpriteSheet | null {
   if (character.spriteSheet) return character.spriteSheet;
   return character.starter ? (starterCastById[character.id]?.spriteSheet ?? null) : null;
+}
+
+/* ---------- Reference sheets ---------- */
+
+/**
+ * The character's reference sheet. Starter characters seeded before the
+ * sheets shipped have `referenceSheet: null` in the store, so they use the
+ * fixture's drawn sheet by id.
+ */
+export function referenceSheetFor(character: Character): ImageRef | null {
+  if (character.referenceSheet) return character.referenceSheet;
+  return character.starter ? (starterCastById[character.id]?.referenceSheet ?? null) : null;
+}
+
+/** Names one sheet; an uploaded file is only reused for the sheet it came from. */
+export function referenceKey(ref: ImageRef): string {
+  return ref.kind === "blob" ? `blob:${ref.id}` : `art:${artAt(ref.path).src}`;
+}
+
+/** The signed Files API token for the character's current sheet, if it was uploaded. */
+export function referenceFileTokenFor(character: Character): string | undefined {
+  const sheet = referenceSheetFor(character);
+  const file = character.referenceFile;
+  return sheet && file && file.sheet === referenceKey(sheet) ? file.token : undefined;
+}
+
+/** Keep an uploaded sheet's token on the character (or forget it with null). */
+export function withReferenceFile(character: Character, token: string | null): Character {
+  const sheet = referenceSheetFor(character);
+  const next = { ...character };
+  if (token && sheet) next.referenceFile = { token, sheet: referenceKey(sheet) };
+  else delete next.referenceFile;
+  return next;
+}
+
+/** A sheet-drawing failure with a message the cast screen can show. */
+export class SheetError extends Error {
+  name = "SheetError";
+}
+
+/**
+ * Ask Muse Image for the character's reference sheet, keep the image on this
+ * device and save the character with it. Returns the updated character.
+ */
+export async function drawReferenceSheet(character: Character, signal?: AbortSignal): Promise<Character> {
+  const body: CharacterSheetRequest = {
+    characterId: character.id,
+    name: character.name,
+    role: character.role,
+    look: character.look,
+  };
+  let response: Response;
+  try {
+    response = await fetch("/api/character", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+      signal,
+    });
+  } catch (error) {
+    if (signal?.aborted) throw error;
+    throw new SheetError("Couldn't reach Comimo. Check your connection and try again.");
+  }
+  const result = (await response.json().catch(() => null)) as CharacterSheetResponse | ApiError | null;
+  if (!response.ok || !result || !("image" in result)) {
+    throw new SheetError((result as ApiError | null)?.error || `The sheet didn't draw (${response.status}). Try again.`);
+  }
+
+  const imageId = `${character.id}-sheet`;
+  if (!(await putImage(imageId, wireToBlob(result.image)))) {
+    throw new SheetError("Couldn't keep the sheet on this device. Private windows can block storage.");
+  }
+  const drawn = withReferenceFile({ ...character, referenceSheet: { kind: "blob", id: imageId } }, result.fileToken);
+  if (!(await saveCharacter(drawn))) {
+    throw new SheetError("Couldn't save the sheet on this device. Private windows can block storage.");
+  }
+  return drawn;
 }
 
 /* ---------- Roles ---------- */

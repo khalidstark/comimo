@@ -284,3 +284,29 @@
   border: var(--panel-border-thin) dashed color-mix(in srgb, var(--ink) 35%, transparent);
   border-radius: var(--radius-sticker);
 }
+
+/* ---------- Reference sheet ---------- */
+.sheet {
+  display: grid;
+  gap: var(--space-3xs);
+  justify-items: start;
+  inline-size: 100%;
+}
+
+.sheetImage {
+  inline-size: 100%;
+  aspect-ratio: 3 / 2;
+  object-fit: cover;
+  border: var(--panel-border-thin) solid var(--line);
+  border-radius: var(--radius-panel);
+  background: var(--paper);
+}
+
+.sheetStatus {
+  color: var(--ink-soft);
+  font-size: var(--step--1);
+}
+
+.sheetStatus:empty {
+  display: none;
+}

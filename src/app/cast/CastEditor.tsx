@@ -11,18 +11,21 @@ import { firstStrongDir } from "@/lib/bidi";
 import {
   LIMITS,
   ROLE_OPTIONS,
+  SheetError,
   characterFromDraft,
   defaultRoleLabel,
+  drawReferenceSheet,
   draftFrom,
   loadCast,
+  referenceSheetFor,
   spriteSheetFor,
   validateDraft,
   type CharacterDraft,
   type DraftErrors,
   type DraftField,
 } from "@/lib/cast";
-import { deleteCharacter, saveCharacter } from "@/lib/store";
-import type { Character, CharacterRole } from "@/lib/types";
+import { deleteCharacter, getImage, saveCharacter } from "@/lib/store";
+import type { Character, CharacterRole, ImageRef } from "@/lib/types";
 import styles from "./cast.module.css";
 
 const TILTS = ["-3deg", "2deg", "-1.5deg", "3deg"];
@@ -89,6 +92,11 @@ export function CastEditor() {
     focusAfter.current = neighbour ? `edit-${neighbour.id}` : "add-character";
   }
 
+  function sheetDrawn(character: Character) {
+    setCast((current) => (current ?? []).map((m) => (m.id === character.id ? character : m)));
+    setNotice(`Drew ${character.name}'s reference sheet.`);
+  }
+
   function cancel(returnTo: string) {
     setEditing(null);
     focusAfter.current = returnTo;
@@ -127,6 +135,7 @@ export function CastEditor() {
                 focusAfter.current = `remove-${member.id}`;
               }}
               onRemove={() => void remove(member)}
+              onSheetDrawn={sheetDrawn}
             />
           ),
         )}
@@ -176,9 +185,10 @@ interface CastCardProps {
   onAskRemove: () => void;
   onKeep: () => void;
   onRemove: () => void;
+  onSheetDrawn: (character: Character) => void;
 }
 
-function CastCard({ member, tilt, confirming, onEdit, onAskRemove, onKeep, onRemove }: CastCardProps) {
+function CastCard({ member, tilt, confirming, onEdit, onAskRemove, onKeep, onRemove, onSheetDrawn }: CastCardProps) {
   const cardRef = useRef<HTMLLIElement>(null);
   const bubbleRef = useRef<HTMLParagraphElement>(null);
   const confirmRef = useRef<HTMLButtonElement>(null);
@@ -215,6 +225,8 @@ function CastCard({ member, tilt, confirming, onEdit, onAskRemove, onKeep, onRem
           </p>
         ) : null}
 
+        <ReferenceSheet member={member} onDrawn={onSheetDrawn} />
+
         {confirming ? (
           <div className={styles.confirm} role="group" aria-labelledby={`confirm-${member.id}`}>
             <p id={`confirm-${member.id}`}>
@@ -241,6 +253,88 @@ function CastCard({ member, tilt, confirming, onEdit, onAskRemove, onKeep, onRem
         )}
       </div>
     </li>
+  );
+}
+
+/* ---------- Reference sheet ---------- */
+
+/** An object URL for a sheet: a Blob from the store or a manifest file. */
+function useSheetUrl(ref: ImageRef | null): string | null {
+  const [blobUrl, setBlobUrl] = useState<{ id: string; url: string } | null>(null);
+  const blobId = ref?.kind === "blob" ? ref.id : null;
+
+  useEffect(() => {
+    if (!blobId) return;
+    let url: string | null = null;
+    let cancelled = false;
+    void getImage(blobId).then((blob) => {
+      if (cancelled || !blob) return;
+      url = URL.createObjectURL(blob);
+      setBlobUrl({ id: blobId, url });
+    });
+    return () => {
+      cancelled = true;
+      if (url) URL.revokeObjectURL(url);
+    };
+  }, [blobId]);
+
+  if (!ref) return null;
+  if (ref.kind === "art") return artAt(ref.path).src;
+  return blobUrl?.id === ref.id ? blobUrl.url : null;
+}
+
+/**
+ * The character's Muse Image reference sheet: a thumbnail when drawn, and a
+ * button that draws (or redraws) it from their look. Panels use the sheet to
+ * keep their face the same.
+ */
+function ReferenceSheet({ member, onDrawn }: { member: Character; onDrawn: (character: Character) => void }) {
+  const sheet = referenceSheetFor(member);
+  const url = useSheetUrl(sheet);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const controller = useRef<AbortController | null>(null);
+  const statusId = `sheet-status-${member.id}`;
+
+  useEffect(() => () => controller.current?.abort(), []);
+
+  async function draw() {
+    if (busy) return;
+    setBusy(true);
+    setError(null);
+    controller.current = new AbortController();
+    try {
+      onDrawn(await drawReferenceSheet(member, controller.current.signal));
+    } catch (problem) {
+      if (controller.current?.signal.aborted) return;
+      setError(problem instanceof SheetError ? problem.message : "The sheet didn't draw. Try again.");
+    } finally {
+      setBusy(false);
+      controller.current = null;
+    }
+  }
+
+  return (
+    <div className={styles.sheet}>
+      {url ? (
+        // Object URLs and drawn sheets; next/image can't optimise Blobs.
+        // eslint-disable-next-line @next/next/no-img-element
+        <img className={styles.sheetImage} src={url} alt={`${member.name}'s reference sheet, front and three-quarter views`} />
+      ) : null}
+      <button
+        type="button"
+        className={styles.textButton}
+        onClick={() => void draw()}
+        aria-disabled={busy || undefined}
+        aria-describedby={statusId}
+      >
+        {busy ? "Drawing…" : sheet ? "Redraw sheet" : "Draw reference sheet"}
+        <span className="visually-hidden"> for {member.name}</span>
+      </button>
+      <p id={statusId} className={error ? styles.error : styles.sheetStatus} role={error ? "alert" : "status"}>
+        {error ?? (busy ? `Drawing ${member.name}. This takes about a minute.` : "")}
+      </p>
+    </div>
   );
 }
 
@@ -417,9 +511,9 @@ function CharacterForm({ character, others, onSave, onCancel }: CharacterFormPro
         <div className={styles.refSlot}>
           <span className={styles.label}>Reference sheet</span>
           <p>
-            {character?.referenceSheet
-              ? "Drawn. Comimo uses it to keep their face the same."
-              : "Comimo will draw this from the look above when the Meta credits arrive."}
+            {character && referenceSheetFor(character)
+              ? "Drawn. Comimo uses it to keep their face the same. Changed how they look? Redraw the sheet from their card."
+              : "Once they're saved, draw it from their card. Comimo uses it to keep their face the same in every panel."}
           </p>
         </div>
       </div>
