@@ -136,7 +136,7 @@ export interface Panel {
 
 export interface CheckIn {
   questions: string[];
-  /** Same order as `questions`; an empty string is a skipped question. */
+  /** Empty until answered; then same order as `questions`, "" for a skipped one. */
   answers: string[];
   answeredAt?: string;
 }
