@@ -18,15 +18,45 @@ import { createHash, randomBytes } from "node:crypto";
  * Env (all optional):
  *   COMIMO_COMICS_PER_HOUR   comics per visitor per hour (default 5)
  *   COMIMO_DAILY_COMIC_CAP   comics per day for everyone (default 200)
- *   COMIMO_DAILY_IMAGE_CAP   image calls per day for everyone (default 300)
+ *   COMIMO_DAILY_IMAGE_CAP   image and SAM calls per day for everyone (default 300), counted per call
  *   COMIMO_PAUSE_GENERATION  "1" pauses all real calls
  *   COMIMO_GUARD_SALT        salt for the visitor hash (default: random per process)
  */
 
 export type GuardAction = "transcribe" | "script" | "panel";
 
+/** Kinds of upstream call. Image and SAM calls count against the daily image cap. */
+export type UpstreamCall = "transcribe" | "text" | "image" | "sam";
+
+/**
+ * Handed to the model code with each request. `beforeCall` runs right before
+ * every request to Meta (retries included): it marks the request as billed and
+ * counts image and SAM calls against the daily cap, throwing SpendCapError
+ * when the cap is reached so the call is never sent.
+ */
+export interface UsageMeter {
+  beforeCall(kind: UpstreamCall): void;
+  /** True once any upstream request has been sent. */
+  readonly billed: boolean;
+}
+
+/** A daily cap was reached in the middle of a request. */
+export class SpendCapError extends Error {
+  readonly retryAfterSec = secondsToTomorrow();
+  constructor() {
+    super("Comimo has drawn all the panels it can for today. Come back tomorrow.");
+    this.name = "SpendCapError";
+  }
+}
+
 export type GuardResult =
-  | { ok: true; visitorId: string; undo: () => void }
+  | {
+      ok: true;
+      visitorId: string;
+      meter: UsageMeter;
+      /** Give back the visitor's slot, but only if nothing billable was sent. */
+      refundIfUnbilled: () => void;
+    }
   | { ok: false; status: 429 | 503; error: string; retryAfterSec: number };
 
 const HOUR_MS = 60 * 60 * 1000;
@@ -109,14 +139,33 @@ function minutes(seconds: number): string {
   return `${m} minute${m === 1 ? "" : "s"}`;
 }
 
+/** Counts upstream calls for one request; image and SAM calls go against the daily cap as they are made. */
+function createMeter(): UsageMeter {
+  let billed = false;
+  return {
+    get billed() {
+      return billed;
+    },
+    beforeCall(kind) {
+      if (kind === "image" || kind === "sam") {
+        rollDay();
+        if (daily.images >= limits().dailyImages) throw new SpendCapError();
+        daily.images += 1;
+      }
+      billed = true;
+    },
+  };
+}
+
 /**
- * Check and count one call. `real` is false for mock calls, which pass
- * untouched. `images` is how many image calls this request may make.
- * Call `undo()` if the model call failed, so a retry isn't charged twice.
+ * Check and count one request. `real` is false for mock calls, which pass
+ * untouched. Pass `meter` to the model code so each upstream call is recorded
+ * as it is sent. After a failure, `refundIfUnbilled()` gives the visitor's
+ * slot back only when no request reached Meta (bad input, a cap hit first).
  */
-export function guard(request: Request, action: GuardAction, options: { real: boolean; images?: number }): GuardResult {
+export function guard(request: Request, action: GuardAction, options: { real: boolean }): GuardResult {
   const id = visitorId(request);
-  if (!options.real) return { ok: true, visitorId: id, undo: () => {} };
+  if (!options.real) return { ok: true, visitorId: id, meter: createMeter(), refundIfUnbilled: () => {} };
 
   if (process.env.COMIMO_PAUSE_GENERATION === "1") {
     return { ok: false, status: 503, error: "Making new comics is paused right now. The sample days still work.", retryAfterSec: 3600 };
@@ -126,11 +175,10 @@ export function guard(request: Request, action: GuardAction, options: { real: bo
   const { hourly, dailyComics, dailyImages } = limits();
   rollDay();
 
-  const images = action === "panel" ? (options.images ?? 1) : 0;
   if (action === "script" && daily.comics >= dailyComics) {
     return { ok: false, status: 503, error: "Comimo has made all the comics it can for today. Come back tomorrow.", retryAfterSec: secondsToTomorrow() };
   }
-  if (images > 0 && daily.images + images > dailyImages) {
+  if (action === "panel" && daily.images >= dailyImages) {
     return { ok: false, status: 503, error: "Comimo has drawn all the panels it can for today. Come back tomorrow.", retryAfterSec: secondsToTomorrow() };
   }
 
@@ -151,21 +199,20 @@ export function guard(request: Request, action: GuardAction, options: { real: bo
   counts[action] = recent;
   visitors.set(id, counts);
   if (action === "script") daily.comics += 1;
-  daily.images += images;
 
-  let undone = false;
+  const meter = createMeter();
+  let refunded = false;
   const day = daily.day;
   return {
     ok: true,
     visitorId: id,
-    undo: () => {
-      if (undone) return;
-      undone = true;
+    meter,
+    refundIfUnbilled: () => {
+      if (refunded || meter.billed) return;
+      refunded = true;
       const index = counts[action].lastIndexOf(now);
       if (index >= 0) counts[action].splice(index, 1);
-      if (daily.day !== day) return;
-      if (action === "script") daily.comics = Math.max(0, daily.comics - 1);
-      daily.images = Math.max(0, daily.images - images);
+      if (action === "script" && daily.day === day) daily.comics = Math.max(0, daily.comics - 1);
     },
   };
 }

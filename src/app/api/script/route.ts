@@ -51,10 +51,11 @@ export async function POST(request: Request) {
   if (!check.ok) return guardResponse(check);
 
   try {
-    const script = await models.writeScript(body.transcript, cast, { visitorId: check.visitorId, signal: request.signal });
+    const script = await models.writeScript(body.transcript, cast, { visitorId: check.visitorId, signal: request.signal, meter: check.meter });
     return json<ScriptResponse>({ mode: source, script }, source);
   } catch (error) {
-    check.undo();
+    // Refund only when nothing billable reached Meta; an abort or timeout after sending still counts.
+    check.refundIfUnbilled();
     return modelErrorResponse(error);
   }
 }

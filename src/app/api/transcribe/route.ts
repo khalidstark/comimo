@@ -69,11 +69,12 @@ export async function POST(request: Request) {
         languageHint: language as LanguageHint,
         keywords: parseKeywords(form.get("keywords")),
       },
-      { visitorId: check.visitorId, signal: request.signal },
+      { visitorId: check.visitorId, signal: request.signal, meter: check.meter },
     );
     return json<TranscribeResponse>({ mode: source, transcript }, source);
   } catch (error) {
-    check.undo();
+    // Refund only when nothing billable reached Meta; an abort or timeout after sending still counts.
+    check.refundIfUnbilled();
     return modelErrorResponse(error);
   }
 }

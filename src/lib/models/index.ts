@@ -7,6 +7,7 @@ import type {
   ScriptPanel,
   Transcript,
 } from "@/lib/types";
+import type { UsageMeter } from "@/lib/guard";
 import { metaModels } from "./meta";
 import { mockModels } from "./mock";
 
@@ -53,6 +54,8 @@ export interface ModelCallContext {
   visitorId?: string;
   /** The incoming request's signal, so a closed tab stops the upstream call. */
   signal?: AbortSignal;
+  /** The spending meter: call `beforeCall` right before each request to Meta. */
+  meter?: UsageMeter;
 }
 
 export type ModelMethod = "transcribe" | "writeScript" | "drawPanel" | "checkConsistency";
@@ -69,9 +72,9 @@ export interface ComicModels {
   /** Transcript to a comic script with mood, heavy-day and safety flags. */
   writeScript(transcript: string, cast: CastBrief[], context?: ModelCallContext): Promise<ComicScript>;
   /** Draw one panel using the reference sheets of the characters in it. */
-  drawPanel(panel: ScriptPanel, references: CharacterReference[]): Promise<ModelImage>;
+  drawPanel(panel: ScriptPanel, references: CharacterReference[], context?: ModelCallContext): Promise<ModelImage>;
   /** Find characters that drifted from their reference sheet and redraw them. */
-  checkConsistency(image: ModelImage, references: CharacterReference[]): Promise<ConsistencyResult>;
+  checkConsistency(image: ModelImage, references: CharacterReference[], context?: ModelCallContext): Promise<ConsistencyResult>;
 }
 
 /** Thrown when a voice note or other input can't be sent to a model as it is. */

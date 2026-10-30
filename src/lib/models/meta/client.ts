@@ -143,14 +143,17 @@ export interface MetaRequest {
   signal?: AbortSignal;
   /** Extra tries after the first on 429/5xx or a network failure. Default 1. */
   retries?: number;
+  /** Runs right before every attempt (the spending meter); throwing stops the call. */
+  onSend?: () => void;
 }
 
 /** One request with a timeout, the bearer key, and one retry with backoff on 429/5xx. */
 export async function metaFetch(path: string, request: MetaRequest = {}): Promise<Response> {
-  const { method = "GET", json, form, accept = "application/json", timeoutMs = DEFAULT_TIMEOUT_MS, signal, retries = 1 } = request;
+  const { method = "GET", json, form, accept = "application/json", timeoutMs = DEFAULT_TIMEOUT_MS, signal, retries = 1, onSend } = request;
   const key = apiKey();
 
   for (let attempt = 0; ; attempt++) {
+    onSend?.();
     const timeout = AbortSignal.timeout(timeoutMs);
     const combined = signal ? AbortSignal.any([signal, timeout]) : timeout;
     const headers: Record<string, string> = { Authorization: `Bearer ${key}`, Accept: accept };
