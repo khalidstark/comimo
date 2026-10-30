@@ -84,3 +84,20 @@ export type MoodKey = keyof typeof art.mood;
 export type IconKey = keyof typeof art.icons;
 export type SceneKey = keyof typeof art.scenes;
 export type SpriteKey = keyof typeof art.sprites;
+
+type ArtGroups = typeof art;
+
+/**
+ * A slot in the manifest written as "group.key", e.g. "scenes.street".
+ * Stored records (fixtures, sample days) point at art with this instead of a
+ * file path, so swapping the art never touches the data.
+ */
+export type ArtPath = {
+  [G in keyof ArtGroups]: `${G}.${Extract<keyof ArtGroups[G], string>}`;
+}[keyof ArtGroups];
+
+/** Look up the asset behind an ArtPath. */
+export function artAt(path: ArtPath): ArtAsset {
+  const [group, key] = path.split(".") as [keyof ArtGroups, string];
+  return (art[group] as Record<string, ArtAsset>)[key];
+}
