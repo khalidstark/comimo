@@ -11,7 +11,7 @@ import type { Character, Day, MonthBook, MonthKey } from "./types";
  */
 
 const DB_NAME = "comimo";
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
 interface ComimoDB extends DBSchema {
   days: {
@@ -27,6 +27,11 @@ interface ComimoDB extends DBSchema {
   images: {
     key: string;
     value: Blob;
+  };
+  /** Small flags about this device's data, e.g. whether the starter cast was seeded (out-of-line keys). */
+  meta: {
+    key: string;
+    value: string | number | boolean;
   };
 }
 
@@ -49,6 +54,9 @@ function open(): Promise<Db | null> {
       }
       if (!db.objectStoreNames.contains("images")) {
         db.createObjectStore("images");
+      }
+      if (!db.objectStoreNames.contains("meta")) {
+        db.createObjectStore("meta");
       }
     },
     terminated() {
@@ -139,6 +147,13 @@ export function getCharacter(id: string): Promise<Character | undefined> {
   return withDb(undefined, (db) => db.get("cast", id));
 }
 
+export function deleteCharacter(id: string): Promise<boolean> {
+  return withDb(false, async (db) => {
+    await db.delete("cast", id);
+    return true;
+  });
+}
+
 /** The user's own characters, oldest first. */
 export async function listCast(): Promise<Character[]> {
   const cast = await withDb<Character[]>([], (db) => db.getAll("cast"));
@@ -157,4 +172,17 @@ export function putImage(id: string, blob: Blob): Promise<boolean> {
 
 export function getImage(id: string): Promise<Blob | undefined> {
   return withDb(undefined, (db) => db.get("images", id));
+}
+
+/* ---------- Meta flags ---------- */
+
+export function getMeta(key: string): Promise<string | number | boolean | undefined> {
+  return withDb(undefined, (db) => db.get("meta", key));
+}
+
+export function setMeta(key: string, value: string | number | boolean): Promise<boolean> {
+  return withDb(false, async (db) => {
+    await db.put("meta", value, key);
+    return true;
+  });
 }
