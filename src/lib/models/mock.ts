@@ -199,6 +199,7 @@ async function checkConsistency(image: ModelImage, references: CharacterReferenc
 
 export const mockModels: ComicModels = {
   mode: "mock",
+  sources: { transcribe: "mock", writeScript: "mock", drawPanel: "mock", checkConsistency: "mock" },
   transcribe,
   writeScript,
   drawPanel,
