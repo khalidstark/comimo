@@ -1,4 +1,5 @@
 import { artAt } from "@/art/manifest";
+import { AudioConvertError, toWav } from "./audio/toWav";
 import { loadCast } from "./cast";
 import { getDay, getImage, newId, putImage, saveDay } from "./store";
 import type {
@@ -187,6 +188,8 @@ export class ComicPipeline {
   /** What each finished panel came back with, for building the Day. */
   private readonly drawn = new Map<number, Panel["consistency"]>();
   private readonly urls = new Set<string>();
+  /** The voice note as 16 kHz mono WAV, kept so a retry doesn't convert again. */
+  private wav: Blob | null = null;
 
   constructor(private readonly input: PipelineInput) {}
 
@@ -289,13 +292,28 @@ export class ComicPipeline {
 
   /* ---------- Steps ---------- */
 
+  /** Muse Voice Transcribe takes WAV only, so every voice note is converted here, in the browser. */
+  private async voiceNoteWav(): Promise<Blob> {
+    if (this.wav) return this.wav;
+    try {
+      this.wav = (await toWav(this.input.audio)).wav;
+      return this.wav;
+    } catch (error) {
+      if (error instanceof AudioConvertError) throw new StepError("listen", error.message);
+      throw error;
+    }
+  }
+
   private async transcribe(signal: AbortSignal): Promise<Transcript> {
     this.setStep("listen", "active");
+    const wav = await this.voiceNoteWav();
+    if (signal.aborted) throw new DOMException("Cancelled", "AbortError");
+    this.cast ??= await loadCast();
     const form = new FormData();
-    const type = this.input.audio.type || "audio/webm";
-    const extension = type.split("/")[1]?.split(";")[0] || "webm";
-    form.append("audio", this.input.audio, `voice-note.${extension}`);
+    form.append("audio", wav, "voice-note.wav");
     form.append("language", this.input.language);
+    // Cast names help the transcriber spell them the way the script needs them.
+    form.append("keywords", JSON.stringify(this.cast.map((member) => member.name).slice(0, 20)));
     const { transcript } = await request<TranscribeResponse>("listen", "/api/transcribe", {
       method: "POST",
       body: form,
