@@ -80,13 +80,14 @@ export async function POST(request: Request) {
   const models = getModels();
   const { drawPanel, checkConsistency } = models.sources;
   const source = drawPanel === "meta" || checkConsistency === "meta" ? "meta" : "mock";
-  // A panel is one drawing, plus a redraw when a face drifts.
-  const check = guard(request, "panel", { real: source === "meta", images: drawPanel === "meta" ? 2 : 0 });
+  // Image and SAM calls are counted against the daily cap one by one, through the meter, as they are made.
+  const check = guard(request, "panel", { real: source === "meta" });
   if (!check.ok) return guardResponse(check);
 
   try {
-    const drawn = await models.drawPanel(panel, inPanel);
-    const { driftedCharacterIds, fixedImage } = await models.checkConsistency(drawn, inPanel);
+    const context = { visitorId: check.visitorId, signal: request.signal, meter: check.meter };
+    const drawn = await models.drawPanel(panel, inPanel, context);
+    const { driftedCharacterIds, fixedImage } = await models.checkConsistency(drawn, inPanel, context);
     return json<PanelResponse>(
       {
         mode: source,
@@ -100,7 +101,8 @@ export async function POST(request: Request) {
       source,
     );
   } catch (error) {
-    check.undo();
+    // Refund only when nothing billable reached Meta; an abort or timeout after sending still counts.
+    check.refundIfUnbilled();
     return modelErrorResponse(error);
   }
 }

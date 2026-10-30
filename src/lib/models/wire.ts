@@ -1,5 +1,6 @@
 import "server-only";
 import type { ApiError, ModelMode, WireImage } from "@/lib/types";
+import { SpendCapError } from "@/lib/guard";
 import { ModelInputError, type ModelImage } from "./index";
 import { MetaApiError } from "./meta/client";
 
@@ -22,6 +23,11 @@ export function jsonError(status: number, error: string): Response {
 /** Turn a model failure into a response without leaking details to the client. */
 export function modelErrorResponse(error: unknown): Response {
   if (error instanceof ModelInputError) return jsonError(400, error.message);
+  if (error instanceof SpendCapError) {
+    const response = jsonError(503, error.message);
+    response.headers.set("Retry-After", String(error.retryAfterSec));
+    return response;
+  }
   if (error instanceof MetaApiError) {
     // The message holds status, type and code from Meta; never the key or the user's content.
     console.error(`Comimo: ${error.message}`);
