@@ -232,23 +232,40 @@ export interface ScriptResponse {
   script: ComicScript;
 }
 
-/** A character's look and reference sheet, sent along when drawing a panel. */
+/**
+ * A character's look and reference sheet, sent along when drawing a panel.
+ * Send `fileToken` when the sheet is already uploaded (keeps the request
+ * small), otherwise `image`.
+ */
 export interface WireReference {
   characterId: string;
   name: string;
   look: string;
   image?: WireImage;
+  fileToken?: string;
 }
+
+/** A reference sheet the server uploaded while drawing; cache it on the character. */
+export interface UploadedReference {
+  characterId: string;
+  fileToken: string;
+}
+
+/** Wide panels open and close the page on wide screens (2:1); the rest are 3:2. */
+export type PanelShape = "wide" | "standard";
 
 /** POST /api/panel: draws a panel, then runs the consistency check. */
 export interface PanelRequest {
   panel: ScriptPanel;
   references?: WireReference[];
+  shape?: PanelShape;
 }
 export interface PanelResponse {
   mode: ModelMode;
   /** The final panel (after any fix). */
   image: WireImage;
+  /** Sheets uploaded for this request, to send as `fileToken` next time. */
+  uploaded: UploadedReference[];
   consistency: {
     driftedCharacterIds: string[];
     fixedCharacterIds: string[];

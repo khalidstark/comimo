@@ -5,6 +5,7 @@ import type {
   ComicScript,
   LanguageHint,
   ModelMode,
+  PanelShape,
   ScriptPanel,
   Transcript,
 } from "@/lib/types";
@@ -40,6 +41,8 @@ export interface CharacterReference {
   name: string;
   look: string;
   image: ModelImage | null;
+  /** The sheet in Meta's Files API (already verified); used instead of `image` when set. */
+  fileId?: string;
 }
 
 /** Who a reference sheet is drawn for. */
@@ -85,7 +88,7 @@ export interface ComicModels {
   /** Upload a reference sheet once so panels can point at it by id. Null when uploads aren't available. */
   uploadReference(image: ModelImage, context?: ModelCallContext): Promise<string | null>;
   /** Draw one panel using the reference sheets of the characters in it. */
-  drawPanel(panel: ScriptPanel, references: CharacterReference[], context?: ModelCallContext): Promise<ModelImage>;
+  drawPanel(panel: ScriptPanel, references: CharacterReference[], context?: ModelCallContext, shape?: PanelShape): Promise<ModelImage>;
   /** Find characters that drifted from their reference sheet and redraw them. */
   checkConsistency(image: ModelImage, references: CharacterReference[], context?: ModelCallContext): Promise<ConsistencyResult>;
 }

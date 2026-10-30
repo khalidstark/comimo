@@ -119,3 +119,48 @@ Plain flat light newsprint background with nothing else on it: no scenery, no pr
 ${ART_STYLE}
 ${NO_TEXT}`;
 }
+
+export interface PanelCharacter {
+  name: string;
+  look: string;
+  /** 1-based position in the request's images, or null when the character has no sheet yet. */
+  image: number | null;
+}
+
+/**
+ * One panel. `characters` is in characterIds order, which is also the order
+ * left to right in the picture: the bubble tails in the app depend on it.
+ */
+export function panelPrompt(scene: string, characters: PanelCharacter[], wide: boolean): string {
+  const lines: string[] = ["One panel of a diary comic, drawn as a single scene."];
+
+  if (characters.length > 0) {
+    if (characters.some((c) => c.image !== null)) {
+      lines.push(
+        "Each reference image is a character sheet showing one character from the front and from three-quarters. Draw each character exactly as on their sheet: same face, hair, glasses, clothes, colours and body shape. Each character appears only once in the panel, in a natural pose for the scene; do not copy the sheet's layout.",
+      );
+    }
+    lines.push("Characters:");
+    for (const c of characters) {
+      lines.push(`- ${c.name}${c.image !== null ? ` (reference image ${c.image})` : ""}: ${c.look}`);
+    }
+    if (characters.length > 1) {
+      lines.push(`Left to right in the picture: ${characters.map((c) => c.name).join(", then ")}.`);
+    }
+  } else {
+    lines.push("None of the recurring characters are in this panel; any people in it are small background figures.");
+  }
+
+  lines.push(`Scene: ${scene}`);
+  lines.push(
+    wide
+      ? "Composition: a wide shot. Keep every character inside the middle three quarters of the width."
+      : "Composition: a medium shot with the characters clearly readable.",
+  );
+  lines.push(
+    "Keep the top fifth of the panel calm and empty of detail (plain sky, wall or ceiling), with every head below it, so speech bubbles can be added there later. No panel border.",
+  );
+  lines.push(ART_STYLE);
+  lines.push(NO_TEXT);
+  return lines.join("\n");
+}

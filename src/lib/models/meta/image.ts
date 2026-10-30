@@ -1,8 +1,9 @@
 import "server-only";
 import { createHash } from "node:crypto";
-import type { ModelCallContext, ModelImage, SheetSubject } from "../index";
+import type { PanelShape, ScriptPanel } from "@/lib/types";
+import type { CharacterReference, ModelCallContext, ModelImage, SheetSubject } from "../index";
 import { MetaApiError, metaJson } from "./client";
-import { sheetPrompt } from "./prompts";
+import { panelPrompt, sheetPrompt, type PanelCharacter } from "./prompts";
 
 /**
  * Muse Image: reference sheets (POST /v1/images/generations) and panels drawn
@@ -19,11 +20,14 @@ import { sheetPrompt } from "./prompts";
 const MODEL = "muse-image-1.0";
 /** Images take a while with reasoning_strength "high" (multi-pass, same price). */
 const IMAGE_TIMEOUT_MS = 150_000;
+/** Most reference sheets sent with one panel (the API takes up to 10). */
+const MAX_PANEL_REFERENCES = 3;
 /** Uploaded sheets expire after 30 days (the maximum); a stale id is re-uploaded. */
 const FILE_LIFETIME_SEC = 2_592_000;
+const INLINE_TYPES = new Set(["image/png", "image/jpeg", "image/webp"]);
 
 /** `size` sets the aspect ratio only; the generator picks the pixels. */
-const SIZES = { sheet: "1536x1024" } as const;
+const SIZES = { sheet: "1536x1024", wide: "2048x1024", standard: "1536x1024" } as const;
 
 interface ImagesBody {
   data?: { b64_json?: string; revised_prompt?: string }[];
@@ -106,6 +110,67 @@ export function uploadReference(image: ModelImage, context?: ModelCallContext): 
   // Don't remember failures; the next panel may try again.
   void pending.then((id) => id ?? uploads.delete(key), () => uploads.delete(key));
   return pending;
+}
+
+/* ---------- Panels ---------- */
+
+function dataUrl(image: ModelImage): string {
+  return `data:${image.mimeType};base64,${Buffer.from(image.data).toString("base64")}`;
+}
+
+/**
+ * The characters to send sheets for: at most three, speakers first, then the
+ * rest in panel order. Order in `characterIds` is left to right in the picture.
+ */
+function pickReferences(panel: ScriptPanel, references: CharacterReference[]): Set<string> {
+  const usable = new Set(
+    references.filter((ref) => ref.fileId || (ref.image && isSendableImage(ref.image))).map((ref) => ref.characterId),
+  );
+  const speakers = panel.dialogue.map((line) => line.speakerId);
+  const ranked = [...new Set([...speakers, ...panel.characterIds])].filter((id) => panel.characterIds.includes(id) && usable.has(id));
+  return new Set(ranked.slice(0, MAX_PANEL_REFERENCES));
+}
+
+export async function drawPanel(
+  panel: ScriptPanel,
+  references: CharacterReference[],
+  context?: ModelCallContext,
+  shape: PanelShape = "standard",
+): Promise<ModelImage> {
+  const byId = new Map(references.map((ref) => [ref.characterId, ref]));
+  const withSheet = pickReferences(panel, references);
+  const images: ({ file_id: string } | { image_url: string })[] = [];
+  const characters: PanelCharacter[] = [];
+
+  for (const id of panel.characterIds) {
+    const ref = byId.get(id);
+    if (!ref) continue;
+    let image: number | null = null;
+    if (withSheet.has(id)) {
+      images.push(ref.fileId ? { file_id: ref.fileId } : { image_url: dataUrl(ref.image!) });
+      image = images.length;
+    }
+    characters.push({ name: ref.name, look: ref.look, image });
+  }
+
+  const prompt = panelPrompt(panel.scene, characters, shape === "wide");
+  const body = { ...baseRequest(context), size: SIZES[shape], prompt };
+  // Edits need at least one image; a panel with no drawn characters is plain text-to-image.
+  return images.length > 0
+    ? requestImage("/images/edits", { ...body, images }, context)
+    : requestImage("/images/generations", body, context);
+}
+
+/** Muse Image takes PNG, JPEG and WebP references (mock sheets are SVG and are never sent). */
+export function isSendableImage(image: ModelImage): boolean {
+  return INLINE_TYPES.has(image.mimeType);
+}
+
+/** True when a failed edit points at an uploaded sheet that no longer exists (expired or deleted). */
+export function isMissingFileError(error: unknown): boolean {
+  if (!(error instanceof MetaApiError)) return false;
+  if (error.status !== 400 && error.status !== 404) return false;
+  return /file/i.test(error.message) || error.code === "file_not_found";
 }
 
 /** Make sure an id from a token still looks like a Files API id before it goes upstream. */

@@ -1,8 +1,13 @@
 import { starterCastById } from "@/fixtures/cast";
 import { guard, guardResponse } from "@/lib/guard";
 import { getModels, type CharacterReference } from "@/lib/models";
+import { signFileId, verifyFileToken } from "@/lib/models/fileTokens";
+import { isMissingFileError, isSendableImage } from "@/lib/models/meta/image";
 import { fromWire, isRecord, isText, json, jsonError, modelErrorResponse, readJson, toWire } from "@/lib/models/wire";
-import type { DialogueLine, PanelResponse, ScriptPanel, TextDir } from "@/lib/types";
+import type { ApiError, DialogueLine, PanelResponse, PanelShape, ScriptPanel, TextDir, UploadedReference } from "@/lib/types";
+
+/** Muse Image can take a minute or two with reasoning_strength "high", plus one retry. */
+export const maxDuration = 300;
 
 const MAX_CHARACTERS = 8;
 const MAX_LINES = 8;
@@ -37,11 +42,13 @@ function parseReferences(value: unknown): CharacterReference[] | null {
   const references: CharacterReference[] = [];
   for (const item of value) {
     if (!isRecord(item)) return null;
-    const { characterId, name, look, image } = item;
+    const { characterId, name, look, image, fileToken } = item;
     if (!isText(characterId, 100) || !isText(name, 100) || typeof look !== "string" || look.length > 2000) return null;
     const decoded = image === undefined ? null : fromWire(image);
     if (image !== undefined && !decoded) return null;
-    references.push({ characterId, name, look, image: decoded });
+    // A token this server didn't sign is ignored (the sheet then goes inline or as text).
+    const fileId = fileToken === undefined ? null : verifyFileToken(fileToken);
+    references.push({ characterId, name, look, image: decoded, ...(fileId ? { fileId } : {}) });
   }
   return references;
 }
@@ -56,9 +63,12 @@ function starterReferences(characterIds: string[]): CharacterReference[] {
 
 /**
  * POST /api/panel
- * JSON: { panel: ScriptPanel, references?: WireReference[] }
- * Draws the panel, then checks every character against their reference and
- * redraws any that drifted. Returns the final image and the before image.
+ * JSON: { panel: ScriptPanel, references?: WireReference[], shape?: "wide" | "standard" }
+ * Draws the panel from the reference sheets of the characters in it, then
+ * checks every character against their reference and redraws any that
+ * drifted. Returns the final image, the before image, and tokens for any
+ * sheet uploaded on the way (send them as `fileToken` next time).
+ * 409 with code "stale-reference": an uploaded sheet is gone; resend the images.
  */
 export async function POST(request: Request) {
   const body = await readJson(request);
@@ -76,6 +86,7 @@ export async function POST(request: Request) {
     references = parsed;
   }
   const inPanel = references.filter((ref) => panel.characterIds.includes(ref.characterId));
+  const shape: PanelShape = body.shape === "wide" ? "wide" : "standard";
 
   const models = getModels();
   const { drawPanel, checkConsistency } = models.sources;
@@ -86,12 +97,39 @@ export async function POST(request: Request) {
 
   try {
     const context = { visitorId: check.visitorId, signal: request.signal, meter: check.meter };
-    const drawn = await models.drawPanel(panel, inPanel, context);
+
+    // Sheets that came inline are uploaded once (free); the browser keeps the token for the next panel.
+    const uploaded: UploadedReference[] = [];
+    if (drawPanel === "meta") {
+      await Promise.all(
+        inPanel.map(async (ref) => {
+          if (ref.fileId || !ref.image || !isSendableImage(ref.image)) return;
+          const fileId = await models.uploadReference(ref.image, context);
+          const fileToken = fileId ? signFileId(fileId) : null;
+          if (!fileId || !fileToken) return;
+          ref.fileId = fileId;
+          uploaded.push({ characterId: ref.characterId, fileToken });
+        }),
+      );
+    }
+
+    let drawn;
+    try {
+      drawn = await models.drawPanel(panel, inPanel, context, shape);
+    } catch (error) {
+      if (!isMissingFileError(error)) throw error;
+      // Uploaded sheets expire after 30 days; the browser resends the images and gets fresh tokens.
+      return Response.json(
+        { error: "A reference sheet needs uploading again.", code: "stale-reference" } satisfies ApiError,
+        { status: 409, headers: { "Cache-Control": "no-store" } },
+      );
+    }
     const { driftedCharacterIds, fixedImage } = await models.checkConsistency(drawn, inPanel, context);
     return json<PanelResponse>(
       {
         mode: source,
         image: toWire(fixedImage ?? drawn),
+        uploaded,
         consistency: {
           driftedCharacterIds,
           fixedCharacterIds: fixedImage ? driftedCharacterIds : [],
