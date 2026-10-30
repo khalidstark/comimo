@@ -24,7 +24,8 @@ const IMAGE_TIMEOUT_MS = 150_000;
 const MAX_PANEL_REFERENCES = 3;
 /** Uploaded sheets expire after 30 days (the maximum); a stale id is re-uploaded. */
 const FILE_LIFETIME_SEC = 2_592_000;
-const INLINE_TYPES = new Set(["image/png", "image/jpeg", "image/webp"]);
+/** Largest reference sheet sent or uploaded (Muse Image sheets are well under 1 MB). */
+const MAX_REFERENCE_BYTES = 5 * 1024 * 1024;
 
 /** `size` sets the aspect ratio only; the generator picks the pixels. */
 const SIZES = { sheet: "1536x1024", wide: "2048x1024", standard: "1536x1024" } as const;
@@ -84,6 +85,7 @@ const MAX_CACHED_UPLOADS = 500;
  * failed (the caller then sends the image inline). Uploads are free.
  */
 export function uploadReference(image: ModelImage, context?: ModelCallContext): Promise<string | null> {
+  if (!isSendableImage(image)) return Promise.resolve(null);
   const key = createHash("sha256").update(image.data).digest("hex");
   const cached = uploads.get(key);
   if (cached) return cached;
@@ -98,7 +100,14 @@ export function uploadReference(image: ModelImage, context?: ModelCallContext): 
     form.append("expires_after[seconds]", String(FILE_LIFETIME_SEC));
     form.append("file", new Blob([new Uint8Array(image.data)], { type: image.mimeType }), `reference-sheet.${extension}`);
     try {
-      const file = await metaJson<{ id?: unknown }>("/files", { method: "POST", form, timeoutMs: 30_000, signal: context?.signal });
+      const file = await metaJson<{ id?: unknown }>("/files", {
+        method: "POST",
+        form,
+        timeoutMs: 30_000,
+        signal: context?.signal,
+        // Uploads are free but use the team's storage: counted per visitor and per day.
+        onSend: () => context?.meter?.beforeCall("upload"),
+      });
       return typeof file.id === "string" && /^file-[\w-]+$/.test(file.id) ? file.id : null;
     } catch (error) {
       if (context?.signal?.aborted) throw error;
@@ -122,7 +131,7 @@ function dataUrl(image: ModelImage): string {
  * The characters to send sheets for: at most three, speakers first, then the
  * rest in panel order. Order in `characterIds` is left to right in the picture.
  */
-function pickReferences(panel: ScriptPanel, references: CharacterReference[]): Set<string> {
+export function pickReferences(panel: ScriptPanel, references: CharacterReference[]): Set<string> {
   const usable = new Set(
     references.filter((ref) => ref.fileId || (ref.image && isSendableImage(ref.image))).map((ref) => ref.characterId),
   );
@@ -161,9 +170,21 @@ export async function drawPanel(
     : requestImage("/images/generations", body, context);
 }
 
-/** Muse Image takes PNG, JPEG and WebP references (mock sheets are SVG and are never sent). */
+/** The real type from the file's first bytes: PNG, JPEG or WebP, else null. */
+function sniffImageType(data: Uint8Array): string | null {
+  const ascii = (from: number, to: number) => String.fromCharCode(...data.subarray(from, to));
+  if (data.length >= 8 && data[0] === 0x89 && ascii(1, 4) === "PNG") return "image/png";
+  if (data.length >= 3 && data[0] === 0xff && data[1] === 0xd8 && data[2] === 0xff) return "image/jpeg";
+  if (data.length >= 12 && ascii(0, 4) === "RIFF" && ascii(8, 12) === "WEBP") return "image/webp";
+  return null;
+}
+
+/**
+ * Muse Image takes PNG, JPEG and WebP references. The bytes must really be
+ * one of those and match the declared type (mock sheets are SVG and are never sent).
+ */
 export function isSendableImage(image: ModelImage): boolean {
-  return INLINE_TYPES.has(image.mimeType);
+  return image.data.byteLength <= MAX_REFERENCE_BYTES && sniffImageType(image.data) === image.mimeType;
 }
 
 /** True when a failed edit points at an uploaded sheet that no longer exists (expired or deleted). */

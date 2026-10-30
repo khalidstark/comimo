@@ -1,8 +1,8 @@
 import { starterCastById } from "@/fixtures/cast";
 import { guard, guardResponse } from "@/lib/guard";
 import { getModels, type CharacterReference } from "@/lib/models";
-import { signFileId, verifyFileToken } from "@/lib/models/fileTokens";
-import { isMissingFileError, isSendableImage } from "@/lib/models/meta/image";
+import { isTrustedSheet, signFileId, verifyFileToken } from "@/lib/models/fileTokens";
+import { isMissingFileError, isSendableImage, pickReferences } from "@/lib/models/meta/image";
 import { fromWire, isRecord, isText, json, jsonError, modelErrorResponse, readJson, toWire } from "@/lib/models/wire";
 import type { ApiError, DialogueLine, PanelResponse, PanelShape, ScriptPanel, TextDir, UploadedReference } from "@/lib/types";
 
@@ -37,15 +37,19 @@ function parsePanel(value: unknown): ScriptPanel | null {
   return { index, scene, caption: caption?.slice(0, 300), dialogue: lines, characterIds };
 }
 
-function parseReferences(value: unknown): CharacterReference[] | "stale" | null {
+function parseReferences(value: unknown): CharacterReference[] | "stale" | "untrusted" | null {
   if (!Array.isArray(value) || value.length > MAX_CHARACTERS) return null;
   const references: CharacterReference[] = [];
   for (const item of value) {
     if (!isRecord(item)) return null;
-    const { characterId, name, look, image, fileToken } = item;
+    const { characterId, name, look, image, sheetToken, fileToken } = item;
     if (!isText(characterId, 100) || !isText(name, 100) || typeof look !== "string" || look.length > 2000) return null;
-    const decoded = image === undefined ? null : fromWire(image);
-    if (image !== undefined && !decoded) return null;
+    const wire = image === undefined ? null : fromWire(image);
+    if (image !== undefined && !wire) return null;
+    // Only real PNG/JPEG/WebP sheets go to Meta (mock SVG sheets are dropped), and only
+    // sheets this server drew or the shipped starter sheets: never an arbitrary image.
+    const decoded = wire && isSendableImage(wire) ? wire : null;
+    if (decoded && !isTrustedSheet(decoded.data, sheetToken)) return "untrusted";
     const fileId = fileToken === undefined ? null : verifyFileToken(fileToken);
     // A token this server can't use (another key, tampered) without the image: ask for the image instead.
     if (fileToken !== undefined && !fileId && !decoded) return "stale";
@@ -92,6 +96,7 @@ export async function POST(request: Request) {
   if (body.references !== undefined) {
     const parsed = parseReferences(body.references);
     if (parsed === "stale") return staleReference();
+    if (parsed === "untrusted") return jsonError(400, "That reference sheet wasn't drawn by Comimo. Redraw it from the cast screen.");
     if (!parsed) return jsonError(400, "`references` must be a list of {characterId, name, look, image?, fileToken?}.");
     references = parsed;
   }
@@ -108,12 +113,14 @@ export async function POST(request: Request) {
   try {
     const context = { visitorId: check.visitorId, signal: request.signal, meter: check.meter };
 
-    // Sheets that came inline are uploaded once (free); the browser keeps the token for the next panel.
+    // Sheets that came inline are uploaded once (metered, capped per visitor); the browser keeps the token
+    // for the next panel. Only the sheets this panel actually sends are uploaded.
     const uploaded: UploadedReference[] = [];
     if (drawPanel === "meta") {
+      const sent = pickReferences(panel, inPanel);
       await Promise.all(
         inPanel.map(async (ref) => {
-          if (ref.fileId || !ref.image || !isSendableImage(ref.image)) return;
+          if (!sent.has(ref.characterId) || ref.fileId || !ref.image) return;
           const fileId = await models.uploadReference(ref.image, context);
           const fileToken = fileId ? signFileId(fileId) : null;
           if (!fileId || !fileToken) return;
