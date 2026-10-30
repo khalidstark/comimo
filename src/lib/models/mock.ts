@@ -50,7 +50,7 @@ async function transcribe(audio: AudioInput): Promise<Transcript> {
 /* ---------- Script ---------- */
 
 /**
- * Mock stand-in for the script model's safety check, so the helpline path can
+ * Mock stand-in for the script model's safety check, so the no-comic path can
  * be built. The real check is done by the model in Phase 3.
  */
 const CRISIS_HINTS = ["[mock:crisis]", "hurt myself", "kill myself", "end my life", "suicide", "انتحار", "أؤذي نفسي", "أموت نفسي", "مش عايز أعيش"];
