@@ -1,3 +1,4 @@
+import { spriteSheets } from "@/art/sprites";
 import type { CastBrief, Character } from "@/lib/types";
 
 /**
@@ -20,7 +21,7 @@ export const starterCast: Character[] = [
     line: "Five more minutes. I mean it this time.",
     portrait: { kind: "art", path: "sprites.nour" },
     referenceSheet: null,
-    spriteSheet: null,
+    spriteSheet: spriteSheets.nour,
     starter: true,
     createdAt: SHIPPED,
   },
@@ -36,7 +37,7 @@ export const starterCast: Character[] = [
     line: "أنا جاي، I'm literally on my way",
     portrait: { kind: "art", path: "sprites.karim" },
     referenceSheet: null,
-    spriteSheet: null,
+    spriteSheet: spriteSheets.karim,
     starter: true,
     createdAt: SHIPPED,
   },
@@ -52,7 +53,7 @@ export const starterCast: Character[] = [
     line: "كُلي الأول، وبعدين نتكلم",
     portrait: { kind: "art", path: "sprites.teta" },
     referenceSheet: null,
-    spriteSheet: null,
+    spriteSheet: spriteSheets.teta,
     starter: true,
     createdAt: SHIPPED,
   },
@@ -66,7 +67,7 @@ export const starterCast: Character[] = [
     line: "Mrrp. (He wants your seat.)",
     portrait: { kind: "art", path: "sprites.mishmish" },
     referenceSheet: null,
-    spriteSheet: null,
+    spriteSheet: spriteSheets.mishmish,
     starter: true,
     createdAt: SHIPPED,
   },

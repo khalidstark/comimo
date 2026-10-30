@@ -75,6 +75,18 @@ export const art = {
     teta: placeholder("sprite-teta.svg", "Teta Samia", 300, 360),
     mishmish: placeholder("sprite-mishmish.svg", "Mishmish the cat", 300, 360),
   },
+  /**
+   * Animated sprite sheets: 6 columns x 4 rows (idle, blink, talk, wave).
+   * Frame sizes and timing live in src/art/sprites.ts. Decorative here; the
+   * Sprite component carries the character's name.
+   */
+  spriteSheets: {
+    mascot: placeholder("sprites/mascot.svg", "", 1800, 1080),
+    nour: placeholder("sprites/nour.svg", "", 1800, 1440),
+    karim: placeholder("sprites/karim.svg", "", 1800, 1440),
+    teta: placeholder("sprites/teta.svg", "", 1800, 1440),
+    mishmish: placeholder("sprites/mishmish.svg", "", 1800, 1440),
+  },
   month: {
     cover: placeholder("month-cover.svg", "", 480, 600),
   },
@@ -84,6 +96,7 @@ export type MoodKey = keyof typeof art.mood;
 export type IconKey = keyof typeof art.icons;
 export type SceneKey = keyof typeof art.scenes;
 export type SpriteKey = keyof typeof art.sprites;
+export type SpriteSheetKey = keyof typeof art.spriteSheets;
 
 type ArtGroups = typeof art;
 
