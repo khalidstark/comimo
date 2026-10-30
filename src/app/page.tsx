@@ -3,6 +3,7 @@ import { Art } from "@/art/Art";
 import { art, type MoodKey } from "@/art/manifest";
 import { BidiText } from "@/components/comic/BidiText";
 import { MagazineCover } from "@/components/MagazineCover";
+import { MascotSprite } from "@/components/MascotSprite";
 import { MoodCalendar } from "@/components/MoodCalendar";
 import { PAGE_TURN, PageTurn } from "@/components/PageTurn";
 import { RecordStamp } from "@/components/RecordStamp";
@@ -61,7 +62,7 @@ export default function Home() {
               </Link>
             </div>
             <div className={`sticker ${styles.mascot}`} style={{ "--tilt": "8deg" } as React.CSSProperties}>
-              <Art asset={art.brand.mascot} priority />
+              <MascotSprite className={styles.mascotButton} />
             </div>
           </div>
 
