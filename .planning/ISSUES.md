@@ -25,6 +25,11 @@
 - **Detail:** Keep a name snapshot on each panel's dialogue/characters, or a tombstone record on delete.
 - **Address in:** Phase 4 polish
 
+### ISS-008: Spending guard counters live in one server's memory
+- **Found:** Phase 3, plan 03-01
+- **Detail:** src/lib/guard.ts keeps per-visitor and daily counts in memory. Vercel instances don't share them and cold starts reset them, so the real ceiling is a multiple of the configured caps. Options: Vercel KV/Upstash Redis, or accept with low caps plus the Billing spend alert.
+- **Address in:** 05-01 (deploy)
+
 ## Closed
 
 ### ISS-001: Mixed Arabic/English bubble text misplaces punctuation
