@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { Nav } from "@/components/Nav";
 import { fontVariables } from "@/lib/fonts";
 import "./globals.css";
 
@@ -38,6 +39,7 @@ export default function RootLayout({
         <a className="skip-link" href="#main">
           Skip to content
         </a>
+        <Nav />
         {children}
       </body>
     </html>

@@ -242,6 +242,13 @@ select {
   transform: none;
 }
 
+/* Room for the fixed tab bar on phones */
+@media (max-width: 47.999rem) {
+  body {
+    padding-block-end: calc(var(--tabbar-h) + env(safe-area-inset-bottom));
+  }
+}
+
 .page {
   inline-size: 100%;
   max-inline-size: var(--page-max);
@@ -452,15 +459,19 @@ select {
   pointer-events: none;
 }
 
+/* The header and tab bar stay put while the page turns under them. */
+::view-transition-group(site-header),
 ::view-transition-group(site-nav) {
   animation: none;
   z-index: 100;
 }
 
+::view-transition-old(site-header),
 ::view-transition-old(site-nav) {
   display: none;
 }
 
+::view-transition-new(site-header),
 ::view-transition-new(site-nav) {
   animation: none;
 }
