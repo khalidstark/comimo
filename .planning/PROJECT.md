@@ -26,6 +26,7 @@ Talking about your day for a minute gives you back a comic that feels like your 
 - [ ] Day mood shown as a small "day weather" icon on each comic, never as a number or score
 - [ ] Monthly comic book: a magazine-style flip-through of the month's comics with a month-at-a-glance mood strip
 - [ ] One polished main art theme; site art, sprites, icons and textures generated with Muse Image
+- [ ] Sprite sheets make the cast and mascot feel alive (idle blink, talk while their bubble appears, wave on the home page), animated with CSS steps()
 - [ ] Mobile-friendly, accessible web UX: big record button, clear progress while the comic is being made, keyboard and screen-reader friendly
 - [ ] Safety: if a note mentions self-harm or crisis, skip the comic and show a helpline card instead
 - [ ] Sample days and demo content: invented scenarios, scripts for the user to record, and pre-made example comics so the site works for judges even without recording
@@ -69,6 +70,8 @@ Talking about your day for a minute gives you back a comic that feels like your 
 | Muse Image generates the site's own art | Avoids asset-rights problems, raises the Meta AI score, one consistent look | — Pending |
 | Fresh code; old zip as reference only | Rules require new work | — Pending |
 | One main art theme first | User's choice; more themes only if time allows | — Pending |
+| Zine design direction (ink panels, halftone, riso pink/sunflower, Baloo Bhaijaan 2 + IBM Plex Sans Arabic + Playpen Sans Arabic) | Approved by user at 01-01 checkpoint | ✓ Good |
+| Assets: Muse Image first, otherwise only openly licensed packs (CC0, MIT/ISC) with licenses listed in the README; never scraped images | Hackathon disqualifies assets without rights | — Pending |
 
 ---
-*Last updated: 2026-10-30 after initialization*
+*Last updated: 2026-10-30 after 01-01 (design approved, sprite sheets added)*

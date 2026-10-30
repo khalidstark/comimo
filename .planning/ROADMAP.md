@@ -29,7 +29,7 @@ None
 **Plans**: 2 plans
 
 Plans:
-- [ ] 01-01: Scaffold Next.js app, design tokens, fonts, layout, page shells and art manifest with placeholders
+- [x] 01-01: Scaffold Next.js app, design tokens, fonts, layout, page shells and art manifest with placeholders
 - [ ] 01-02: Data model, IndexedDB store, mock model layer with fixtures for an invented cast and sample days
 
 ### Phase 2: Comic Experience
@@ -41,7 +41,7 @@ Plans:
 Plans:
 - [ ] 02-01: Recorder (mic and upload) and the "making your comic" progress screen
 - [ ] 02-02: Comic reader with panels, Arabic and English speech bubbles, day weather icon
-- [ ] 02-03: Check-in card, safety helpline card, cast screen
+- [ ] 02-03: Check-in card, safety helpline card, cast screen, Sprite component (CSS steps sprite-sheet player) with placeholder sheets
 
 ### Phase 3: Meta Model Pipeline
 **Goal**: Real calls replace the mocks: transcription, comic script with mood and heavy-day detection, character reference sheets, panels, and the SAM 3.1 check-and-redraw loop with visible before and after, protected by a spending guard
@@ -63,7 +63,7 @@ Plans:
 
 Plans:
 - [ ] 04-01: Monthly magazine flip-through with the mood strip
-- [ ] 04-02: Art generation script for site art and sprites, sample days and example comics
+- [ ] 04-02: Art generation script for site art and character/mascot sprite sheets (idle, blink, talk, wave), sample days and example comics
 
 ### Phase 5: Ship
 **Goal**: Live URL, public repo, README, voice-note scripts and a ready demo, submitted before the deadline
@@ -81,7 +81,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation | 0/2 | Not started | - |
+| 1. Foundation | 1/2 | In progress | - |
 | 2. Comic Experience | 0/3 | Not started | - |
 | 3. Meta Model Pipeline | 0/3 | Not started | - |
 | 4. Magazine and Art | 0/2 | Not started | - |

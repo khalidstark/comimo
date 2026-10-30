@@ -10,24 +10,24 @@ See: .planning/PROJECT.md (updated 2026-10-30)
 ## Current Position
 
 Phase: 1 of 5 (Foundation)
-Plan: Not started
-Status: Ready to plan
-Last activity: 2026-10-30 — Project initialized
+Plan: 1 of 2 in current phase
+Status: In progress
+Last activity: 2026-10-30 — Completed 01-01-PLAN.md (design approved)
 
-Progress: ░░░░░░░░░░ 0%
+Progress: █░░░░░░░░░ 9%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 0
-- Average duration: —
-- Total execution time: 0 hours
+- Total plans completed: 1
+- Average duration: 36 min
+- Total execution time: 0.6 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| — | — | — | — |
+| 1. Foundation | 1 | 36 min | 36 min |
 
 **Recent Trend:**
 - Last 5 plans: —
@@ -40,11 +40,14 @@ Progress: ░░░░░░░░░░ 0%
 Decisions are logged in PROJECT.md Key Decisions table.
 Recent decisions affecting current work:
 
+- 01-01: Zine design approved; all art through src/art/manifest.ts.
+- 01-01: Small commits, push after each (user request).
+- Sprite sheets for cast and mascot added to scope (Phase 2 component, Phase 4 art).
 - Build on mock data until the Meta API credits appear on the Billing page; the card is saved, so any real call before then is charged to it.
 
 ### Deferred Issues
 
-None yet.
+3 open (ISS-001 bidi punctuation in bubbles, fix in 02-02) — see ISSUES.md
 
 ### Blockers/Concerns
 
@@ -53,6 +56,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-10-30 14:20
-Stopped at: Project initialization complete
+Last session: 2026-10-30 14:57
+Stopped at: Completed 01-01-PLAN.md
 Resume file: None
