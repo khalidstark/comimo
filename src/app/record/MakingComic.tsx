@@ -6,7 +6,6 @@ import { useCallback, useEffect, useEffectEvent, useLayoutEffect, useRef, useSta
 import { Art } from "@/art/Art";
 import { art } from "@/art/manifest";
 import { PAGE_TURN } from "@/components/PageTurn";
-import { DEFAULT_ART_STYLE } from "@/lib/artStyles";
 import { formatDay, moodWords } from "@/lib/format";
 import {
   ComicPipeline,
@@ -16,6 +15,7 @@ import {
   type PipelineStep,
   type StepStatus,
 } from "@/lib/pipeline";
+import type { ArtStyleId } from "@/lib/artStyles";
 import type { LanguageHint, LanguageMix, ScriptPanel } from "@/lib/types";
 import styles from "./making.module.css";
 
@@ -98,6 +98,7 @@ function captionFor(state: PipelineState, fixing: PanelProgress | undefined): st
 interface MakingComicProps {
   audio: Blob;
   language: LanguageHint;
+  style: ArtStyleId;
   /** Called after the screen is cancelled and closed. */
   onClose: () => void;
 }
@@ -107,8 +108,8 @@ interface MakingComicProps {
  * finishes. Panels are pencilled from the script, inked when drawn, and a
  * panel whose face was fixed flips from before to after.
  */
-export function MakingComic({ audio, language, onClose }: MakingComicProps) {
-  const [pipeline] = useState(() => new ComicPipeline({ audio, language, style: DEFAULT_ART_STYLE }));
+export function MakingComic({ audio, language, style, onClose }: MakingComicProps) {
+  const [pipeline] = useState(() => new ComicPipeline({ audio, language, style }));
   const state = useSyncExternalStore(pipeline.subscribe, pipeline.getSnapshot, pipeline.getSnapshot);
   const [settled, setSettled] = useState<ReadonlySet<number>>(() => new Set());
   const dialogRef = useRef<HTMLDialogElement>(null);
