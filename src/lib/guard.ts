@@ -16,14 +16,14 @@ import { createHash, randomBytes } from "node:crypto";
  * these numbers. Phase 5 decides whether to move them to a shared store.
  *
  * Env (all optional):
- *   COMIMO_COMICS_PER_HOUR   comics per visitor per hour (default 5)
+ *   COMIMO_COMICS_PER_HOUR   comics per visitor per hour (default 5; reference sheets get twice that)
  *   COMIMO_DAILY_COMIC_CAP   comics per day for everyone (default 200)
  *   COMIMO_DAILY_IMAGE_CAP   image and SAM calls per day for everyone (default 300), counted per call
  *   COMIMO_PAUSE_GENERATION  "1" pauses all real calls
  *   COMIMO_GUARD_SALT        salt for the visitor hash (default: random per process)
  */
 
-export type GuardAction = "transcribe" | "script" | "panel";
+export type GuardAction = "transcribe" | "script" | "panel" | "character";
 
 /** Kinds of upstream call. Image and SAM calls count against the daily image cap. */
 export type UpstreamCall = "transcribe" | "text" | "image" | "sam";
@@ -77,6 +77,8 @@ function limits() {
       transcribe: comics * 2,
       // Up to 6 panels a comic, plus retries.
       panel: comics * 8,
+      // Reference sheets: a few new characters (or redraws) an hour.
+      character: comics * 2,
     } satisfies Record<GuardAction, number>,
     dailyComics: envInt("COMIMO_DAILY_COMIC_CAP", 200),
     dailyImages: envInt("COMIMO_DAILY_IMAGE_CAP", 300),
@@ -178,19 +180,22 @@ export function guard(request: Request, action: GuardAction, options: { real: bo
   if (action === "script" && daily.comics >= dailyComics) {
     return { ok: false, status: 503, error: "Comimo has made all the comics it can for today. Come back tomorrow.", retryAfterSec: secondsToTomorrow() };
   }
-  if (action === "panel" && daily.images >= dailyImages) {
+  if ((action === "panel" || action === "character") && daily.images >= dailyImages) {
     return { ok: false, status: 503, error: "Comimo has drawn all the panels it can for today. Come back tomorrow.", retryAfterSec: secondsToTomorrow() };
   }
 
   sweep(now);
-  const counts = visitors.get(id) ?? { transcribe: [], script: [], panel: [] };
+  const counts = visitors.get(id) ?? { transcribe: [], script: [], panel: [], character: [] };
   const recent = counts[action].filter((t) => now - t < HOUR_MS);
   if (recent.length >= hourly[action]) {
     const retryAfterSec = Math.ceil((recent[0] + HOUR_MS - now) / 1000);
     return {
       ok: false,
       status: 429,
-      error: `That's a lot of comics for one hour. Try again in ${minutes(retryAfterSec)}.`,
+      error:
+        action === "character"
+          ? `That's a lot of drawing for one hour. Try again in ${minutes(retryAfterSec)}.`
+          : `That's a lot of comics for one hour. Try again in ${minutes(retryAfterSec)}.`,
       retryAfterSec,
     };
   }

@@ -1,6 +1,7 @@
 import "server-only";
 import type {
   CastBrief,
+  CharacterRole,
   ComicScript,
   LanguageHint,
   ModelMode,
@@ -41,6 +42,14 @@ export interface CharacterReference {
   image: ModelImage | null;
 }
 
+/** Who a reference sheet is drawn for. */
+export interface SheetSubject {
+  characterId: string;
+  name: string;
+  role: CharacterRole;
+  look: string;
+}
+
 export interface ConsistencyResult {
   /** Characters whose look drifted from their reference sheet. */
   driftedCharacterIds: string[];
@@ -58,7 +67,7 @@ export interface ModelCallContext {
   meter?: UsageMeter;
 }
 
-export type ModelMethod = "transcribe" | "writeScript" | "drawPanel" | "checkConsistency";
+export type ModelMethod = "transcribe" | "writeScript" | "drawReferenceSheet" | "drawPanel" | "checkConsistency";
 
 export interface ComicModels {
   readonly mode: ModelMode;
@@ -71,6 +80,10 @@ export interface ComicModels {
   transcribe(audio: AudioInput, context?: ModelCallContext): Promise<Transcript>;
   /** Transcript to a comic script with mood, heavy-day and safety flags. */
   writeScript(transcript: string, cast: CastBrief[], context?: ModelCallContext): Promise<ComicScript>;
+  /** Draw a character's reference sheet: front and three-quarter views, full body, plain background. */
+  drawReferenceSheet(subject: SheetSubject, context?: ModelCallContext): Promise<ModelImage>;
+  /** Upload a reference sheet once so panels can point at it by id. Null when uploads aren't available. */
+  uploadReference(image: ModelImage, context?: ModelCallContext): Promise<string | null>;
   /** Draw one panel using the reference sheets of the characters in it. */
   drawPanel(panel: ScriptPanel, references: CharacterReference[], context?: ModelCallContext): Promise<ModelImage>;
   /** Find characters that drifted from their reference sheet and redraw them. */

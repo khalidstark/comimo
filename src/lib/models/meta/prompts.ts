@@ -85,3 +85,37 @@ export function scriptSchema(castIds: string[]) {
     },
   };
 }
+
+/* ------------------------------------------------------------------ */
+/* Art (Muse Image)                                                    */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Comimo's one art style, matched to the approved zine design (globals.css):
+ * navy ink, riso pink, sunflower and teal on cool newsprint. Every sheet and
+ * panel ends with this exact text so they all print the same way.
+ */
+export const ART_STYLE = `Art style, identical in every image: a hand-printed risograph zine comic. Bold, confident deep navy ink outlines (#1b2148) with a slightly uneven brush line. Flat riso colours with no gradients: deep navy #1b2148, riso pink #f2397a, sunflower yellow #ffc738 and teal #0f9e8e on cool newsprint off-white paper #eceff2. Any other colour is a tint or overprint of these inks (pink over yellow for orange, a pale pink wash for lilac, teal over yellow for olive). Light halftone dot shading in the shadows, a little paper grain, simple rounded shapes, warm and expressive faces with clear emotions.`;
+
+/** Said last in every art prompt: Comimo letters in HTML, so the art must carry no text at all. */
+const NO_TEXT = "No text anywhere in the image: no letters, words, numbers, signs, labels, logos, captions, speech bubbles or sound effects.";
+
+export interface SheetPromptInput {
+  name: string;
+  look: string;
+  /** Animals are drawn as the whole animal rather than "head to feet". */
+  animal: boolean;
+}
+
+/** A reference sheet: the same character twice (front, three-quarter), full body, plain light background. */
+export function sheetPrompt({ name, look, animal }: SheetPromptInput): string {
+  const body = animal
+    ? "The whole animal from ears to tail in both views, as a real animal of its kind: no clothes, collar or accessories unless the look mentions them. Identical markings, colours and proportions in both views."
+    : "Full body from head to feet in both views, standing in a relaxed neutral pose. Identical outfit, hair, colours and proportions in both views.";
+  return `Character reference sheet for an original comic character named ${name}.
+Look: ${look}
+Show the same character twice, side by side and at the same size: on the left a front view facing the viewer, on the right a clearly turned three-quarter view. ${body} Calm, friendly expression.
+Plain flat light newsprint background with nothing else on it: no scenery, no props except what they always carry, no frames, no colour swatches, no name labels.
+${ART_STYLE}
+${NO_TEXT}`;
+}

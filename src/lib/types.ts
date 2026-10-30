@@ -88,11 +88,25 @@ export interface Character {
   portrait: ImageRef;
   /** Muse Image reference sheet; null until drawn. */
   referenceSheet: ImageRef | null;
+  /**
+   * The reference sheet as uploaded to Meta's Files API, so panels can point
+   * at it instead of resending the image. `sheet` says which sheet it belongs
+   * to (see referenceKey in src/lib/cast.ts); a different sheet means re-upload.
+   */
+  referenceFile?: ReferenceFile;
   /** Animated sprite sheet (idle, blink, talk, wave); null until drawn. */
   spriteSheet: SpriteSheet | null;
   /** True for the invented starter cast that ships with the app. */
   starter: boolean;
   createdAt: string;
+}
+
+/** A server-signed Files API id for a character's reference sheet. */
+export interface ReferenceFile {
+  /** Opaque token from /api/character or /api/panel; only this server can use it. */
+  token: string;
+  /** Key of the sheet it was uploaded from. */
+  sheet: string;
 }
 
 /** The part of a character the script model needs. */
@@ -243,6 +257,22 @@ export interface PanelResponse {
   };
 }
 
+/** POST /api/character: draw a character's reference sheet. */
+export interface CharacterSheetRequest {
+  characterId: string;
+  name: string;
+  role: CharacterRole;
+  look: string;
+}
+export interface CharacterSheetResponse {
+  mode: ModelMode;
+  image: WireImage;
+  /** The sheet uploaded to the Files API; null when the upload failed or in mock mode. */
+  fileToken: string | null;
+}
+
 export interface ApiError {
   error: string;
+  /** Machine-readable reason, e.g. "stale-reference" when an uploaded sheet is gone. */
+  code?: string;
 }
