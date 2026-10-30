@@ -141,26 +141,32 @@ function wrap(text: string, width: number, maxLines: number): string[] {
   return lines;
 }
 
+/**
+ * A mock panel card. The top-start corner stays empty because the app lays its
+ * own chrome there (panel number badge, caption box); the scene sits in the
+ * middle band and the label in the bottom-end corner, so a 2:1 crop keeps both.
+ */
 function panelSvg(panel: ScriptPanel, references: CharacterReference[]): string {
   const names = panel.characterIds.map(
     (id) => references.find((ref) => ref.characterId === id)?.name ?? starterCastById[id]?.name ?? id,
   );
-  const sceneLines = wrap(panel.scene, 46, 5)
+  const sceneLines = wrap(panel.scene, 46, 4)
     .map((line, i) => `<tspan x="40" dy="${i === 0 ? 0 : 30}">${escapeXml(line)}</tspan>`)
     .join("");
   const chips = names
+    .slice(0, 3)
     .map((name, i) => {
-      const x = 40 + i * 130;
-      return `<g transform="translate(${x} 318)"><rect width="120" height="40" rx="20" fill="${SUN}" stroke="${INK}" stroke-width="3"/><text x="60" y="27" text-anchor="middle" font-size="18" font-weight="700" fill="${INK}">${escapeXml(name)}</text></g>`;
+      const x = 40 + i * 116;
+      return `<g transform="translate(${x} 288)"><rect width="106" height="38" rx="19" fill="${SUN}" stroke="${INK}" stroke-width="3"/><text x="53" y="25" text-anchor="middle" font-size="16" font-weight="700" fill="${INK}">${escapeXml(name)}</text></g>`;
     })
     .join("");
 
   return `<svg xmlns="http://www.w3.org/2000/svg" width="600" height="400" viewBox="0 0 600 400" font-family="system-ui, sans-serif">
 <rect x="6" y="6" width="588" height="388" fill="${PAPER}" stroke="${INK}" stroke-width="8"/>
-<rect x="24" y="24" width="190" height="36" fill="${INK}"/>
-<text x="38" y="49" font-size="18" font-weight="700" fill="${PAPER}">MOCK PANEL ${panel.index + 1}</text>
-<text x="40" y="112" font-size="22" fill="${INK}">${sceneLines}</text>
+<text x="40" y="150" font-size="22" fill="${INK}">${sceneLines}</text>
 ${chips}
+<rect x="404" y="290" width="164" height="34" fill="${INK}"/>
+<text x="486" y="313" text-anchor="middle" font-size="16" font-weight="700" fill="${PAPER}">MOCK PANEL ${panel.index + 1}</text>
 </svg>`;
 }
 
@@ -174,7 +180,7 @@ async function drawPanel(panel: ScriptPanel, references: CharacterReference[]): 
 function stampFixed(image: ModelImage, name: string): ModelImage {
   if (image.mimeType !== SVG_TYPE) return image;
   const svg = new TextDecoder().decode(image.data);
-  const stamp = `<g transform="translate(420 30) rotate(6)"><rect width="150" height="44" fill="${PINK}" stroke="${INK}" stroke-width="3"/><text x="75" y="29" text-anchor="middle" font-size="18" font-weight="700" fill="${PAPER}">FIXED: ${escapeXml(name)}</text></g>`;
+  const stamp = `<g transform="translate(414 62) rotate(6)"><rect width="150" height="44" fill="${PINK}" stroke="${INK}" stroke-width="3"/><text x="75" y="29" text-anchor="middle" font-size="18" font-weight="700" fill="${PAPER}">FIXED: ${escapeXml(name)}</text></g>`;
   return { mimeType: SVG_TYPE, data: new TextEncoder().encode(svg.replace("</svg>", `${stamp}\n</svg>`)) };
 }
 
