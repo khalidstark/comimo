@@ -107,7 +107,7 @@ export const sampleDays: Day[] = [
         "desk",
         "Nour hunched at her desk at night, laptop crowded with tabs, sticky notes everywhere.",
         ["nour"],
-        [say("nour", "مش هلحق، I won't make it", "rtl")],
+        [say("nour", "I won't make it, مش هلحق", "ltr")],
         "Three tabs. Two deadlines. One me.",
       ),
       panel(
