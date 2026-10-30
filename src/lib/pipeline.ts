@@ -1,7 +1,7 @@
 import { artAt } from "@/art/manifest";
 import { AudioConvertError, toWav } from "./audio/toWav";
-import { loadCast } from "./cast";
-import { getDay, getImage, newId, putImage, saveDay } from "./store";
+import { loadCast, referenceFileTokenFor, referenceSheetFor, withReferenceFile } from "./cast";
+import { getDay, getImage, newId, putImage, saveCharacter, saveDay } from "./store";
 import { blobToWire, wireToBlob } from "./wireImage";
 import type {
   ApiError,
@@ -14,6 +14,8 @@ import type {
   Panel,
   PanelRequest,
   PanelResponse,
+  PanelShape,
+  ScriptPanel,
   ScriptRequest,
   ScriptResponse,
   TranscribeResponse,
@@ -78,6 +80,8 @@ class StepError extends Error {
   constructor(
     readonly step: PipelineStep,
     message: string,
+    /** The API's machine-readable reason, when it gave one. */
+    readonly code?: string,
   ) {
     super(message);
     this.name = "StepError";
@@ -113,8 +117,8 @@ async function request<T>(step: PipelineStep, url: string, init: RequestInit): P
     // Handled below.
   }
   if (!response.ok || body === null) {
-    const message = (body as ApiError | null)?.error;
-    throw new StepError(step, message || `Something went wrong (${response.status}). Try again.`);
+    const error = body as ApiError | null;
+    throw new StepError(step, error?.error || `Something went wrong (${response.status}). Try again.`, error?.code);
   }
   return body as T;
 }
@@ -136,6 +140,14 @@ async function loadReference(ref: ImageRef | null, signal: AbortSignal): Promise
     // Draw from the written look alone rather than failing the panel.
     return undefined;
   }
+}
+
+/**
+ * Panels that open and close the page are wide on wide screens (2:1, see
+ * comic.module.css): the first, and the last when the count is even.
+ */
+function panelShape(index: number, count: number): PanelShape {
+  return index === 0 || (index === count - 1 && count % 2 === 0) ? "wide" : "standard";
 }
 
 /* ---------- Cast ---------- */
@@ -326,16 +338,45 @@ export class ComicPipeline {
     return script;
   }
 
+  /** A character's sheet as an inline image, loaded once per run. */
   private referenceFor(characterId: string, signal: AbortSignal): Promise<WireImage | undefined> {
     let pending = this.references.get(characterId);
     if (!pending) {
       const character = this.cast?.find((member) => member.id === characterId);
-      pending = loadReference(character?.referenceSheet ?? null, signal);
+      pending = loadReference(character ? referenceSheetFor(character) : null, signal);
       this.references.set(characterId, pending);
       // Don't cache a failure caused by cancelling.
       pending.catch(() => this.references.delete(characterId));
     }
     return pending;
+  }
+
+  /** Keep (or forget, with null) the uploaded-sheet token on a character, here and in the store. */
+  private async rememberReferenceFile(characterId: string, token: string | null) {
+    const character = this.cast?.find((member) => member.id === characterId);
+    if (!character || (token ?? undefined) === referenceFileTokenFor(character)) return;
+    const updated = withReferenceFile(character, token);
+    this.cast = this.cast!.map((member) => (member.id === characterId ? updated : member));
+    // Best effort: without it the next comic just uploads the sheet again.
+    await saveCharacter(updated);
+  }
+
+  /** What the panel request carries for each character: an uploaded sheet's token, else the sheet itself. */
+  private async referencesFor(panel: ScriptPanel, signal: AbortSignal, inline: boolean): Promise<WireReference[]> {
+    const references: WireReference[] = [];
+    for (const id of panel.characterIds) {
+      const character = this.cast?.find((member) => member.id === id);
+      if (!character) continue;
+      const base = { characterId: id, name: character.name, look: character.look };
+      const token = inline ? undefined : referenceFileTokenFor(character);
+      if (token) {
+        references.push({ ...base, fileToken: token });
+        continue;
+      }
+      const image = await this.referenceFor(id, signal);
+      references.push({ ...base, ...(image ? { image } : {}) });
+    }
+    return references;
   }
 
   private async drawPanels(script: ComicScript, signal: AbortSignal) {
@@ -370,21 +411,27 @@ export class ComicPipeline {
   private async drawPanel(panel: ComicScript["panels"][number], signal: AbortSignal) {
     this.setPanel(panel.index, { status: "drawing", error: undefined });
 
-    const references: WireReference[] = [];
-    for (const id of panel.characterIds) {
-      const character = this.cast?.find((member) => member.id === id);
-      if (!character) continue;
-      const image = await this.referenceFor(id, signal);
-      references.push({ characterId: id, name: character.name, look: character.look, ...(image ? { image } : {}) });
-    }
+    const shape = panelShape(panel.index, this.state.script?.panels.length ?? 1);
+    const send = async (inline: boolean) => {
+      const body: PanelRequest = { panel, references: await this.referencesFor(panel, signal, inline), shape };
+      return request<PanelResponse>("draw", "/api/panel", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+        signal,
+      });
+    };
 
-    const body: PanelRequest = { panel, references };
-    const result = await request<PanelResponse>("draw", "/api/panel", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-      signal,
-    });
+    let result: PanelResponse;
+    try {
+      result = await send(false);
+    } catch (error) {
+      if (!(error instanceof StepError && error.code === "stale-reference")) throw error;
+      // An uploaded sheet expired: forget the tokens and send the sheets themselves once.
+      for (const id of panel.characterIds) await this.rememberReferenceFile(id, null);
+      result = await send(true);
+    }
+    for (const { characterId, fileToken } of result.uploaded ?? []) await this.rememberReferenceFile(characterId, fileToken);
 
     const image = wireToBlob(result.image);
     const before = result.consistency.before ? wireToBlob(result.consistency.before) : null;
