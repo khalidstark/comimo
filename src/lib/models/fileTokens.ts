@@ -49,14 +49,18 @@ export function verifyFileToken(token: unknown): string | null {
 /* ---------- Sheets this server drew ---------- */
 
 /**
- * SHA-256 of the starter sheets in public/art/cast (drawn by Muse Image in
- * 03-02 and resized). Update these when those files change.
+ * SHA-256 of the starter sheets in public/art/cast, both styles (drawn by
+ * Muse Image in 03-02 and resized). Update these when those files change.
  */
 const STARTER_SHEETS = new Set([
   "6bd0220b7a06222bcca54c0c2c78302a6a3a6fa921a14d1145b5f0f987d7f0f3", // nour
   "b8349040508f74463be3359bde52eebbd16da38fd982a37791865163329a1745", // karim
   "32d5189a2fc821ff5bfdf8f16b81dbb187a18a7d23b47d4f15709df59b94b344", // teta
   "49ec269dfe4e1a9833a6d22f63594605e037eacd1163d9eb1172267a560fcbfb", // mishmish
+  "1167da991d265c1b31909bb9363655fc9e7a3df2467208aa5073809d2e836ba8", // nour, painterly
+  "b59eda46b88f9d4f4972670020ea12c74502e23b09dbecdf973354271db1df09", // karim, painterly
+  "5807c96bed83732ba13db8cc4e6e84cbdd073a49104a21362e84aae5a65e2de3", // teta, painterly
+  "37f06258df6a72b72a662cdebceaada7fc65009d81f0176c57a731bb3a152318", // mishmish, painterly
 ]);
 
 function sha256(data: Uint8Array): string {
