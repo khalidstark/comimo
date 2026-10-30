@@ -137,10 +137,81 @@
 }
 
 .status {
-  max-inline-size: 34ch;
+  justify-self: center;
+  max-inline-size: 36ch;
   text-align: center;
   color: var(--ink-soft);
   min-block-size: 3em;
+}
+
+/* A mic or file problem reads like a note pinned to the panel */
+.status[data-problem] {
+  padding: var(--space-2xs) var(--space-s);
+  color: var(--ink);
+  background: var(--surface);
+  border: var(--panel-border-thin) dashed var(--accent);
+  border-radius: 10px 12px 9px 11px;
+}
+
+/* Live level meter: same footprint as the resting wave */
+.meter {
+  display: block;
+  inline-size: min(100%, 22rem);
+  block-size: 3rem;
+  color: var(--ink);
+}
+
+/* ---------- Review: listen back, then make the comic ---------- */
+.review {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-s);
+  padding-block: var(--space-xs);
+}
+
+.reviewCaption {
+  rotate: -1.5deg;
+  font-size: var(--step-0);
+}
+
+.player {
+  inline-size: min(100%, 24rem);
+  block-size: 3rem;
+}
+
+.reviewActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-s);
+}
+
+.make {
+  font-size: var(--step-1);
+  min-block-size: 3.5rem;
+  padding-inline: 1.5em;
+}
+
+/* ---------- Upload ---------- */
+.upload {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-2xs);
+  padding-block-start: var(--space-s);
+  border-block-start: 2px dashed color-mix(in srgb, var(--ink) 25%, transparent);
+  text-align: center;
+}
+
+.uploadHint {
+  max-inline-size: 34ch;
+  color: var(--ink-soft);
+  font-size: var(--step--1);
+}
+
+.upload button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
 }
 
 /* ---------- Side column ---------- */
@@ -186,4 +257,9 @@
 .note {
   color: var(--ink-soft);
   font-size: var(--step--1);
+}
+
+/* Recording without Web Audio: the resting wave darkens so it still reads as live */
+.wave[data-live] span {
+  background: var(--accent);
 }

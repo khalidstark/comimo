@@ -45,17 +45,13 @@ export default function RecordPage() {
             <div className={styles.other}>
               <h2 className={styles.sideTitle}>Other ways in</h2>
               <div className={styles.otherActions}>
-                <button type="button" className="btn btn--ghost" aria-disabled="true" aria-describedby="upload-note">
-                  <Icon name="upload" size="1.2em" />
-                  Upload a voice note
-                </button>
                 <Link href="/day/sample" className="btn btn--ink" transitionTypes={PAGE_TURN}>
                   <Icon name="bookOpen" size="1.2em" />
                   Read a sample day
                 </Link>
               </div>
-              <p id="upload-note" className={styles.note}>
-                Uploads open together with recording.
+              <p className={styles.note}>
+                Already have a voice note on your phone? Upload it under the record button.
               </p>
             </div>
           </aside>
