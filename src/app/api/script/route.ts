@@ -1,7 +1,10 @@
 import { starterCastBriefs } from "@/fixtures/cast";
+import { guard, guardResponse } from "@/lib/guard";
 import { getModels } from "@/lib/models";
 import { isRecord, isText, json, jsonError, modelErrorResponse, readJson } from "@/lib/models/wire";
 import type { CastBrief, CharacterRole, ScriptResponse } from "@/lib/types";
+
+export const maxDuration = 60;
 
 const MAX_TRANSCRIPT = 20_000;
 const MAX_CAST = 20;
@@ -42,10 +45,16 @@ export async function POST(request: Request) {
   }
 
   const models = getModels();
+  const source = models.sources.writeScript;
+  // One script is one comic: this is the call the per-visitor comic limit counts.
+  const check = guard(request, "script", { real: source === "meta" });
+  if (!check.ok) return guardResponse(check);
+
   try {
-    const script = await models.writeScript(body.transcript, cast);
-    return json<ScriptResponse>({ mode: models.mode, script }, models.mode);
+    const script = await models.writeScript(body.transcript, cast, { visitorId: check.visitorId, signal: request.signal });
+    return json<ScriptResponse>({ mode: source, script }, source);
   } catch (error) {
+    check.undo();
     return modelErrorResponse(error);
   }
 }

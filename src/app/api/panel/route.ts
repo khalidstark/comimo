@@ -1,4 +1,5 @@
 import { starterCastById } from "@/fixtures/cast";
+import { guard, guardResponse } from "@/lib/guard";
 import { getModels, type CharacterReference } from "@/lib/models";
 import { fromWire, isRecord, isText, json, jsonError, modelErrorResponse, readJson, toWire } from "@/lib/models/wire";
 import type { DialogueLine, PanelResponse, ScriptPanel, TextDir } from "@/lib/types";
@@ -77,12 +78,18 @@ export async function POST(request: Request) {
   const inPanel = references.filter((ref) => panel.characterIds.includes(ref.characterId));
 
   const models = getModels();
+  const { drawPanel, checkConsistency } = models.sources;
+  const source = drawPanel === "meta" || checkConsistency === "meta" ? "meta" : "mock";
+  // A panel is one drawing, plus a redraw when a face drifts.
+  const check = guard(request, "panel", { real: source === "meta", images: drawPanel === "meta" ? 2 : 0 });
+  if (!check.ok) return guardResponse(check);
+
   try {
     const drawn = await models.drawPanel(panel, inPanel);
     const { driftedCharacterIds, fixedImage } = await models.checkConsistency(drawn, inPanel);
     return json<PanelResponse>(
       {
-        mode: models.mode,
+        mode: source,
         image: toWire(fixedImage ?? drawn),
         consistency: {
           driftedCharacterIds,
@@ -90,9 +97,10 @@ export async function POST(request: Request) {
           before: fixedImage ? toWire(drawn) : null,
         },
       },
-      models.mode,
+      source,
     );
   } catch (error) {
+    check.undo();
     return modelErrorResponse(error);
   }
 }
