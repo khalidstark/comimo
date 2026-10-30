@@ -83,8 +83,7 @@
 
   .addTitle,
   .addBody,
-  .add > button,
-  .note {
+  .add > button {
     grid-column: 2;
   }
 
@@ -101,7 +100,186 @@
   color: var(--ink-soft);
 }
 
-.note {
+/* ---------- Card actions ---------- */
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-xs) var(--space-s);
+  margin-block-start: var(--space-2xs);
+}
+
+/* Quiet text buttons for edit and remove, so the cards stay stickers, not forms */
+.textButton {
+  min-block-size: 2.75rem;
+  padding: 0 var(--space-2xs);
+  margin-inline-start: calc(var(--space-2xs) * -1);
+  border: 0;
+  background: none;
+  color: var(--accent-text);
+  font-family: var(--font-display-stack);
+  font-weight: 700;
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 0.2em;
+  cursor: pointer;
+}
+
+.textButton + .textButton {
+  margin-inline-start: 0;
+  color: var(--ink-soft);
+}
+
+.confirm {
+  display: grid;
+  gap: var(--space-2xs);
+  margin-block-start: var(--space-xs);
+  padding: var(--space-s);
+  border: var(--panel-border-thin) dashed var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+}
+
+/* A character Muse Image hasn't drawn yet: the empty outline with a tag */
+.undrawn {
+  position: relative;
+  display: grid;
+  place-items: center;
+  aspect-ratio: 300 / 360;
+}
+
+.undrawnTag {
+  position: absolute;
+  inset-block-end: var(--space-xs);
+  padding: 0.15em 0.6em 0.2em;
+  background: var(--highlight);
+  color: var(--on-highlight);
+  border: var(--panel-border-thin) solid #1b2148;
+  font-family: var(--font-lettering-stack);
+  font-size: var(--step--1);
+  font-weight: 600;
+  rotate: -2deg;
+}
+
+/* ---------- Form (in place of a card, or in the add slot) ---------- */
+.editing {
+  grid-column: 1 / -1;
+}
+
+.form {
+  display: grid;
+  gap: var(--space-m);
+  max-inline-size: 44rem;
+  padding: var(--space-m);
+  background: var(--surface);
+  border: var(--panel-border) solid var(--line);
+  border-radius: var(--radius-panel);
+  box-shadow: var(--shadow-panel);
+}
+
+@media (min-width: 48rem) {
+  .form {
+    padding: var(--space-l);
+  }
+}
+
+.formTitle {
+  font-size: var(--step-2);
+}
+
+.formTitle:focus {
+  outline: none;
+}
+
+.fields {
+  display: grid;
+  gap: var(--space-m);
+}
+
+.fieldRow {
+  display: grid;
+  gap: var(--space-m);
+}
+
+@media (min-width: 40rem) {
+  .fieldRow {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.field {
+  display: grid;
+  gap: var(--space-3xs);
+  align-content: start;
+}
+
+.label {
+  font-weight: 700;
+}
+
+.optional,
+.hint {
   color: var(--ink-soft);
   font-size: var(--step--1);
+  font-weight: 500;
+}
+
+.field input,
+.field select,
+.field textarea {
+  inline-size: 100%;
+  min-block-size: 3rem;
+  padding: var(--space-2xs) var(--space-xs);
+  border: var(--panel-border-thin) solid var(--line);
+  border-radius: 10px;
+  background: var(--paper);
+}
+
+.field textarea {
+  resize: vertical;
+  line-height: 1.45;
+}
+
+.field [aria-invalid="true"] {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 35%, transparent);
+}
+
+.error {
+  color: var(--accent-text);
+  font-size: var(--step--1);
+  font-weight: 600;
+}
+
+/* The reference sheet slot: an uncut panel waiting for its drawing */
+.refSlot {
+  display: grid;
+  gap: var(--space-3xs);
+  padding: var(--space-s);
+  border: var(--panel-border-thin) dashed color-mix(in srgb, var(--ink) 45%, transparent);
+  border-radius: var(--radius-panel);
+  background: repeating-linear-gradient(
+      -45deg,
+      transparent 0 9px,
+      color-mix(in srgb, var(--ink) 5%, transparent) 9px 10px
+    ),
+    var(--paper);
+}
+
+.refSlot p {
+  color: var(--ink-soft);
+}
+
+/* ---------- Loading ---------- */
+.loading {
+  color: var(--ink-soft);
+  font-family: var(--font-lettering-stack);
+  font-weight: 600;
+}
+
+.ghost {
+  aspect-ratio: 300 / 360;
+  max-inline-size: 15rem;
+  border: var(--panel-border-thin) dashed color-mix(in srgb, var(--ink) 35%, transparent);
+  border-radius: var(--radius-sticker);
 }

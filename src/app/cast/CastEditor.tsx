@@ -1,0 +1,460 @@
+"use client";
+
+import { useEffect, useId, useRef, useState, type CSSProperties, type FormEvent } from "react";
+import { Art } from "@/art/Art";
+import { Icon } from "@/art/Icon";
+import { art, artAt } from "@/art/manifest";
+import { BidiText } from "@/components/comic/BidiText";
+import { Sprite } from "@/components/Sprite";
+import { useTalkWhenShown } from "@/components/useTalkWhenShown";
+import { firstStrongDir } from "@/lib/bidi";
+import {
+  LIMITS,
+  ROLE_OPTIONS,
+  characterFromDraft,
+  defaultRoleLabel,
+  draftFrom,
+  loadCast,
+  spriteSheetFor,
+  validateDraft,
+  type CharacterDraft,
+  type DraftErrors,
+  type DraftField,
+} from "@/lib/cast";
+import { deleteCharacter, saveCharacter } from "@/lib/store";
+import type { Character, CharacterRole } from "@/lib/types";
+import styles from "./cast.module.css";
+
+const TILTS = ["-3deg", "2deg", "-1.5deg", "3deg"];
+
+type Editing = { kind: "new" } | { kind: "edit"; id: string } | null;
+
+/**
+ * The cast screen: the user's characters from this device, with add, edit
+ * and remove. The starter cast is written to the store on the first run, so
+ * it can be edited or removed like anyone else.
+ */
+export function CastEditor() {
+  const [cast, setCast] = useState<Character[] | null>(null);
+  const [editing, setEditing] = useState<Editing>(null);
+  const [confirming, setConfirming] = useState<string | null>(null);
+  const [notice, setNotice] = useState("");
+  /** Where focus goes after the list re-renders (a card's edit button, or the add button). */
+  const focusAfter = useRef<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    void loadCast().then((loaded) => {
+      if (!cancelled) setCast(loaded);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!focusAfter.current) return;
+    document.getElementById(focusAfter.current)?.focus();
+    focusAfter.current = null;
+  });
+
+  if (!cast) return <CastLoading />;
+
+  const list = cast;
+
+  async function save(character: Character, isNew: boolean) {
+    const ok = await saveCharacter(character);
+    if (!ok) return "This browser isn't letting Comimo save right now. Try again in a normal (not private) window.";
+    setCast((current) => {
+      const rest = (current ?? []).filter((member) => member.id !== character.id);
+      return isNew ? [...rest, character] : (current ?? []).map((m) => (m.id === character.id ? character : m));
+    });
+    setEditing(null);
+    setNotice(isNew ? `${character.name} joined your cast.` : `Saved ${character.name}.`);
+    focusAfter.current = `edit-${character.id}`;
+    return null;
+  }
+
+  async function remove(member: Character) {
+    const ok = await deleteCharacter(member.id);
+    if (!ok) {
+      setNotice(`Couldn't remove ${member.name} on this device.`);
+      return;
+    }
+    const at = list.findIndex((m) => m.id === member.id);
+    const neighbour = list[at + 1] ?? list[at - 1];
+    setCast(list.filter((m) => m.id !== member.id));
+    setConfirming(null);
+    setNotice(`${member.name} left your cast. Comics you already made keep them.`);
+    focusAfter.current = neighbour ? `edit-${neighbour.id}` : "add-character";
+  }
+
+  function cancel(returnTo: string) {
+    setEditing(null);
+    focusAfter.current = returnTo;
+  }
+
+  return (
+    <>
+      <p className="visually-hidden" role="status">
+        {notice}
+      </p>
+
+      <ul className={styles.grid}>
+        {list.map((member, i) =>
+          editing?.kind === "edit" && editing.id === member.id ? (
+            <li key={member.id} className={styles.editing}>
+              <CharacterForm
+                character={member}
+                others={list.filter((m) => m.id !== member.id)}
+                onSave={(character) => save(character, false)}
+                onCancel={() => cancel(`edit-${member.id}`)}
+              />
+            </li>
+          ) : (
+            <CastCard
+              key={member.id}
+              member={member}
+              tilt={TILTS[i % TILTS.length]}
+              confirming={confirming === member.id}
+              onEdit={() => {
+                setConfirming(null);
+                setEditing({ kind: "edit", id: member.id });
+              }}
+              onAskRemove={() => setConfirming(member.id)}
+              onKeep={() => {
+                setConfirming(null);
+                focusAfter.current = `remove-${member.id}`;
+              }}
+              onRemove={() => void remove(member)}
+            />
+          ),
+        )}
+
+        {editing?.kind === "new" ? (
+          <li className={styles.editing}>
+            <CharacterForm
+              others={list}
+              onSave={(character) => save(character, true)}
+              onCancel={() => cancel("add-character")}
+            />
+          </li>
+        ) : (
+          <li className={styles.add}>
+            <Art asset={art.empty.cast} className={styles.addArt} alt="" />
+            <h2 className={styles.addTitle}>{list.length === 0 ? "Your cast is empty" : "Add someone from your life"}</h2>
+            <p className={styles.addBody}>
+              A name, how they look, how they talk. Comimo keeps them looking the same in every panel.
+              {list.length === 0 ? " Until you add someone, comics use the starter cast." : ""}
+            </p>
+            <button
+              id="add-character"
+              type="button"
+              className="btn btn--accent"
+              onClick={() => {
+                setConfirming(null);
+                setEditing({ kind: "new" });
+              }}
+            >
+              <Icon name="plus" size="1.1em" />
+              Add a character
+            </button>
+          </li>
+        )}
+      </ul>
+    </>
+  );
+}
+
+/* ---------- One character ---------- */
+
+interface CastCardProps {
+  member: Character;
+  tilt: string;
+  confirming: boolean;
+  onEdit: () => void;
+  onAskRemove: () => void;
+  onKeep: () => void;
+  onRemove: () => void;
+}
+
+function CastCard({ member, tilt, confirming, onEdit, onAskRemove, onKeep, onRemove }: CastCardProps) {
+  const cardRef = useRef<HTMLLIElement>(null);
+  const bubbleRef = useRef<HTMLParagraphElement>(null);
+  const confirmRef = useRef<HTMLButtonElement>(null);
+  const talking = useTalkWhenShown(bubbleRef, member.line ?? "");
+  const sheet = spriteSheetFor(member);
+  const nameId = `name-${member.id}`;
+
+  useEffect(() => {
+    if (confirming) confirmRef.current?.focus();
+  }, [confirming]);
+
+  return (
+    <li ref={cardRef} className={styles.member} style={{ "--tilt": tilt } as CSSProperties} aria-labelledby={nameId}>
+      <div className={`sticker ${styles.sprite}`}>
+        {sheet ? (
+          <Sprite sheet={sheet} label={member.name} talking={talking} hostRef={cardRef} />
+        ) : (
+          <div className={styles.undrawn}>
+            {member.portrait.kind === "art" ? <Art asset={artAt(member.portrait.path)} alt="" /> : null}
+            <span className={styles.undrawnTag}>Not drawn yet</span>
+          </div>
+        )}
+      </div>
+      <div className={styles.info}>
+        <h2 id={nameId} className={styles.name} dir="auto">
+          {member.name}
+        </h2>
+        <p className="chip" dir="auto">
+          {member.roleLabel}
+        </p>
+        {member.line ? (
+          <p ref={bubbleRef} className={`bubble ${styles.line}`} dir={firstStrongDir(member.line) ?? "auto"}>
+            <BidiText text={member.line} />
+          </p>
+        ) : null}
+
+        {confirming ? (
+          <div className={styles.confirm} role="group" aria-labelledby={`confirm-${member.id}`}>
+            <p id={`confirm-${member.id}`}>
+              Remove <bdi>{member.name}</bdi> from your cast? Comics you already made keep them.
+            </p>
+            <div className={styles.actions}>
+              <button ref={confirmRef} type="button" className="btn btn--ink" onClick={onRemove}>
+                Remove
+              </button>
+              <button type="button" className="btn btn--ghost" onClick={onKeep}>
+                Keep
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className={styles.actions}>
+            <button id={`edit-${member.id}`} type="button" className={styles.textButton} onClick={onEdit}>
+              Edit<span className="visually-hidden"> {member.name}</span>
+            </button>
+            <button id={`remove-${member.id}`} type="button" className={styles.textButton} onClick={onAskRemove}>
+              Remove<span className="visually-hidden"> {member.name}</span>
+            </button>
+          </div>
+        )}
+      </div>
+    </li>
+  );
+}
+
+/* ---------- The form ---------- */
+
+interface CharacterFormProps {
+  character?: Character;
+  others: Character[];
+  onSave: (character: Character) => Promise<string | null>;
+  onCancel: () => void;
+}
+
+const FIELD_ORDER: DraftField[] = ["name", "role", "roleLabel", "look", "personality", "line"];
+
+function CharacterForm({ character, others, onSave, onCancel }: CharacterFormProps) {
+  const id = useId();
+  const [draft, setDraft] = useState<CharacterDraft>(() => draftFrom(character));
+  const [errors, setErrors] = useState<DraftErrors>({});
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  const fieldId = (field: DraftField) => `${id}-${field}`;
+
+  useEffect(() => {
+    headingRef.current?.focus();
+  }, []);
+
+  function set<K extends DraftField>(field: K, value: CharacterDraft[K]) {
+    setDraft((current) => ({ ...current, [field]: value }));
+    // Clear a field's message as soon as it's being fixed.
+    if (errors[field]) setErrors((current) => ({ ...current, [field]: undefined }));
+  }
+
+  async function submit(event: FormEvent) {
+    event.preventDefault();
+    if (busy) return;
+    const found = validateDraft(draft, others);
+    setErrors(found);
+    const first = FIELD_ORDER.find((field) => found[field]);
+    if (first) {
+      document.getElementById(fieldId(first))?.focus();
+      return;
+    }
+    setBusy(true);
+    const problem = await onSave(characterFromDraft(draft, character));
+    setBusy(false);
+    setSaveError(problem);
+  }
+
+  const describedBy = (field: DraftField, hint?: boolean) =>
+    [hint ? `${fieldId(field)}-hint` : null, errors[field] ? `${fieldId(field)}-error` : null]
+      .filter(Boolean)
+      .join(" ") || undefined;
+
+  const error = (field: DraftField) =>
+    errors[field] ? (
+      <span id={`${fieldId(field)}-error`} className={styles.error}>
+        {errors[field]}
+      </span>
+    ) : null;
+
+  return (
+    <form className={styles.form} onSubmit={submit} noValidate aria-labelledby={`${id}-title`}>
+      <h2 id={`${id}-title`} ref={headingRef} tabIndex={-1} className={styles.formTitle} dir="auto">
+        {character ? `Edit ${character.name}` : "Add a character"}
+      </h2>
+
+      <div className={styles.fields}>
+        <label className={styles.field} htmlFor={fieldId("name")}>
+          <span className={styles.label}>Name</span>
+          <input
+            id={fieldId("name")}
+            value={draft.name}
+            onChange={(event) => set("name", event.target.value)}
+            dir="auto"
+            autoComplete="off"
+            maxLength={LIMITS.name + 8}
+            aria-invalid={errors.name ? true : undefined}
+            aria-describedby={describedBy("name")}
+          />
+          {error("name")}
+        </label>
+
+        <div className={styles.fieldRow}>
+          <label className={styles.field} htmlFor={fieldId("role")}>
+            <span className={styles.label}>Who they are to you</span>
+            <select
+              id={fieldId("role")}
+              value={draft.role}
+              onChange={(event) => set("role", event.target.value as CharacterRole)}
+              aria-invalid={errors.role ? true : undefined}
+              aria-describedby={describedBy("role")}
+            >
+              {ROLE_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+            {error("role")}
+          </label>
+
+          <label className={styles.field} htmlFor={fieldId("roleLabel")}>
+            <span className={styles.label}>
+              Label on their card <span className={styles.optional}>(optional)</span>
+            </span>
+            <input
+              id={fieldId("roleLabel")}
+              value={draft.roleLabel}
+              onChange={(event) => set("roleLabel", event.target.value)}
+              placeholder={defaultRoleLabel(draft.role)}
+              dir="auto"
+              autoComplete="off"
+              maxLength={LIMITS.roleLabel + 8}
+              aria-invalid={errors.roleLabel ? true : undefined}
+              aria-describedby={describedBy("roleLabel")}
+            />
+            {error("roleLabel")}
+          </label>
+        </div>
+
+        <label className={styles.field} htmlFor={fieldId("look")}>
+          <span className={styles.label}>How they look</span>
+          <span id={`${fieldId("look")}-hint`} className={styles.hint}>
+            Hair, clothes, something they always carry. This is what keeps their face the same.
+          </span>
+          <textarea
+            id={fieldId("look")}
+            value={draft.look}
+            onChange={(event) => set("look", event.target.value)}
+            rows={3}
+            dir="auto"
+            maxLength={LIMITS.look + 40}
+            aria-invalid={errors.look ? true : undefined}
+            aria-describedby={describedBy("look", true)}
+          />
+          {error("look")}
+        </label>
+
+        <label className={styles.field} htmlFor={fieldId("personality")}>
+          <span className={styles.label}>
+            How they act and talk <span className={styles.optional}>(optional)</span>
+          </span>
+          <textarea
+            id={fieldId("personality")}
+            value={draft.personality}
+            onChange={(event) => set("personality", event.target.value)}
+            rows={2}
+            dir="auto"
+            maxLength={LIMITS.personality + 40}
+            aria-invalid={errors.personality ? true : undefined}
+            aria-describedby={describedBy("personality")}
+          />
+          {error("personality")}
+        </label>
+
+        <label className={styles.field} htmlFor={fieldId("line")}>
+          <span className={styles.label}>
+            A line they&apos;d say <span className={styles.optional}>(optional)</span>
+          </span>
+          <input
+            id={fieldId("line")}
+            value={draft.line}
+            onChange={(event) => set("line", event.target.value)}
+            dir="auto"
+            autoComplete="off"
+            maxLength={LIMITS.line + 20}
+            aria-invalid={errors.line ? true : undefined}
+            aria-describedby={describedBy("line")}
+          />
+          {error("line")}
+        </label>
+
+        <div className={styles.refSlot}>
+          <span className={styles.label}>Reference sheet</span>
+          <p>
+            {character?.referenceSheet
+              ? "Drawn. Comimo uses it to keep their face the same."
+              : "Comimo will draw this from the look above when the Meta credits arrive."}
+          </p>
+        </div>
+      </div>
+
+      {saveError ? (
+        <p className={styles.error} role="alert">
+          {saveError}
+        </p>
+      ) : null}
+
+      <div className={styles.actions}>
+        <button type="submit" className="btn btn--accent" aria-disabled={busy || undefined}>
+          {character ? "Save changes" : "Add to my cast"}
+        </button>
+        <button type="button" className="btn btn--ghost" onClick={onCancel}>
+          Cancel
+        </button>
+      </div>
+    </form>
+  );
+}
+
+/* ---------- Loading ---------- */
+
+function CastLoading() {
+  return (
+    <div aria-busy="true">
+      <p className={styles.loading} role="status">
+        Opening your cast…
+      </p>
+      <ul className={styles.grid} aria-hidden="true">
+        {Array.from({ length: 4 }, (_, i) => (
+          <li key={i} className={styles.ghost} />
+        ))}
+      </ul>
+    </div>
+  );
+}
