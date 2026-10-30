@@ -76,10 +76,19 @@ function rollDay() {
   }
 }
 
-/** The caller's IP as the proxy reports it. Vercel sets x-forwarded-for. */
+/**
+ * The caller's IP, only from a source the visitor can't set.
+ *
+ * On Vercel (VERCEL=1 at runtime) the platform overwrites X-Forwarded-For and
+ * sets X-Vercel-Forwarded-For "to prevent IP spoofing" (vercel.com/docs/headers/request-headers),
+ * so those are trusted there. Anywhere else these headers come straight from
+ * the client, so every caller counts as "local" and the global daily caps do
+ * the limiting. X-Real-IP is never read.
+ */
 function clientIp(request: Request): string {
-  const forwarded = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
-  return forwarded || request.headers.get("x-real-ip")?.trim() || "local";
+  if (process.env.VERCEL !== "1") return "local";
+  const header = request.headers.get("x-vercel-forwarded-for") ?? request.headers.get("x-forwarded-for");
+  return header?.split(",")[0]?.trim() || "local";
 }
 
 /** A salted hash of the IP: stable within this server, not reversible to the IP. Fits `safety_identifier` (64 chars). */
