@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useEffectEvent, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
 import { Art } from "@/art/Art";
 import { art } from "@/art/manifest";
 import { PAGE_TURN } from "@/components/PageTurn";
@@ -79,7 +79,8 @@ function captionFor(state: PipelineState, fixing: PanelProgress | undefined): st
   if (state.status === "error" && state.error) return state.error.message;
   if (state.status === "cancelled") return "Stopped. Your voice note is still here.";
   if (fixing) return `Fixing ${facesOf(fixing.fixedNames)}…`;
-  if (state.status === "done") return crisis ? "We'll set the comic aside for today." : "Your comic is ready. Opening it…";
+  if (state.status === "done")
+    return crisis ? "We'll set the comic aside for today." : "Your comic is ready. Opening it…";
   const { steps } = state;
   if (steps.save === "active") return "Binding the pages…";
   if (steps.draw === "active") {
@@ -119,12 +120,23 @@ export function MakingComic({ audio, language, onClose }: MakingComicProps) {
   const finished = status === "done" && state.dayId !== null && !fixing;
   const failedStep = state.error?.step;
 
+  // Coming back to /record after the comic opened: the run is over, so drop the screen.
+  const leaveFinished = useEffectEvent(() => onClose());
+
   // Open as a modal (the page behind goes inert) and announce the heading.
-  useEffect(() => {
+  // Next keeps this page mounted but hidden (Activity) after routing to the
+  // day, so the dialog must close when hidden or the day page stays inert.
+  useLayoutEffect(() => {
     const dialog = dialogRef.current;
-    if (dialog && !dialog.open) dialog.showModal();
+    if (!dialog) return;
+    if (pipeline.getSnapshot().status === "done") {
+      leaveFinished();
+      return;
+    }
+    if (!dialog.open) dialog.showModal();
     headingRef.current?.focus();
-  }, []);
+    return () => dialog.close();
+  }, [pipeline]);
 
   useEffect(() => {
     void pipeline.start();
@@ -228,8 +240,8 @@ export function MakingComic({ audio, language, onClose }: MakingComicProps) {
                 </>
               ) : crisis ? (
                 <p className={styles.pause} dir="auto">
-                  That sounded like a really heavy day. Instead of a comic, the next page has some people you can
-                  talk to.
+                  That sounded like a really heavy day. Instead of a comic, the next page has some people you can talk
+                  to.
                 </p>
               ) : (
                 <div className={styles.titleCard}>
