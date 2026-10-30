@@ -10,28 +10,28 @@ See: .planning/PROJECT.md (updated 2026-10-30)
 ## Current Position
 
 Phase: 2 of 5 (Comic Experience)
-Plan: 1 of 3 in current phase
+Plan: 2 of 3 in current phase
 Status: In progress
-Last activity: 2026-10-30 — Completed 02-01-PLAN.md (recorder, pipeline, progress screen)
+Last activity: 2026-10-30 — Completed 02-02-PLAN.md (comic reader, bidi bubbles, SAM before/after)
 
-Progress: ███░░░░░░░ 27% (3 of 11 plans)
+Progress: ████░░░░░░ 36% (4 of 11 plans)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 3
+- Total plans completed: 4
 - Average duration: 21 min
-- Total execution time: 1.1 hours
+- Total execution time: 1.4 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 1. Foundation | 2 | 48 min | 24 min |
-| 2. Comic Experience | 1 | 16 min | 16 min |
+| 2. Comic Experience | 2 | 37 min | 19 min |
 
 **Recent Trend:**
-- Last 5 plans: 36, 12, 16 min
+- Last 5 plans: 36, 12, 16, 21 min
 - Trend: steady (autonomous plans)
 
 ## Accumulated Context
@@ -49,11 +49,14 @@ Recent decisions affecting current work:
 - 01-02: Kept the approved starter cast; ISS-004 closed, user keeps it as is.
 - 02-01: Progress is a modal <dialog> over /record; cancel keeps the voice note. ComicPipeline resumes at the failed step.
 - 02-01: Saved days use blob ImageRefs `<dayId>-panel-<n>` (and `-before`); starter cast is seeded into the store on first run.
+- 02-02: /day/[id] prerenders sample days and reads any other id from IndexedDB on the client (DayReader); comic components live in src/components/comic.
+- 02-02: Bubble direction follows the first strong letter; every language run is isolated in a <bdi> (ISS-001 closed).
+- 02-02: Next 16 hides pages with Activity instead of unmounting; modal dialogs must close in a layout effect cleanup.
 - Build on mock data until the Meta API credits appear on the Billing page; the card is saved, so any real call before then is charged to it.
 
 ### Deferred Issues
 
-5 open (ISS-001 bidi punctuation in bubbles, fix in 02-02; ISS-005 panel body size, fix in 03-02; ISS-006 missing favicon, 04-02) — see ISSUES.md
+4 open (ISS-002 placeholder label, ISS-003 font warning, ISS-005 panel body size, fix in 03-02; ISS-006 missing favicon, 04-02) — see ISSUES.md
 
 ### Blockers/Concerns
 
@@ -62,6 +65,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-10-30 15:27
-Stopped at: Completed 02-01-PLAN.md; next is 02-02 (day reader from IndexedDB; new days currently land on the "not on this device" state)
+Last session: 2026-10-30 15:48
+Stopped at: Completed 02-02-PLAN.md; next is 02-03 (check-in card, safety card, cast editor, sprite player; then the user checkpoint)
 Resume file: None

@@ -2,11 +2,6 @@
 
 ## Open
 
-### ISS-001: Mixed Arabic/English bubble text misplaces punctuation
-- **Found:** Phase 1, plan 01-01 (design screenshots)
-- **Detail:** "I won't make it ,مش هلحق" renders the comma on the wrong side. Needs per-run bidi isolation (`<bdi>` or unicode-bidi: isolate per language run) in speech bubbles.
-- **Address in:** 02-02 (comic reader bubbles)
-
 ### ISS-002: "placeholder" label clipped on small panel SVGs
 - **Found:** Phase 1, plan 01-01
 - **Detail:** Cosmetic; art is replaced in Phase 4.
@@ -26,6 +21,9 @@
 - **Address in:** 04-02 (site art)
 
 ## Closed
+
+### ISS-001: Mixed Arabic/English bubble text misplaces punctuation
+- **Closed:** 2026-10-30, fixed in 02-02. Bubbles split each line into language runs (src/lib/bidi.ts) and isolate each in a `<bdi>`; neutrals stay with the run they follow. "I won't make it, مش هلحق" now shows the comma right after "it" (checked in headless Chrome). Home and cast bubbles use the same helper.
 
 ### ISS-004: Starter cast has no teacher or younger sibling
 - **Closed:** 2026-10-30, won't do. User keeps the cast as is (Nour, Karim, Teta Samia, Mishmish).
