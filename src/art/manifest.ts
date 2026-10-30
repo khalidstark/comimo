@@ -96,7 +96,7 @@ export const art = {
     cover: placeholder("month-cover.svg", "", 480, 600),
   },
   /**
-   * Starter cast reference sheets, drawn by Muse Image (front and
+   * Starter cast reference sheets in the zine style, drawn by Muse Image (front and
    * three-quarter views). Panels are drawn from these, so a fresh device and
    * the live demo start with drawn characters.
    */
@@ -105,6 +105,13 @@ export const art = {
     karim: drawn("cast/karim-sheet.webp", "Karim's reference sheet, front and three-quarter views", 1536, 1024),
     teta: drawn("cast/teta-sheet.webp", "Teta Samia's reference sheet, front and three-quarter views", 1536, 1024),
     mishmish: drawn("cast/mishmish-sheet.webp", "Mishmish's reference sheet, front and three-quarter views", 1536, 1024),
+  },
+  /** The same starter sheets in the Painterly art style. */
+  castPainterly: {
+    nour: drawn("cast/nour-sheet-painterly.webp", "Nour's painterly reference sheet, front and three-quarter views", 1536, 1024),
+    karim: drawn("cast/karim-sheet-painterly.webp", "Karim's painterly reference sheet, front and three-quarter views", 1536, 1024),
+    teta: drawn("cast/teta-sheet-painterly.webp", "Teta Samia's painterly reference sheet, front and three-quarter views", 1536, 1024),
+    mishmish: drawn("cast/mishmish-sheet-painterly.webp", "Mishmish's painterly reference sheet, front and three-quarter views", 1536, 1024),
   },
 } as const satisfies Record<string, Record<string, ArtAsset>>;
 
