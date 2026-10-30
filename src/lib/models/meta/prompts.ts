@@ -158,7 +158,7 @@ export function panelPrompt(scene: string, characters: PanelCharacter[], wide: b
       : "Composition: a medium shot with the characters clearly readable.",
   );
   lines.push(
-    "Keep the top fifth of the panel calm and empty of detail (plain sky, wall or ceiling), with every head below it, so speech bubbles can be added there later. No panel border.",
+    "Leave the top third of the panel as plain, empty background (sky, wall or ceiling) with no heads, faces or important details in it: captions and speech bubbles will cover that area later. Place the characters in the lower two thirds, heads fully inside the frame and below that empty band. No panel border.",
   );
   lines.push(ART_STYLE);
   lines.push(NO_TEXT);
