@@ -14,7 +14,7 @@ None
 - Integer phases (1, 2, 3): Planned milestone work
 - Decimal phases (2.1, 2.2): Urgent insertions (marked with INSERTED)
 
-- [ ] **Phase 1: Foundation** - Next.js skeleton, design system, art manifest with placeholders, on-device storage, mock mode
+- [x] **Phase 1: Foundation** - Next.js skeleton, design system, art manifest with placeholders, on-device storage, mock mode
 - [ ] **Phase 2: Comic Experience** - Record, progress, comic reader with RTL bubbles, check-in card, day weather and cast, all on mock data
 - [ ] **Phase 3: Meta Model Pipeline** - Real Voice Transcribe, Spark, Image and SAM 3.1 calls with the consistency fix loop and a spending guard
 - [ ] **Phase 4: Magazine and Art** - Monthly flip-through comic book, Muse-generated site art and sprites, sample days and demo content
@@ -30,7 +30,7 @@ None
 
 Plans:
 - [x] 01-01: Scaffold Next.js app, design tokens, fonts, layout, page shells and art manifest with placeholders
-- [ ] 01-02: Data model, IndexedDB store, mock model layer with fixtures for an invented cast and sample days
+- [x] 01-02: Data model, IndexedDB store, mock model layer with fixtures for an invented cast and sample days
 
 ### Phase 2: Comic Experience
 **Goal**: The full journey works end to end on mock data: record or upload, watch the comic being made, read it, answer the check-in card on heavy days, manage the cast
@@ -81,7 +81,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation | 1/2 | In progress | - |
+| 1. Foundation | 2/2 | Complete | 2026-10-30 |
 | 2. Comic Experience | 0/3 | Not started | - |
 | 3. Meta Model Pipeline | 0/3 | Not started | - |
 | 4. Magazine and Art | 0/2 | Not started | - |
