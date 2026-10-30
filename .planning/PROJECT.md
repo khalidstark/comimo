@@ -21,11 +21,12 @@ Talking about your day for a minute gives you back a comic that feels like your 
 - [ ] Cast: create characters once (name, look, personality), each with a Muse Image reference sheet; ships with an invented starter cast
 - [ ] Panels drawn with Muse Image using the reference sheets of the characters in each panel
 - [ ] SAM 3.1 checks every panel, finds characters whose look drifted from their reference sheet, and redraws them; the app shows the before and after
+- [ ] Comic pages laid out like a real manga/graphic novel (varied panel sizes from shot types, splash panel, slanted gutters, insets), never equal boxes
 - [ ] Comic page reader with speech bubbles that render Arabic right to left correctly
 - [ ] Check-in card after the comic when Muse Spark detects a heavy or stressful day: 2 or 3 gentle reflection questions, the answers saved with that day
 - [ ] Day mood shown as a small "day weather" icon on each comic, never as a number or score
 - [ ] Monthly comic book: a magazine-style flip-through of the month's comics with a month-at-a-glance mood strip
-- [ ] One polished main art theme; site art, sprites, icons and textures generated with Muse Image
+- [ ] Two comic art themes: the zine style and Painterly (semi-realistic painted, cinematic moody light, per the user's reference PDF); site art, sprites, icons and textures generated with Muse Image
 - [ ] Sprite sheets make the cast and mascot feel alive (idle blink, talk while their bubble appears, wave on the home page), animated with CSS steps()
 - [ ] Mobile-friendly, accessible web UX: big record button, clear progress while the comic is being made, keyboard and screen-reader friendly
 - [ ] Quiet guard: if a note mentions self-harm or crisis, Comimo doesn't draw a comic and shows one plain line (no safety card, per user)
