@@ -2,6 +2,7 @@ import { artAt } from "@/art/manifest";
 import { AudioConvertError, toWav } from "./audio/toWav";
 import { loadCast } from "./cast";
 import { getDay, getImage, newId, putImage, saveDay } from "./store";
+import { blobToWire, wireToBlob } from "./wireImage";
 import type {
   ApiError,
   CastBrief,
@@ -119,25 +120,6 @@ async function request<T>(step: PipelineStep, url: string, init: RequestInit): P
 }
 
 /* ---------- Images ---------- */
-
-function wireToBlob(image: WireImage): Blob {
-  const binary = atob(image.base64);
-  const bytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-  return new Blob([bytes], { type: image.mimeType });
-}
-
-function blobToWire(blob: Blob): Promise<WireImage> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const url = String(reader.result);
-      resolve({ mimeType: blob.type || "image/png", base64: url.slice(url.indexOf(",") + 1) });
-    };
-    reader.onerror = () => reject(reader.error);
-    reader.readAsDataURL(blob);
-  });
-}
 
 /** A character's reference sheet as a wire image: a stored Blob or a manifest file. */
 async function loadReference(ref: ImageRef | null, signal: AbortSignal): Promise<WireImage | undefined> {
