@@ -24,6 +24,11 @@ function placeholder(file: string, alt: string, width: number, height: number): 
   return { src: `${PLACEHOLDER_DIR}/${file}`, alt, width, height, placeholder: true };
 }
 
+/** Art drawn with Muse Image, kept under public/art. */
+function drawn(file: string, alt: string, width: number, height: number): ArtAsset {
+  return { src: `/art/${file}`, alt, width, height, placeholder: false };
+}
+
 export const art = {
   brand: {
     logoMark: placeholder("logo-mark.svg", "", 64, 64),
@@ -89,6 +94,17 @@ export const art = {
   },
   month: {
     cover: placeholder("month-cover.svg", "", 480, 600),
+  },
+  /**
+   * Starter cast reference sheets, drawn by Muse Image (front and
+   * three-quarter views). Panels are drawn from these, so a fresh device and
+   * the live demo start with drawn characters.
+   */
+  cast: {
+    nour: drawn("cast/nour-sheet.webp", "Nour's reference sheet, front and three-quarter views", 1536, 1024),
+    karim: drawn("cast/karim-sheet.webp", "Karim's reference sheet, front and three-quarter views", 1536, 1024),
+    teta: drawn("cast/teta-sheet.webp", "Teta Samia's reference sheet, front and three-quarter views", 1536, 1024),
+    mishmish: drawn("cast/mishmish-sheet.webp", "Mishmish's reference sheet, front and three-quarter views", 1536, 1024),
   },
 } as const satisfies Record<string, Record<string, ArtAsset>>;
 
