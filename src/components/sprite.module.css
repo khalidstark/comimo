@@ -1,0 +1,43 @@
+/* A sprite: one frame of a sheet, shown through a window the size of a frame.
+   The sheet is scaled so one frame fills the window; background-position
+   picks the row (custom property) and steps() walks the columns. */
+.sprite {
+  position: relative;
+  display: block;
+  inline-size: 100%;
+  overflow: hidden;
+}
+
+.frames {
+  position: absolute;
+  inset: 0;
+  background-repeat: no-repeat;
+  background-position-x: 0%;
+  background-position-y: var(--sprite-row, 0%);
+}
+
+.frames[data-moving] {
+  animation: sprite-play var(--sprite-duration, 1s) steps(var(--sprite-steps, 1)) var(--sprite-iterations, infinite);
+  animation-play-state: paused;
+}
+
+/* Runs only while on screen and the tab is visible */
+.sprite[data-playing] > .frames[data-moving] {
+  animation-play-state: running;
+}
+
+@keyframes sprite-play {
+  from {
+    background-position-x: 0%;
+  }
+  to {
+    background-position-x: var(--sprite-end, 0%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .frames,
+  .frames[data-moving] {
+    animation: none;
+  }
+}
