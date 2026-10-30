@@ -210,11 +210,13 @@ function stampFixed(image: ModelImage, name: string): ModelImage {
 
 /**
  * Pretends roughly one panel in three has a drifted character, chosen from the
- * image bytes so the same panel always gives the same answer.
+ * image bytes so the same panel always gives the same answer. Only mock (SVG)
+ * panels get a pretend fix: a real drawn panel can't be stamped, and a "fixed"
+ * badge over an unchanged image would mislead.
  */
 async function checkConsistency(image: ModelImage, references: CharacterReference[]): Promise<ConsistencyResult> {
   await wait(DELAY_MS.check);
-  if (references.length === 0) return { driftedCharacterIds: [], fixedImage: null };
+  if (references.length === 0 || image.mimeType !== SVG_TYPE) return { driftedCharacterIds: [], fixedImage: null };
   const h = hash(image.data);
   if (h % 3 !== 0) return { driftedCharacterIds: [], fixedImage: null };
   const drifted = references[h % references.length];
