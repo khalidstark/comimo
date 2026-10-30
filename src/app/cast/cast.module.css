@@ -1,0 +1,107 @@
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 15rem), 1fr));
+  gap: var(--space-2xl) var(--space-l);
+  margin: 0;
+  padding: var(--space-s) 0 var(--space-3xl);
+  list-style: none;
+}
+
+.member {
+  display: grid;
+  gap: var(--space-s);
+  align-content: start;
+}
+
+.sprite {
+  justify-self: center;
+  inline-size: min(100%, 15rem);
+  padding: var(--space-xs) var(--space-xs) 0;
+  background:
+    radial-gradient(color-mix(in srgb, var(--accent) 22%, transparent) 30%, transparent 32%) 0 0 / 10px 10px,
+    #ffffff;
+  transition: rotate var(--dur-panel) var(--ease-pop), translate var(--dur-panel) var(--ease-pop);
+}
+
+.member:nth-child(2n) .sprite {
+  background:
+    radial-gradient(color-mix(in srgb, var(--calm) 24%, transparent) 30%, transparent 32%) 0 0 / 10px 10px,
+    #ffffff;
+}
+
+/* Picked-up sticker: answers the pointer, stays still for reduced motion */
+.member:hover .sprite {
+  rotate: calc(var(--tilt) * -1.5);
+  translate: 0 -6px;
+}
+
+.info {
+  display: grid;
+  gap: var(--space-2xs);
+  justify-items: start;
+  padding-inline: var(--space-2xs);
+}
+
+.name {
+  font-size: var(--step-2);
+}
+
+.line {
+  margin-block-start: var(--space-2xs);
+  max-inline-size: 100%;
+}
+
+/* The empty slot: an invitation, dashed like an uncut panel */
+.add {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: var(--space-xs);
+  align-content: start;
+  justify-items: start;
+  padding: var(--space-m);
+  border: var(--panel-border-thin) dashed color-mix(in srgb, var(--ink) 45%, transparent);
+  border-radius: var(--radius-sticker);
+}
+
+.addArt {
+  inline-size: 100%;
+  max-inline-size: 13rem;
+  justify-self: center;
+}
+
+@media (min-width: 48rem) {
+  .add {
+    grid-template-columns: 14rem 1fr;
+    column-gap: var(--space-xl);
+    padding: var(--space-l) var(--space-xl);
+  }
+
+  .addArt {
+    grid-row: 1 / span 4;
+    align-self: center;
+  }
+
+  .addTitle,
+  .addBody,
+  .add > button,
+  .note {
+    grid-column: 2;
+  }
+
+  .addBody {
+    max-inline-size: 48ch;
+  }
+}
+
+.addTitle {
+  font-size: var(--step-2);
+}
+
+.addBody {
+  color: var(--ink-soft);
+}
+
+.note {
+  color: var(--ink-soft);
+  font-size: var(--step--1);
+}
