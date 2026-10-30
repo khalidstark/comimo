@@ -37,7 +37,7 @@ function parsePanel(value: unknown): ScriptPanel | null {
   return { index, scene, caption: caption?.slice(0, 300), dialogue: lines, characterIds };
 }
 
-function parseReferences(value: unknown): CharacterReference[] | null {
+function parseReferences(value: unknown): CharacterReference[] | "stale" | null {
   if (!Array.isArray(value) || value.length > MAX_CHARACTERS) return null;
   const references: CharacterReference[] = [];
   for (const item of value) {
@@ -46,8 +46,9 @@ function parseReferences(value: unknown): CharacterReference[] | null {
     if (!isText(characterId, 100) || !isText(name, 100) || typeof look !== "string" || look.length > 2000) return null;
     const decoded = image === undefined ? null : fromWire(image);
     if (image !== undefined && !decoded) return null;
-    // A token this server didn't sign is ignored (the sheet then goes inline or as text).
     const fileId = fileToken === undefined ? null : verifyFileToken(fileToken);
+    // A token this server can't use (another key, tampered) without the image: ask for the image instead.
+    if (fileToken !== undefined && !fileId && !decoded) return "stale";
     references.push({ characterId, name, look, image: decoded, ...(fileId ? { fileId } : {}) });
   }
   return references;
@@ -58,6 +59,14 @@ function starterReferences(characterIds: string[]): CharacterReference[] {
   return characterIds.flatMap((id) => {
     const character = starterCastById[id];
     return character ? [{ characterId: id, name: character.name, look: character.look, image: null }] : [];
+  });
+}
+
+/** An uploaded sheet can't be used any more; the browser resends the sheets themselves. */
+function staleReference(): Response {
+  return Response.json({ error: "A reference sheet needs uploading again.", code: "stale-reference" } satisfies ApiError, {
+    status: 409,
+    headers: { "Cache-Control": "no-store" },
   });
 }
 
@@ -82,7 +91,8 @@ export async function POST(request: Request) {
   let references = starterReferences(panel.characterIds);
   if (body.references !== undefined) {
     const parsed = parseReferences(body.references);
-    if (!parsed) return jsonError(400, "`references` must be a list of {characterId, name, look, image?}.");
+    if (parsed === "stale") return staleReference();
+    if (!parsed) return jsonError(400, "`references` must be a list of {characterId, name, look, image?, fileToken?}.");
     references = parsed;
   }
   const inPanel = references.filter((ref) => panel.characterIds.includes(ref.characterId));
@@ -119,10 +129,7 @@ export async function POST(request: Request) {
     } catch (error) {
       if (!isMissingFileError(error)) throw error;
       // Uploaded sheets expire after 30 days; the browser resends the images and gets fresh tokens.
-      return Response.json(
-        { error: "A reference sheet needs uploading again.", code: "stale-reference" } satisfies ApiError,
-        { status: 409, headers: { "Cache-Control": "no-store" } },
-      );
+      return staleReference();
     }
     const { driftedCharacterIds, fixedImage } = await models.checkConsistency(drawn, inPanel, context);
     return json<PanelResponse>(
