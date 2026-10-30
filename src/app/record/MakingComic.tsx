@@ -6,6 +6,7 @@ import { useCallback, useEffect, useEffectEvent, useLayoutEffect, useRef, useSta
 import { Art } from "@/art/Art";
 import { art } from "@/art/manifest";
 import { PAGE_TURN } from "@/components/PageTurn";
+import { DEFAULT_ART_STYLE } from "@/lib/artStyles";
 import { formatDay, moodWords } from "@/lib/format";
 import {
   ComicPipeline,
@@ -107,7 +108,7 @@ interface MakingComicProps {
  * panel whose face was fixed flips from before to after.
  */
 export function MakingComic({ audio, language, onClose }: MakingComicProps) {
-  const [pipeline] = useState(() => new ComicPipeline({ audio, language }));
+  const [pipeline] = useState(() => new ComicPipeline({ audio, language, style: DEFAULT_ART_STYLE }));
   const state = useSyncExternalStore(pipeline.subscribe, pipeline.getSnapshot, pipeline.getSnapshot);
   const [settled, setSettled] = useState<ReadonlySet<number>>(() => new Set());
   const dialogRef = useRef<HTMLDialogElement>(null);

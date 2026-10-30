@@ -310,3 +310,28 @@
 .sheetStatus:empty {
   display: none;
 }
+
+/* One sheet per art style, side by side */
+.sheets {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-xs);
+  inline-size: 100%;
+}
+
+.sheetLabel {
+  font-family: var(--font-display-stack);
+  font-size: var(--step--1);
+  font-weight: 700;
+}
+
+.sheetEmpty {
+  display: grid;
+  place-items: center;
+  inline-size: 100%;
+  aspect-ratio: 3 / 2;
+  border: var(--panel-border-thin) dashed color-mix(in srgb, var(--ink) 45%, transparent);
+  border-radius: var(--radius-panel);
+  color: var(--ink-soft);
+  font-size: var(--step--1);
+}

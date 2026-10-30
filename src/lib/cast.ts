@@ -1,6 +1,7 @@
 import { artAt } from "@/art/manifest";
 import { starterCast, starterCastById } from "@/fixtures/cast";
 import { getMeta, listCast, newId, putImage, saveCharacter, setMeta } from "./store";
+import type { ArtStyleId } from "./artStyles";
 import type {
   ApiError,
   Character,
@@ -8,6 +9,7 @@ import type {
   CharacterSheetRequest,
   CharacterSheetResponse,
   ImageRef,
+  ReferenceSheet,
   SpriteSheet,
 } from "./types";
 import { wireToBlob } from "./wireImage";
@@ -56,34 +58,35 @@ export function spriteSheetFor(character: Character): SpriteSheet | null {
 /* ---------- Reference sheets ---------- */
 
 /**
- * The character's reference sheet. Starter characters seeded before the
- * sheets shipped have `referenceSheet: null` in the store, so they use the
- * fixture's drawn sheet by id.
+ * The character's reference sheet in a style, or null if it isn't drawn in
+ * that style yet. Starter characters stored before the sheets shipped have
+ * none in the store, so they use the fixture's drawn sheet by id.
  */
-export function referenceSheetFor(character: Character): ImageRef | null {
-  if (character.referenceSheet) return character.referenceSheet;
-  return character.starter ? (starterCastById[character.id]?.referenceSheet ?? null) : null;
+export function referenceSheetFor(character: Character, style: ArtStyleId): ReferenceSheet | null {
+  const own = character.referenceSheets?.[style];
+  if (own) return own;
+  return character.starter ? (starterCastById[character.id]?.referenceSheets?.[style] ?? null) : null;
 }
 
-/** Names one sheet; an uploaded file is only reused for the sheet it came from. */
+/** Names one sheet image; an uploaded file is only reused for the image it came from. */
 export function referenceKey(ref: ImageRef): string {
   return ref.kind === "blob" ? `blob:${ref.id}` : `art:${artAt(ref.path).src}`;
 }
 
-/** The signed Files API token for the character's current sheet, if it was uploaded. */
-export function referenceFileTokenFor(character: Character): string | undefined {
-  const sheet = referenceSheetFor(character);
-  const file = character.referenceFile;
-  return sheet && file && file.sheet === referenceKey(sheet) ? file.token : undefined;
+/** The signed Files API token for the character's sheet in a style, if it was uploaded. */
+export function referenceFileTokenFor(character: Character, style: ArtStyleId): string | undefined {
+  const sheet = referenceSheetFor(character, style);
+  return sheet?.file && sheet.file.sheet === referenceKey(sheet.image) ? sheet.file.token : undefined;
 }
 
-/** Keep an uploaded sheet's token on the character (or forget it with null). */
-export function withReferenceFile(character: Character, token: string | null): Character {
-  const sheet = referenceSheetFor(character);
-  const next = { ...character };
-  if (token && sheet) next.referenceFile = { token, sheet: referenceKey(sheet) };
-  else delete next.referenceFile;
-  return next;
+/** Keep an uploaded sheet's token on the character for a style (or forget it with null). */
+export function withReferenceFile(character: Character, style: ArtStyleId, token: string | null): Character {
+  const sheet = referenceSheetFor(character, style);
+  if (!sheet) return character;
+  const next: ReferenceSheet = { ...sheet };
+  if (token) next.file = { token, sheet: referenceKey(sheet.image) };
+  else delete next.file;
+  return { ...character, referenceSheets: { ...character.referenceSheets, [style]: next } };
 }
 
 /** A sheet-drawing failure with a message the cast screen can show. */
@@ -92,15 +95,16 @@ export class SheetError extends Error {
 }
 
 /**
- * Ask Muse Image for the character's reference sheet, keep the image on this
- * device and save the character with it. Returns the updated character.
+ * Ask Muse Image for the character's reference sheet in a style, keep the
+ * image on this device and save the character with it. Returns the updated character.
  */
-export async function drawReferenceSheet(character: Character, signal?: AbortSignal): Promise<Character> {
+export async function drawReferenceSheet(character: Character, style: ArtStyleId, signal?: AbortSignal): Promise<Character> {
   const body: CharacterSheetRequest = {
     characterId: character.id,
     name: character.name,
     role: character.role,
     look: character.look,
+    style,
   };
   let response: Response;
   try {
@@ -119,14 +123,15 @@ export async function drawReferenceSheet(character: Character, signal?: AbortSig
     throw new SheetError((result as ApiError | null)?.error || `The sheet didn't draw (${response.status}). Try again.`);
   }
 
-  const imageId = `${character.id}-sheet`;
+  const imageId = `${character.id}-sheet-${style}`;
   if (!(await putImage(imageId, wireToBlob(result.image)))) {
     throw new SheetError("Couldn't keep the sheet on this device. Private windows can block storage.");
   }
-  const sheet: Character = { ...character, referenceSheet: { kind: "blob", id: imageId } };
-  if (result.sheetToken) sheet.referenceSheetToken = result.sheetToken;
-  else delete sheet.referenceSheetToken;
-  const drawn = withReferenceFile(sheet, result.fileToken);
+  const image: ImageRef = { kind: "blob", id: imageId };
+  const sheet: ReferenceSheet = { image };
+  if (result.sheetToken) sheet.sheetToken = result.sheetToken;
+  if (result.fileToken) sheet.file = { token: result.fileToken, sheet: referenceKey(image) };
+  const drawn: Character = { ...character, referenceSheets: { ...character.referenceSheets, [style]: sheet } };
   if (!(await saveCharacter(drawn))) {
     throw new SheetError("Couldn't save the sheet on this device. Private windows can block storage.");
   }
@@ -226,7 +231,7 @@ export function characterFromDraft(draft: CharacterDraft, existing?: Character):
     personality: "",
     // Not drawn yet: the empty-cast outline stands in until Muse Image draws them.
     portrait: { kind: "art", path: "empty.cast" },
-    referenceSheet: null,
+    referenceSheets: {},
     spriteSheet: null,
     starter: false,
     createdAt: new Date().toISOString(),

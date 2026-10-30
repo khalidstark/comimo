@@ -1,4 +1,5 @@
 import type { ArtPath } from "@/art/manifest";
+import type { ArtStyleId } from "./artStyles";
 
 /**
  * Comimo's data model, shared by the pages, the on-device store and the
@@ -86,21 +87,28 @@ export interface Character {
   line?: string;
   /** Sticker portrait for cards and lists. */
   portrait: ImageRef;
-  /** Muse Image reference sheet; null until drawn. */
-  referenceSheet: ImageRef | null;
   /**
-   * The reference sheet as uploaded to Meta's Files API, so panels can point
-   * at it instead of resending the image. `sheet` says which sheet it belongs
-   * to (see referenceKey in src/lib/cast.ts); a different sheet means re-upload.
+   * Muse Image reference sheets, one per art style; a style without one isn't
+   * drawn yet. Optional because records stored before art styles don't have it.
    */
-  referenceFile?: ReferenceFile;
-  /** Server signature over a drawn sheet's bytes (blob sheets only); panels must send it with the sheet. */
-  referenceSheetToken?: string;
+  referenceSheets?: Partial<Record<ArtStyleId, ReferenceSheet>>;
   /** Animated sprite sheet (idle, blink, talk, wave); null until drawn. */
   spriteSheet: SpriteSheet | null;
   /** True for the invented starter cast that ships with the app. */
   starter: boolean;
   createdAt: string;
+}
+
+/** A character's reference sheet in one art style. */
+export interface ReferenceSheet {
+  image: ImageRef;
+  /** Server signature over a drawn sheet's bytes (blob sheets only); panels send it with the sheet. */
+  sheetToken?: string;
+  /**
+   * The sheet as uploaded to Meta's Files API, so panels can point at it
+   * instead of resending the image.
+   */
+  file?: ReferenceFile;
 }
 
 /** A server-signed Files API id for a character's reference sheet. */
@@ -176,6 +184,8 @@ export interface Day {
   /** Present on heavy days. */
   checkIn?: CheckIn;
   safety: SafetyFlag;
+  /** The art style the comic was drawn in; missing means "zine" (days made before styles). */
+  artStyle?: ArtStyleId;
   /** True for the invented sample days. */
   sample?: boolean;
   createdAt: string;
@@ -263,6 +273,8 @@ export interface PanelRequest {
   panel: ScriptPanel;
   references?: WireReference[];
   shape?: PanelShape;
+  /** Defaults to "zine". */
+  style?: ArtStyleId;
 }
 export interface PanelResponse {
   mode: ModelMode;
@@ -284,6 +296,8 @@ export interface CharacterSheetRequest {
   name: string;
   role: CharacterRole;
   look: string;
+  /** Defaults to "zine". */
+  style?: ArtStyleId;
 }
 export interface CharacterSheetResponse {
   mode: ModelMode;

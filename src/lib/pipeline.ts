@@ -1,4 +1,5 @@
 import { artAt } from "@/art/manifest";
+import type { ArtStyleId } from "./artStyles";
 import { AudioConvertError, toWav } from "./audio/toWav";
 import { loadCast, referenceFileTokenFor, referenceSheetFor, withReferenceFile } from "./cast";
 import { getDay, getImage, newId, putImage, saveCharacter, saveDay } from "./store";
@@ -70,6 +71,8 @@ export interface PipelineState {
 export interface PipelineInput {
   audio: Blob;
   language: LanguageHint;
+  /** The comic's art style; panels use each character's sheet in this style. */
+  style: ArtStyleId;
 }
 
 /** Panels drawn at the same time. */
@@ -343,7 +346,7 @@ export class ComicPipeline {
     let pending = this.references.get(characterId);
     if (!pending) {
       const character = this.cast?.find((member) => member.id === characterId);
-      pending = loadReference(character ? referenceSheetFor(character) : null, signal);
+      pending = loadReference(character ? (referenceSheetFor(character, this.input.style)?.image ?? null) : null, signal);
       this.references.set(characterId, pending);
       // Don't cache a failure caused by cancelling.
       pending.catch(() => this.references.delete(characterId));
@@ -354,8 +357,9 @@ export class ComicPipeline {
   /** Keep (or forget, with null) the uploaded-sheet token on a character, here and in the store. */
   private async rememberReferenceFile(characterId: string, token: string | null) {
     const character = this.cast?.find((member) => member.id === characterId);
-    if (!character || (token ?? undefined) === referenceFileTokenFor(character)) return;
-    const updated = withReferenceFile(character, token);
+    const { style } = this.input;
+    if (!character || (token ?? undefined) === referenceFileTokenFor(character, style)) return;
+    const updated = withReferenceFile(character, style, token);
     this.cast = this.cast!.map((member) => (member.id === characterId ? updated : member));
     // Best effort: without it the next comic just uploads the sheet again.
     await saveCharacter(updated);
@@ -368,14 +372,14 @@ export class ComicPipeline {
       const character = this.cast?.find((member) => member.id === id);
       if (!character) continue;
       const base = { characterId: id, name: character.name, look: character.look };
-      const token = inline ? undefined : referenceFileTokenFor(character);
+      const token = inline ? undefined : referenceFileTokenFor(character, this.input.style);
       if (token) {
         references.push({ ...base, fileToken: token });
         continue;
       }
       const image = await this.referenceFor(id, signal);
       // Drawn sheets carry the server's signature; shipped starter sheets are recognised by the server.
-      const sheetToken = referenceSheetFor(character)?.kind === "blob" ? character.referenceSheetToken : undefined;
+      const sheetToken = referenceSheetFor(character, this.input.style)?.sheetToken;
       references.push({ ...base, ...(image ? { image, ...(sheetToken ? { sheetToken } : {}) } : {}) });
     }
     return references;
@@ -415,7 +419,12 @@ export class ComicPipeline {
 
     const shape = panelShape(panel.index, this.state.script?.panels.length ?? 1);
     const send = async (inline: boolean) => {
-      const body: PanelRequest = { panel, references: await this.referencesFor(panel, signal, inline), shape };
+      const body: PanelRequest = {
+        panel,
+        references: await this.referencesFor(panel, signal, inline),
+        shape,
+        style: this.input.style,
+      };
       return request<PanelResponse>("draw", "/api/panel", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -485,6 +494,7 @@ export class ComicPipeline {
         ? { checkIn: { questions: script.checkInQuestions, answers: [] } }
         : {}),
       safety: script.safety,
+      artStyle: this.input.style,
       createdAt: this.createdAt,
     };
 
