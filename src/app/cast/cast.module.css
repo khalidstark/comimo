@@ -148,9 +148,10 @@
   aspect-ratio: 300 / 360;
 }
 
+/* Top edge, clear of the placeholder art's own label in the bottom corner */
 .undrawnTag {
   position: absolute;
-  inset-block-end: var(--space-xs);
+  inset-block-start: var(--space-xs);
   padding: 0.15em 0.6em 0.2em;
   background: var(--highlight);
   color: var(--on-highlight);
