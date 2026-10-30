@@ -5,7 +5,7 @@ import { MagazineCover } from "@/components/MagazineCover";
 import { MoodCalendar } from "@/components/MoodCalendar";
 import { PAGE_TURN, PageTurn } from "@/components/PageTurn";
 import { RecordStamp } from "@/components/RecordStamp";
-import { checkInQuestions, sampleDays } from "@/lib/sample";
+import { sampleCheckInQuestions, sampleDays } from "@/fixtures/days";
 import styles from "./page.module.css";
 
 const WEEK: { day: string; mood?: MoodKey }[] = [
@@ -131,7 +131,7 @@ export default function Home() {
               That sounded like a lot. Want to sit with it for a moment?
             </p>
             <ul className={styles.checkinList}>
-              {checkInQuestions.map((q) => (
+              {sampleCheckInQuestions.map((q) => (
                 <li key={q}>{q}</li>
               ))}
             </ul>

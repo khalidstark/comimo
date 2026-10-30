@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Art } from "@/art/Art";
-import { art } from "@/art/manifest";
+import { art, artAt } from "@/art/manifest";
 import { EmptyState } from "@/components/EmptyState";
 import { PAGE_TURN, PageTurn } from "@/components/PageTurn";
-import { checkInQuestions, formatDay, getSampleDay, moodWords, sampleDays } from "@/lib/sample";
+import { starterCastById } from "@/fixtures/cast";
+import { getSampleDay, sampleDays } from "@/fixtures/days";
+import { formatDay, moodWords } from "@/lib/format";
 import styles from "./day.module.css";
 
 interface DayPageProps {
@@ -77,27 +79,29 @@ export default async function DayPage({ params }: DayPageProps) {
 
         <ol className={styles.comic} aria-label={`Comic for ${formatDay(day.date)}, ${day.panels.length} panels`}>
           {day.panels.map((panel, i) => (
-            <li key={i} className={`panel ${styles.frame}`}>
-              <Art
-                asset={art.scenes[panel.scene]}
-                className={styles.frameArt}
-                alt=""
-                sizes="(min-width: 48rem) 50vw, 100vw"
-              />
+            <li key={panel.index} className={`panel ${styles.frame}`}>
+              {panel.image?.kind === "art" ? (
+                <Art
+                  asset={artAt(panel.image.path)}
+                  className={styles.frameArt}
+                  alt=""
+                  sizes="(min-width: 48rem) 50vw, 100vw"
+                />
+              ) : null}
               {panel.caption ? (
                 <p className={`caption ${styles.frameCaption}`} dir="auto">
                   {panel.caption}
                 </p>
               ) : null}
-              {panel.bubbles.map((bubble, b) => (
+              {panel.dialogue.map((line, b) => (
                 <p
                   key={b}
                   className={`bubble ${(i + b) % 2 ? "bubble--tail-end" : ""} ${styles.frameBubble}`}
                   data-side={(i + b) % 2 ? "end" : "start"}
-                  dir="auto"
+                  dir={line.dir}
                 >
-                  <span className="bubble__who">{bubble.who}</span>
-                  {bubble.text}
+                  <span className="bubble__who">{starterCastById[line.speakerId]?.name ?? line.speakerId}</span>
+                  {line.text}
                 </p>
               ))}
             </li>
@@ -111,7 +115,7 @@ export default async function DayPage({ params }: DayPageProps) {
             </h2>
             <p className={styles.checkinLede}>Answer any, all or none. Your answers stay with this day.</p>
             <form className={styles.checkinForm}>
-              {checkInQuestions.map((q, i) => (
+              {(day.checkIn?.questions ?? []).map((q, i) => (
                 <label key={q} className={styles.question}>
                   <span>{q}</span>
                   <textarea name={`q${i}`} rows={2} dir="auto" />

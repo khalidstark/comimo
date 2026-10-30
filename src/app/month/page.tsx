@@ -6,7 +6,8 @@ import { EmptyState } from "@/components/EmptyState";
 import { MagazineCover } from "@/components/MagazineCover";
 import { MoodCalendar } from "@/components/MoodCalendar";
 import { PAGE_TURN, PageTurn } from "@/components/PageTurn";
-import { formatDay, moodWords, sampleDays } from "@/lib/sample";
+import { sampleDays } from "@/fixtures/days";
+import { countWord, formatDay, moodWords } from "@/lib/format";
 import styles from "./month.module.css";
 
 export const metadata: Metadata = { title: "October 2026" };
@@ -20,7 +21,8 @@ export default function MonthPage() {
         <header className="page-head">
           <h1>October 2026</h1>
           <p className="page-head__lede">
-            A sample issue made from four invented days, to show how a month reads once it&apos;s bound.
+            A sample issue made from {countWord(sampleDays.length)} invented days, to show how a month reads once it&apos;s
+            bound.
           </p>
         </header>
 
