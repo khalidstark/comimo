@@ -1,6 +1,6 @@
 import { guard, guardResponse } from "@/lib/guard";
 import { getModels } from "@/lib/models";
-import { signFileId } from "@/lib/models/fileTokens";
+import { signFileId, signSheet } from "@/lib/models/fileTokens";
 import { isRecord, isText, json, jsonError, modelErrorResponse, readJson, toWire } from "@/lib/models/wire";
 import type { CharacterRole, CharacterSheetResponse } from "@/lib/types";
 
@@ -45,7 +45,7 @@ export async function POST(request: Request) {
     // A failed upload isn't fatal: the sheet still works, panels send it inline and upload it then.
     const fileId = await models.uploadReference(image, context);
     return json<CharacterSheetResponse>(
-      { mode: source, image: toWire(image), fileToken: fileId ? signFileId(fileId) : null },
+      { mode: source, image: toWire(image), sheetToken: signSheet(image.data), fileToken: fileId ? signFileId(fileId) : null },
       source,
     );
   } catch (error) {

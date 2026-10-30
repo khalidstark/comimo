@@ -123,7 +123,10 @@ export async function drawReferenceSheet(character: Character, signal?: AbortSig
   if (!(await putImage(imageId, wireToBlob(result.image)))) {
     throw new SheetError("Couldn't keep the sheet on this device. Private windows can block storage.");
   }
-  const drawn = withReferenceFile({ ...character, referenceSheet: { kind: "blob", id: imageId } }, result.fileToken);
+  const sheet: Character = { ...character, referenceSheet: { kind: "blob", id: imageId } };
+  if (result.sheetToken) sheet.referenceSheetToken = result.sheetToken;
+  else delete sheet.referenceSheetToken;
+  const drawn = withReferenceFile(sheet, result.fileToken);
   if (!(await saveCharacter(drawn))) {
     throw new SheetError("Couldn't save the sheet on this device. Private windows can block storage.");
   }

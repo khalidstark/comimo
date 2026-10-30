@@ -94,6 +94,8 @@ export interface Character {
    * to (see referenceKey in src/lib/cast.ts); a different sheet means re-upload.
    */
   referenceFile?: ReferenceFile;
+  /** Server signature over a drawn sheet's bytes (blob sheets only); panels must send it with the sheet. */
+  referenceSheetToken?: string;
   /** Animated sprite sheet (idle, blink, talk, wave); null until drawn. */
   spriteSheet: SpriteSheet | null;
   /** True for the invented starter cast that ships with the app. */
@@ -242,6 +244,8 @@ export interface WireReference {
   name: string;
   look: string;
   image?: WireImage;
+  /** Required with `image` unless it is a shipped starter sheet: proves this server drew it. */
+  sheetToken?: string;
   fileToken?: string;
 }
 
@@ -284,6 +288,8 @@ export interface CharacterSheetRequest {
 export interface CharacterSheetResponse {
   mode: ModelMode;
   image: WireImage;
+  /** Proves this server drew the sheet; send it with the image when drawing panels. */
+  sheetToken: string | null;
   /** The sheet uploaded to the Files API; null when the upload failed or in mock mode. */
   fileToken: string | null;
 }

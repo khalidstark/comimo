@@ -19,14 +19,18 @@ import { createHash, randomBytes } from "node:crypto";
  *   COMIMO_COMICS_PER_HOUR   comics per visitor per hour (default 5; reference sheets get twice that)
  *   COMIMO_DAILY_COMIC_CAP   comics per day for everyone (default 200)
  *   COMIMO_DAILY_IMAGE_CAP   image and SAM calls per day for everyone (default 300), counted per call
+ *   COMIMO_DAILY_UPLOAD_CAP  reference-sheet uploads per day for everyone (default 300); per visitor 4x comics an hour
  *   COMIMO_PAUSE_GENERATION  "1" pauses all real calls
  *   COMIMO_GUARD_SALT        salt for the visitor hash (default: random per process)
  */
 
 export type GuardAction = "transcribe" | "script" | "panel" | "character";
 
-/** Kinds of upstream call. Image and SAM calls count against the daily image cap. */
-export type UpstreamCall = "transcribe" | "text" | "image" | "sam";
+/**
+ * Kinds of upstream call. Image and SAM calls count against the daily image
+ * cap; reference uploads to the Files API against the daily and per-visitor upload caps.
+ */
+export type UpstreamCall = "transcribe" | "text" | "image" | "sam" | "upload";
 
 /**
  * Handed to the model code with each request. `beforeCall` runs right before
@@ -80,14 +84,19 @@ function limits() {
       // Reference sheets: a few new characters (or redraws) an hour.
       character: comics * 2,
     } satisfies Record<GuardAction, number>,
+    // Reference-sheet uploads: a few per comic (one per character), more only on stale tokens.
+    uploadsPerHour: comics * 4,
     dailyComics: envInt("COMIMO_DAILY_COMIC_CAP", 200),
     dailyImages: envInt("COMIMO_DAILY_IMAGE_CAP", 300),
+    dailyUploads: envInt("COMIMO_DAILY_UPLOAD_CAP", 300),
   };
 }
 
 const salt = process.env.COMIMO_GUARD_SALT || randomBytes(16).toString("hex");
 const visitors = new Map<string, Record<GuardAction, number[]>>();
-const daily = { day: "", comics: 0, images: 0 };
+/** Upload times per visitor in the last hour. */
+const visitorUploads = new Map<string, number[]>();
+const daily = { day: "", comics: 0, images: 0, uploads: 0 };
 
 function today(): string {
   return new Date().toISOString().slice(0, 10);
@@ -105,6 +114,7 @@ function rollDay() {
     daily.day = day;
     daily.comics = 0;
     daily.images = 0;
+    daily.uploads = 0;
   }
 }
 
@@ -134,6 +144,7 @@ function sweep(now: number) {
     const active = Object.values(counts).some((times) => times.some((t) => now - t < HOUR_MS));
     if (!active) visitors.delete(id);
   }
+  for (const [id, times] of visitorUploads) if (!times.some((t) => now - t < HOUR_MS)) visitorUploads.delete(id);
 }
 
 function minutes(seconds: number): string {
@@ -141,8 +152,19 @@ function minutes(seconds: number): string {
   return `${m} minute${m === 1 ? "" : "s"}`;
 }
 
-/** Counts upstream calls for one request; image and SAM calls go against the daily cap as they are made. */
-function createMeter(): UsageMeter {
+/** An upload cap was reached; the caller sends the sheet inline instead. */
+export class UploadCapError extends Error {
+  constructor() {
+    super("Reference upload limit reached");
+    this.name = "UploadCapError";
+  }
+}
+
+/**
+ * Counts upstream calls for one request: image and SAM calls go against the
+ * daily image cap, uploads against the daily and this visitor's hourly upload caps.
+ */
+function createMeter(visitor: string): UsageMeter {
   let billed = false;
   return {
     get billed() {
@@ -153,6 +175,16 @@ function createMeter(): UsageMeter {
         rollDay();
         if (daily.images >= limits().dailyImages) throw new SpendCapError();
         daily.images += 1;
+      }
+      if (kind === "upload") {
+        rollDay();
+        const now = Date.now();
+        const recent = (visitorUploads.get(visitor) ?? []).filter((t) => now - t < HOUR_MS);
+        const { dailyUploads, uploadsPerHour } = limits();
+        if (daily.uploads >= dailyUploads || recent.length >= uploadsPerHour) throw new UploadCapError();
+        daily.uploads += 1;
+        recent.push(now);
+        visitorUploads.set(visitor, recent);
       }
       billed = true;
     },
@@ -167,7 +199,7 @@ function createMeter(): UsageMeter {
  */
 export function guard(request: Request, action: GuardAction, options: { real: boolean }): GuardResult {
   const id = visitorId(request);
-  if (!options.real) return { ok: true, visitorId: id, meter: createMeter(), refundIfUnbilled: () => {} };
+  if (!options.real) return { ok: true, visitorId: id, meter: createMeter(id), refundIfUnbilled: () => {} };
 
   if (process.env.COMIMO_PAUSE_GENERATION === "1") {
     return { ok: false, status: 503, error: "Making new comics is paused right now. The sample days still work.", retryAfterSec: 3600 };
@@ -205,7 +237,7 @@ export function guard(request: Request, action: GuardAction, options: { real: bo
   visitors.set(id, counts);
   if (action === "script") daily.comics += 1;
 
-  const meter = createMeter();
+  const meter = createMeter(id);
   let refunded = false;
   const day = daily.day;
   return {

@@ -374,7 +374,9 @@ export class ComicPipeline {
         continue;
       }
       const image = await this.referenceFor(id, signal);
-      references.push({ ...base, ...(image ? { image } : {}) });
+      // Drawn sheets carry the server's signature; shipped starter sheets are recognised by the server.
+      const sheetToken = referenceSheetFor(character)?.kind === "blob" ? character.referenceSheetToken : undefined;
+      references.push({ ...base, ...(image ? { image, ...(sheetToken ? { sheetToken } : {}) } : {}) });
     }
     return references;
   }

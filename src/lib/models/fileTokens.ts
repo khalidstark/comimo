@@ -1,11 +1,15 @@
 import "server-only";
-import { createHmac, timingSafeEqual } from "node:crypto";
+import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 import { isFileId } from "./meta/image";
 
 /**
- * Reference sheets uploaded to Meta's Files API are cached on the device as a
- * signed token ("file-123.<mac>"), not a bare id. The server only sends ids it
- * issued itself, so a visitor can't point a panel at somebody else's upload.
+ * Two kinds of signed token keep reference sheets honest:
+ * - File tokens ("file-123.<mac>"): a sheet uploaded to Meta's Files API is
+ *   cached on the device as a token, not a bare id, so a visitor can't point a
+ *   panel at somebody else's upload.
+ * - Sheet tokens: a MAC over the SHA-256 of a sheet this server drew. A panel
+ *   request may only send (and get uploaded) a sheet with a valid sheet token,
+ *   or one of the shipped starter sheets, never an arbitrary image.
  *
  * The signing key is derived from MODEL_API_KEY: stable across server
  * instances, secret, and it changes with the key (a new key may be a new team,
@@ -40,4 +44,38 @@ export function verifyFileToken(token: unknown): string | null {
   if (!key || !isFileId(fileId)) return null;
   const expected = Buffer.from(mac(key, fileId));
   return given.length === expected.length && timingSafeEqual(given, expected) ? fileId : null;
+}
+
+/* ---------- Sheets this server drew ---------- */
+
+/**
+ * SHA-256 of the starter sheets in public/art/cast (drawn by Muse Image in
+ * 03-02 and resized). Update these when those files change.
+ */
+const STARTER_SHEETS = new Set([
+  "6bd0220b7a06222bcca54c0c2c78302a6a3a6fa921a14d1145b5f0f987d7f0f3", // nour
+  "b8349040508f74463be3359bde52eebbd16da38fd982a37791865163329a1745", // karim
+  "32d5189a2fc821ff5bfdf8f16b81dbb187a18a7d23b47d4f15709df59b94b344", // teta
+  "49ec269dfe4e1a9833a6d22f63594605e037eacd1163d9eb1172267a560fcbfb", // mishmish
+]);
+
+function sha256(data: Uint8Array): string {
+  return createHash("sha256").update(data).digest("hex");
+}
+
+/** A token proving this server drew these exact bytes, or null without a key. */
+export function signSheet(data: Uint8Array): string | null {
+  const key = signingKey();
+  return key ? mac(key, `sheet:${sha256(data)}`) : null;
+}
+
+/** True for a shipped starter sheet, or bytes that match a sheet token this server signed. */
+export function isTrustedSheet(data: Uint8Array, token: unknown): boolean {
+  const hash = sha256(data);
+  if (STARTER_SHEETS.has(hash)) return true;
+  const key = signingKey();
+  if (!key || typeof token !== "string" || token.length !== MAC_LENGTH) return false;
+  const expected = Buffer.from(mac(key, `sheet:${hash}`));
+  const given = Buffer.from(token);
+  return given.length === expected.length && timingSafeEqual(given, expected);
 }
