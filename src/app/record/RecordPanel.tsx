@@ -4,6 +4,7 @@ import { useEffect, useId, useRef, useState } from "react";
 import { Icon } from "@/art/Icon";
 import { RecordStamp } from "@/components/RecordStamp";
 import type { LanguageHint } from "@/lib/types";
+import { MakingComic } from "./MakingComic";
 import styles from "./record.module.css";
 import { MAX_RECORDING_MS, useRecorder, type Recorder, type RecorderProblem } from "./useRecorder";
 
@@ -59,16 +60,16 @@ function statusText(recorder: Recorder): string {
   }
 }
 
-interface RecordPanelProps {
-  /** Called with the chosen voice note when the speaker is happy with it. */
-  onMakeComic?: (audio: Blob, language: LanguageHint) => void;
-}
-
-/** Recording controls: language hint, the record stamp, review and upload. */
-export function RecordPanel({ onMakeComic }: RecordPanelProps) {
+/**
+ * Recording controls: language hint, the record stamp, review and upload.
+ * "Make my comic" opens the progress screen; cancelling it comes back to the
+ * review step with the same voice note.
+ */
+export function RecordPanel() {
   const recorder = useRecorder();
   const { status, problem, elapsedMs, take, analyser } = recorder;
   const [language, setLanguage] = useState<LanguageHint>("auto");
+  const [making, setMaking] = useState<{ audio: Blob; language: LanguageHint } | null>(null);
   const legendId = useId();
   const uploadHintId = useId();
   const fileRef = useRef<HTMLInputElement>(null);
@@ -117,7 +118,7 @@ export function RecordPanel({ onMakeComic }: RecordPanelProps) {
             <button
               type="button"
               className={`btn btn--accent ${styles.make}`}
-              onClick={() => onMakeComic?.(take.blob, language)}
+              onClick={() => setMaking({ audio: take.blob, language })}
             >
               Make my comic
             </button>
@@ -181,6 +182,10 @@ export function RecordPanel({ onMakeComic }: RecordPanelProps) {
           No mic? Any audio file up to 4 MB: m4a, mp3, wav, webm or ogg.
         </p>
       </div>
+
+      {making ? (
+        <MakingComic audio={making.audio} language={making.language} onClose={() => setMaking(null)} />
+      ) : null}
     </div>
   );
 }
