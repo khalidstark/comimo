@@ -39,7 +39,7 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 02-01: Recorder (mic and upload) and the "making your comic" progress screen
+- [x] 02-01: Recorder (mic and upload) and the "making your comic" progress screen
 - [ ] 02-02: Comic reader with panels, Arabic and English speech bubbles, day weather icon
 - [ ] 02-03: Check-in card, safety helpline card, cast screen, Sprite component (CSS steps sprite-sheet player) with placeholder sheets
 
@@ -82,7 +82,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation | 2/2 | Complete | 2026-10-30 |
-| 2. Comic Experience | 0/3 | Not started | - |
+| 2. Comic Experience | 1/3 | In progress | - |
 | 3. Meta Model Pipeline | 0/3 | Not started | - |
 | 4. Magazine and Art | 0/2 | Not started | - |
 | 5. Ship | 0/1 | Not started | - |

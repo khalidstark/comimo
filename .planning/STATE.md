@@ -9,29 +9,30 @@ See: .planning/PROJECT.md (updated 2026-10-30)
 
 ## Current Position
 
-Phase: 1 of 5 (Foundation)
-Plan: 2 of 2 in current phase
-Status: Phase complete
-Last activity: 2026-10-30 — Completed 01-02-PLAN.md (data model, store, mock layer)
+Phase: 2 of 5 (Comic Experience)
+Plan: 1 of 3 in current phase
+Status: In progress
+Last activity: 2026-10-30 — Completed 02-01-PLAN.md (recorder, pipeline, progress screen)
 
-Progress: ██░░░░░░░░ 18% (2 of 11 plans)
+Progress: ███░░░░░░░ 27% (3 of 11 plans)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 2
-- Average duration: 24 min
-- Total execution time: 0.8 hours
+- Total plans completed: 3
+- Average duration: 21 min
+- Total execution time: 1.1 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 1. Foundation | 2 | 48 min | 24 min |
+| 2. Comic Experience | 1 | 16 min | 16 min |
 
 **Recent Trend:**
-- Last 5 plans: 36, 12 min
-- Trend: faster (no checkpoint in 01-02)
+- Last 5 plans: 36, 12, 16 min
+- Trend: steady (autonomous plans)
 
 ## Accumulated Context
 
@@ -45,12 +46,14 @@ Recent decisions affecting current work:
 - Sprite sheets for cast and mascot added to scope (Phase 2 component, Phase 4 art).
 - 01-02: Mock mode is on when COMIMO_MOCK=1 or MODEL_API_KEY is empty; non-mock is a stub (503) until Phase 3. Nothing calls api.meta.ai.
 - 01-02: Records hold ImageRef (blob id or manifest path), never data URLs; images cross the API as {mimeType, base64}.
-- 01-02: Kept the approved starter cast (no teacher or younger sibling yet, ISS-004).
+- 01-02: Kept the approved starter cast; ISS-004 closed, user keeps it as is.
+- 02-01: Progress is a modal <dialog> over /record; cancel keeps the voice note. ComicPipeline resumes at the failed step.
+- 02-01: Saved days use blob ImageRefs `<dayId>-panel-<n>` (and `-before`); starter cast is seeded into the store on first run.
 - Build on mock data until the Meta API credits appear on the Billing page; the card is saved, so any real call before then is charged to it.
 
 ### Deferred Issues
 
-5 open (ISS-001 bidi punctuation in bubbles, fix in 02-02; ISS-004 cast roles; ISS-005 panel body size, fix in 03-02) — see ISSUES.md
+5 open (ISS-001 bidi punctuation in bubbles, fix in 02-02; ISS-005 panel body size, fix in 03-02; ISS-006 missing favicon, 04-02) — see ISSUES.md
 
 ### Blockers/Concerns
 
@@ -59,6 +62,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-10-30 15:10
-Stopped at: Completed 01-02-PLAN.md; Phase 1 complete, next is planning Phase 2
+Last session: 2026-10-30 15:27
+Stopped at: Completed 02-01-PLAN.md; next is 02-02 (day reader from IndexedDB; new days currently land on the "not on this device" state)
 Resume file: None
