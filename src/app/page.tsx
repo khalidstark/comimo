@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Art } from "@/art/Art";
 import { art, type MoodKey } from "@/art/manifest";
+import { MagazineCover } from "@/components/MagazineCover";
 import { MoodCalendar } from "@/components/MoodCalendar";
 import { PAGE_TURN, PageTurn } from "@/components/PageTurn";
 import { RecordStamp } from "@/components/RecordStamp";
@@ -139,17 +140,13 @@ export default function Home() {
 
         {/* ---------- Month magazine ---------- */}
         <section className={`page section ${styles.month}`} aria-labelledby="month-title">
-          <Link href="/month" className={styles.cover} transitionTypes={PAGE_TURN}>
-            <Art asset={art.month.cover} className={styles.coverArt} alt="" sizes="(min-width: 48rem) 22rem, 70vw" />
-            <span className={styles.coverMasthead}>comimo</span>
-            <span className={styles.coverIssue}>October 2026</span>
-            <span className={styles.coverLines}>
-              {sampleDays.slice(0, 3).map((d) => (
-                <span key={d.id}>{d.title}</span>
-              ))}
-            </span>
-            <span className="visually-hidden">Open the October issue</span>
-          </Link>
+          <MagazineCover
+            className={styles.cover}
+            issue="October 2026"
+            coverLines={sampleDays.slice(0, 3).map((d) => d.title)}
+            href="/month"
+            linkLabel="Open the October issue"
+          />
           <div className={styles.monthText}>
             <h2 id="month-title" className="section__title">
               Your month, bound as a magazine

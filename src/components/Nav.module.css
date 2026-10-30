@@ -228,6 +228,10 @@
     display: none;
   }
 
+  .tab[aria-current="page"] .tabIcon {
+    color: inherit;
+  }
+
   .tab {
     position: relative;
     isolation: isolate;
@@ -237,9 +241,9 @@
   .tab::after {
     content: "";
     position: absolute;
-    inset-inline: 0.6rem;
-    inset-block-end: 0.35rem;
-    block-size: 0.55rem;
+    inset-inline: 0.7rem;
+    inset-block-end: 0.05rem;
+    block-size: 0.32rem;
     z-index: -1;
     background: var(--highlight);
     border-radius: 3px 8px 4px 9px;
