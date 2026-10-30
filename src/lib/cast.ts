@@ -4,6 +4,16 @@ import type { Character, CharacterRole, SpriteSheet } from "./types";
 
 /* ---------- Loading and seeding ---------- */
 
+const STARTER_ORDER = new Map(starterCast.map((character, i) => [character.id, i]));
+
+/** Oldest first; the starter cast shares one date, so it keeps the order it ships in. */
+function byShippedOrder(a: Character, b: Character): number {
+  return (
+    a.createdAt.localeCompare(b.createdAt) ||
+    (STARTER_ORDER.get(a.id) ?? Number.MAX_SAFE_INTEGER) - (STARTER_ORDER.get(b.id) ?? Number.MAX_SAFE_INTEGER)
+  );
+}
+
 const SEEDED_KEY = "starterCastSeeded";
 
 /**
@@ -16,7 +26,7 @@ export async function loadCast(): Promise<Character[]> {
   if (seeded || cast.length > 0) {
     // Devices seeded before the flag existed get it now.
     if (!seeded) await setMeta(SEEDED_KEY, true);
-    return cast;
+    return [...cast].sort(byShippedOrder);
   }
   const saved = await Promise.all(starterCast.map((character) => saveCharacter(character)));
   if (saved.every(Boolean)) await setMeta(SEEDED_KEY, true);
