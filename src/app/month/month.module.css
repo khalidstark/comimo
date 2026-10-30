@@ -1,0 +1,128 @@
+/* ---------- Spread: cover + contents page ---------- */
+.spread {
+  display: grid;
+  gap: var(--space-xl);
+  align-items: start;
+}
+
+@media (min-width: 52rem) {
+  .spread {
+    grid-template-columns: minmax(16rem, 24rem) 1fr;
+    gap: var(--space-2xl);
+  }
+}
+
+.cover {
+  justify-self: center;
+  inline-size: min(82%, 24rem);
+}
+
+.toc {
+  padding: var(--space-m) var(--space-m) var(--space-s);
+}
+
+@media (min-width: 52rem) {
+  .toc {
+    padding: var(--space-l) var(--space-xl) var(--space-m);
+    margin-block-start: var(--space-m);
+  }
+}
+
+.tocTitle {
+  font-size: var(--step-3);
+  padding-block-end: var(--space-xs);
+  border-block-end: var(--panel-border) solid var(--line);
+}
+
+.tocList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tocList li + li {
+  border-block-start: 2px dotted color-mix(in srgb, var(--ink) 30%, transparent);
+}
+
+.tocItem {
+  display: grid;
+  grid-template-columns: 2.75rem 1fr auto;
+  align-items: center;
+  gap: var(--space-s);
+  padding-block: var(--space-s);
+  text-decoration: none;
+}
+
+.tocIcon {
+  inline-size: 2.75rem;
+}
+
+.tocText {
+  display: grid;
+}
+
+.tocDay {
+  font-size: var(--step--1);
+  color: var(--ink-soft);
+}
+
+.tocName {
+  font-family: var(--font-display-stack);
+  font-size: var(--step-1);
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.tocItem:hover .tocName {
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-decoration-color: var(--accent);
+}
+
+.tocPage {
+  font-family: var(--font-display-stack);
+  font-size: var(--step-2);
+  font-weight: 800;
+  color: var(--accent-text);
+}
+
+/* ---------- Glance ---------- */
+.glance {
+  display: grid;
+  gap: var(--space-l);
+  padding-block-start: var(--space-3xl);
+}
+
+@media (min-width: 52rem) {
+  .glance {
+    grid-template-columns: 1fr minmax(20rem, 30rem);
+    gap: var(--space-2xl);
+    align-items: start;
+  }
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2xs) var(--space-m);
+  margin: var(--space-m) 0 0;
+  padding: 0;
+  list-style: none;
+  font-family: var(--font-display-stack);
+  font-weight: 700;
+}
+
+.legend li {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.legendIcon {
+  inline-size: 1.75rem;
+}
+
+/* ---------- Own issue ---------- */
+.own {
+  padding-block: var(--space-l) var(--space-3xl);
+}
