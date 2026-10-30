@@ -8,19 +8,6 @@
   color: var(--accent-text);
 }
 
-/* ---------- Paused day (crisis) ---------- */
-.pause {
-  display: grid;
-  gap: var(--space-s);
-  max-inline-size: 44rem;
-  padding: var(--space-l);
-  background: var(--calm-wash);
-  border: var(--panel-border-thin) solid var(--calm);
-  border-radius: var(--radius-card-soft);
-  font-size: var(--step-1);
-  line-height: 1.45;
-}
-
 /* ---------- Loading a stored day ---------- */
 .loadingTitle {
   font-family: var(--font-display-stack);
@@ -63,68 +50,6 @@
     grid-column: 1 / -1;
     aspect-ratio: 2 / 1;
   }
-}
-
-/* ---------- Check-in card ---------- */
-.checkin {
-  margin-block-start: var(--space-2xl);
-  padding: var(--space-l);
-  background: var(--calm-wash);
-  border: var(--panel-border-thin) solid var(--calm);
-  border-radius: var(--radius-card-soft);
-  max-inline-size: 44rem;
-}
-
-.checkinTitle {
-  font-family: var(--font-lettering-stack);
-  font-size: var(--step-2);
-  font-weight: 600;
-  line-height: 1.25;
-  color: var(--calm-text);
-}
-
-.checkinLede {
-  margin-block-start: var(--space-2xs);
-  color: var(--ink-soft);
-}
-
-.checkinForm {
-  display: grid;
-  gap: var(--space-m);
-  margin-block-start: var(--space-l);
-}
-
-.question {
-  display: grid;
-  gap: var(--space-2xs);
-  font-weight: 600;
-}
-
-.question textarea {
-  inline-size: 100%;
-  padding: var(--space-xs);
-  border: var(--panel-border-thin) solid color-mix(in srgb, var(--calm) 70%, transparent);
-  border-radius: 12px;
-  background: var(--surface);
-  font-family: var(--font-lettering-stack);
-  resize: vertical;
-}
-
-.question textarea:focus-visible {
-  outline: 3px solid var(--calm);
-  outline-offset: 2px;
-}
-
-.checkinActions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-s);
-}
-
-.note {
-  color: var(--ink-soft);
-  font-size: var(--step--1);
 }
 
 /* ---------- Pager ---------- */

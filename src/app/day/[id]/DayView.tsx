@@ -4,6 +4,7 @@ import { Comic } from "@/components/comic/Comic";
 import { FacesNote } from "@/components/comic/FacesNote";
 import { MoodBadge } from "@/components/comic/MoodBadge";
 import type { FixedFace, PanelView } from "@/components/comic/view";
+import { CheckInCard } from "@/components/CheckInCard";
 import { EmptyState } from "@/components/EmptyState";
 import { PAGE_TURN } from "@/components/PageTurn";
 import { formatDay } from "@/lib/format";
@@ -37,52 +38,19 @@ export function DayView({ day, panels, faces, previous, next }: DayViewProps) {
         <p className={styles.date}>
           <time dateTime={day.date}>{date}</time>
         </p>
-        <h1 dir="auto">{crisis ? "Let's pause here" : day.title}</h1>
-        {crisis ? null : <MoodBadge mood={day.mood} />}
+        <h1 dir="auto">{crisis ? "Your day" : day.title}</h1>
+        {crisis ? (
+          <p className="page-head__lede">Comimo didn&apos;t turn this note into a comic.</p>
+        ) : (
+          <MoodBadge mood={day.mood} />
+        )}
       </header>
 
-      {crisis ? (
-        <section className={styles.pause} aria-label="No comic today">
-          <p>
-            That sounded like a really heavy day, so Comimo didn&apos;t turn it into a comic. If you are in danger or
-            thinking about hurting yourself, please reach out to someone now.
-          </p>
-          <p>
-            <a className="link" href="https://findahelpline.com" target="_blank" rel="noreferrer">
-              Find a free, confidential helpline near you
-            </a>
-          </p>
-        </section>
-      ) : (
-        <Comic panels={panels} label={`Comic for ${date}, ${panels.length} panels`} />
-      )}
+      {crisis ? null : <Comic panels={panels} label={`Comic for ${date}, ${panels.length} panels`} />}
 
       {!crisis && faces ? <FacesNote faces={faces} /> : null}
 
-      {day.heavy && !crisis ? (
-        <section className={styles.checkin} aria-labelledby="checkin-title">
-          <h2 id="checkin-title" className={styles.checkinTitle}>
-            That sounded like a lot. Want to sit with it for a moment?
-          </h2>
-          <p className={styles.checkinLede}>Answer any, all or none. Your answers stay with this day.</p>
-          <form className={styles.checkinForm}>
-            {(day.checkIn?.questions ?? []).map((q, i) => (
-              <label key={q} className={styles.question}>
-                <span>{q}</span>
-                <textarea name={`q${i}`} rows={2} dir="auto" />
-              </label>
-            ))}
-            <div className={styles.checkinActions}>
-              <button type="button" className="btn btn--ink" aria-disabled="true" aria-describedby="save-note">
-                Save with this day
-              </button>
-              <span id="save-note" className={styles.note}>
-                Saving answers arrives in the next update.
-              </span>
-            </div>
-          </form>
-        </section>
-      ) : null}
+      {day.heavy && !crisis ? <CheckInCard day={day} /> : null}
 
       <nav className={styles.pager} aria-label="Other days">
         {previous ? (
