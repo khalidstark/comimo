@@ -47,14 +47,22 @@ export function isSameOrigin(request: Request): boolean {
  *
  * On Vercel (VERCEL=1 at runtime) the platform overwrites X-Forwarded-For and
  * sets X-Vercel-Forwarded-For "to prevent IP spoofing" (vercel.com/docs/headers/request-headers),
- * so those are trusted there. Anywhere else these headers come straight from
- * the client, so every caller counts as "local" and the global caps do the
- * limiting. X-Real-IP is never read.
+ * so those are trusted there. Behind another proxy that sets a client-IP
+ * header the client can't forge, name it in COMIMO_TRUSTED_IP_HEADER (for
+ * example "cf-connecting-ip"). Anywhere else these headers come straight from
+ * the client, so the IP is unknown (`null`): per-IP limits are skipped rather
+ * than lumping every visitor into one bucket that a single person could lock
+ * for everyone, and the per-email, per-account and global caps do the limiting.
  */
-export function clientIp(request: Request): string {
-  if (process.env.VERCEL !== "1") return "local";
-  const header = request.headers.get("x-vercel-forwarded-for") ?? request.headers.get("x-forwarded-for");
-  return header?.split(",")[0]?.trim() || "local";
+export function clientIp(request: Request): string | null {
+  const trusted = process.env.COMIMO_TRUSTED_IP_HEADER?.trim().toLowerCase();
+  const header =
+    process.env.VERCEL === "1"
+      ? (request.headers.get("x-vercel-forwarded-for") ?? request.headers.get("x-forwarded-for"))
+      : trusted
+        ? request.headers.get(trusted)
+        : null;
+  return header?.split(",")[0]?.trim() || null;
 }
 
 /**
@@ -71,7 +79,8 @@ export function hashTag(kind: string, value: string): string {
   return createHash("sha256").update(`${identifierSalt()}:${kind}:${value}`).digest("hex").slice(0, 32);
 }
 
-/** The caller's IP as a hashed tag, for per-IP limits. */
-export function ipTag(request: Request): string {
-  return hashTag("ip", clientIp(request));
+/** The caller's IP as a hashed tag for per-IP limits, or `null` when no trusted IP is known. */
+export function ipTag(request: Request): string | null {
+  const ip = clientIp(request);
+  return ip ? hashTag("ip", ip) : null;
 }

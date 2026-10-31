@@ -2,7 +2,7 @@ import { checkCredentials, checkEmail, isProblem, PASSWORD_MAX } from "@/lib/ser
 import { authError, authJson, logStoreError, readAuthBody, storeDown } from "@/lib/server/authHttp";
 import { setSessionCookie } from "@/lib/server/cookie";
 import { getKV } from "@/lib/server/kv";
-import { clearAttempts, EMAIL_LOCKOUT, IP_LOCKOUT, minutesText, releaseAttempt, reserveAttempt } from "@/lib/server/rateLimit";
+import { type Attempt, clearAttempts, EMAIL_LOCKOUT, IP_LOCKOUT, minutesText, releaseAttempt, reserveAttempt } from "@/lib/server/rateLimit";
 import { hashTag, ipTag } from "@/lib/server/request";
 import { createSession } from "@/lib/server/session";
 
@@ -30,10 +30,12 @@ export async function POST(request: Request) {
 
   const kv = getKV();
   const emailSubject = `login:email:${hashTag("email", email.email)}`;
-  const ipSubject = `login:ip:${ipTag(request)}`;
+  // No trusted IP (not on Vercel, no COMIMO_TRUSTED_IP_HEADER): skip the per-IP lock, the per-email one still holds.
+  const ip = ipTag(request);
+  const ipSubject = ip ? `login:ip:${ip}` : null;
   try {
     // Reserve the try before checking the password, so parallel guesses can't race past a lock.
-    const byIp = await reserveAttempt(kv, ipSubject, IP_LOCKOUT);
+    const byIp: Attempt = ipSubject ? await reserveAttempt(kv, ipSubject, IP_LOCKOUT) : { ok: true };
     const byEmail = byIp.ok ? await reserveAttempt(kv, emailSubject, EMAIL_LOCKOUT) : null;
     const blocked = !byIp.ok ? byIp : byEmail && !byEmail.ok ? byEmail : null;
     if (blocked) {
@@ -45,7 +47,7 @@ export async function POST(request: Request) {
     const account = await checkCredentials(email.email, password, kv);
     if (!account) return authError(401, WRONG);
 
-    await Promise.all([clearAttempts(kv, emailSubject), releaseAttempt(kv, ipSubject)]);
+    await Promise.all([clearAttempts(kv, emailSubject), ipSubject ? releaseAttempt(kv, ipSubject) : null]);
     await setSessionCookie(await createSession(account, kv));
     return authJson({ user: { name: account.name } });
   } catch (error) {
