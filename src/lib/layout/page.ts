@@ -117,13 +117,6 @@ function place(index: number, quad: Quad, inset: boolean, host?: number): Placed
   return { index, quad, box: boundingBox(quad), inner: innerRect(quad), inset, ...(host !== undefined ? { host } : {}) };
 }
 
-/** Panels before gutters (the cut-up page), used to carry insets across to the phone page. */
-function rawDesktopQuads(variant: TemplateVariant): Quad[] {
-  return variant.slots.map((slot) =>
-    slot.kind === "cell" ? cellQuad(slot.top, slot.right, slot.bottom, slot.left) : rectQuad(slot.rect),
-  );
-}
-
 export function desktopGeometry(variant: TemplateVariant): PageGeometry {
   const panels = variant.slots.map((slot, index) => {
     if (slot.kind === "inset") return place(index, rectQuad(slot.rect), true, slot.host);
@@ -242,9 +235,10 @@ function leanFor(beat: Beat | undefined, focusRow: boolean): number {
 
 export function phoneGeometry(variant: TemplateVariant, metas: PanelMeta[], seed: string): PageGeometry {
   const aspects = slotAspects(variant);
-  const raw = rawDesktopQuads(variant);
   const { focus } = variant;
-  const order = variant.slots.flatMap((slot, i) => (slot.kind === "cell" ? [i] : []));
+  // On a phone an inset would be too small to read over its hero, so it takes its place in the rows
+  // like any other panel (alone, or paired with a neighbour), in reading order.
+  const order = variant.slots.map((_, i) => i);
   const beatOf = (i: number) => metas.find((meta) => meta.index === i)?.beat;
   const g = PHONE.gutter;
   const m = PHONE.margin;
@@ -296,7 +290,6 @@ export function phoneGeometry(variant: TemplateVariant, metas: PanelMeta[], seed
   const height = rows.reduce((total, r) => total + r.height, 0);
 
   const placed: PlacedPanel[] = [];
-  const cells = new Map<number, Quad>();
   const sign = (k: number) => ((hashString(`${seed}:${k}`) & 1) === 0 ? 1 : -1);
   let top: Line = line([0, 0], [W, 0], "top");
   let y = 0;
@@ -329,7 +322,6 @@ export function phoneGeometry(variant: TemplateVariant, metas: PanelMeta[], seed
 
     r.items.forEach((index, i) => {
       const raw: Quad = cellQuad(top, walls[i + 1], bottomLine, walls[i]);
-      cells.set(index, raw);
       const edges: (PageEdge | undefined)[] = [top.edge, walls[i + 1].edge, bottomLine.edge, walls[i].edge];
       const distances = edges.map((edge) =>
         edge === "left" || edge === "right" ? (r.bleed ? 0 : m) : edge ? m : g / 2,
@@ -339,31 +331,6 @@ export function phoneGeometry(variant: TemplateVariant, metas: PanelMeta[], seed
       placed.push(panel);
     });
     top = bottomLine;
-  });
-
-  // Insets keep the same spot on their hero as on the desktop page, a little larger if they'd be tiny.
-  variant.slots.forEach((slot, index) => {
-    if (slot.kind !== "inset") return;
-    const hostRaw = boundingBox(raw[slot.host]);
-    const hostPhone = cells.get(slot.host);
-    if (!hostPhone) return;
-    const target = boundingBox(hostPhone);
-    let w = ((slot.rect.w / hostRaw.w) * target.w);
-    let h = ((slot.rect.h / hostRaw.h) * target.h);
-    let x = target.x + ((slot.rect.x - hostRaw.x) / hostRaw.w) * target.w;
-    let yTop = target.y + ((slot.rect.y - hostRaw.y) / hostRaw.h) * target.h;
-    const minWidth = 4.8;
-    if (w < minWidth) {
-      const scale = minWidth / w;
-      const right = slot.rect.x + slot.rect.w / 2 > hostRaw.x + hostRaw.w / 2;
-      const lower = slot.rect.y + slot.rect.h / 2 > hostRaw.y + hostRaw.h / 2;
-      if (right) x -= w * (scale - 1);
-      if (lower) yTop -= h * (scale - 1);
-      w *= scale;
-      h *= scale;
-    }
-    x = Math.min(Math.max(x, m), W - m - w);
-    placed.push(place(index, rectQuad({ x, y: yTop, w, h }), true, slot.host));
   });
 
   placed.sort((a, b) => a.index - b.index);

@@ -60,13 +60,14 @@
   z-index: var(--z, 1);
 }
 
-.slot[data-inset] {
-  --panel-ink: var(--inset-ink);
-  --panel-stroke: var(--inset-stroke);
-  filter: var(--inset-shadow);
-}
-
 @container comic-page (min-width: 40rem) {
+  /* Insets overlap their hero only on the designed (wide) page; on a phone they are ordinary panels */
+  .slot[data-inset] {
+    --panel-ink: var(--inset-ink);
+    --panel-stroke: var(--inset-stroke);
+    filter: var(--inset-shadow);
+  }
+
   .page {
     aspect-ratio: var(--d-ratio);
   }
