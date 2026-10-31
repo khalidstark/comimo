@@ -99,6 +99,8 @@ export interface Character {
   /** True for the invented starter cast that ships with the app. */
   starter: boolean;
   createdAt: string;
+  /** Last change (set by the store on every save); the newer copy wins when devices sync. Missing on older records. */
+  updatedAt?: string;
 }
 
 /** A character's reference sheet in one art style. */
@@ -342,6 +344,8 @@ export interface Day {
   /** True for the invented sample days. */
   sample?: boolean;
   createdAt: string;
+  /** Last change (set by the store on every save); the newer copy wins when devices sync. Missing on older records. */
+  updatedAt?: string;
 }
 
 /** A month's issue: the days bound into it, in date order. */

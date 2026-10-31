@@ -1,6 +1,8 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
+import { closeAccountCache } from "@/lib/store";
+import { rememberCacheKey, whoAmI } from "@/lib/whoami";
 
 /**
  * Who is signed in, shared by every component on the page. The session
@@ -26,12 +28,8 @@ function publish(next: AccountState) {
 function load() {
   if (requested) return;
   requested = true;
-  fetch("/api/auth/me", { cache: "no-store", credentials: "same-origin" })
-    .then((response) => response.json() as Promise<{ user?: { name?: unknown } | null }>)
-    .then((body) => {
-      const name = body.user?.name;
-      publish(typeof name === "string" ? { status: "signed-in", name } : SIGNED_OUT);
-    })
+  whoAmI()
+    .then((me) => publish(me ? { status: "signed-in", name: me.name } : SIGNED_OUT))
     .catch(() => publish(SIGNED_OUT));
 }
 
@@ -55,8 +53,13 @@ export { safeNext } from "@/lib/safeNext";
 /** Sign out everywhere this session is used, then start fresh on the home page. */
 export async function signOut(): Promise<void> {
   try {
+    // Send anything not yet sent, then clear this account's offline copy from the browser
+    // (kept when something couldn't be sent, so nothing is lost).
+    await closeAccountCache().catch(() => false);
     await fetch("/api/auth/signout", { method: "POST", credentials: "same-origin" });
   } finally {
+    // This device's cache of the account stays (it opens again at the next sign-in); the store stops using it now.
+    rememberCacheKey(null);
     publish(SIGNED_OUT);
     // A full load on purpose: nothing from the signed-in page (router cache, prefetched routes) survives.
     window.location.replace("/");
