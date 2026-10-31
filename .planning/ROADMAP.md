@@ -75,7 +75,7 @@ Plans:
 
 Plans:
 - [ ] 04-01: Monthly magazine flip-through with the mood strip
-- [ ] 04-02: Art generation script for site art and character/mascot sprite sheets (idle, blink, talk, wave), sample days and example comics
+- [ ] 04-02: (mostly delivered by 03.1 design refresh) sample month of real comics for the demo, performance and favicon
 
 ### Phase 5: Ship
 **Goal**: Live URL, public repo, README, voice-note scripts and a ready demo, submitted before the deadline
@@ -84,7 +84,7 @@ Plans:
 **Plans**: 1 plan
 
 Plans:
-- [ ] 05-01: Deploy with rate limits, README, voice-note scripts, demo checklist, submit
+- [ ] 05-01: Deploy with a shared spending guard, README, demo script, submission pack, submit
 
 ## Progress
 
