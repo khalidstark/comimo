@@ -18,6 +18,8 @@ export interface StoryPanel {
   beat?: Beat;
   emphasis?: boolean;
   caption?: string;
+  /** Narration is lettered in the caption box instead of the caption. */
+  narration?: string;
   dialogue: { text: string }[];
   characterIds: string[];
 }
@@ -32,9 +34,14 @@ export interface ResolvedLayout {
   fallback: boolean;
 }
 
-/** The panel's caption and lines as text to letter. */
+/** The text lettered in a panel's caption box: its narration when it has one, else its caption. */
+export function captionText(panel: { caption?: string; narration?: string }): string | undefined {
+  return panel.narration || panel.caption || undefined;
+}
+
+/** The panel's caption box and lines as text to letter. */
 export function letteringOf(panel: StoryPanel): Lettering {
-  return { caption: panel.caption || undefined, lines: panel.dialogue.map((line) => line.text) };
+  return { caption: captionText(panel), lines: panel.dialogue.map((line) => line.text) };
 }
 
 export function isShot(value: unknown): value is Shot {
@@ -46,7 +53,7 @@ export function isBeat(value: unknown): value is Beat {
 }
 
 function textWeight(panel: StoryPanel): number {
-  return (panel.caption?.length ?? 0) + panel.dialogue.reduce((sum, line) => sum + line.text.length, 0);
+  return (captionText(panel)?.length ?? 0) + panel.dialogue.reduce((sum, line) => sum + line.text.length, 0);
 }
 
 /**
@@ -62,7 +69,7 @@ export function inferStory<T extends StoryPanel>(panels: T[]): Storied<T>[] {
   return panels.map((panel, i) => {
     const beat: Beat = i === 0 ? "setup" : i === n - 1 ? "release" : panel === peak ? "climax" : i >= n - 2 ? "turn" : "build";
     const shot: Shot =
-      panel === peak ? "splash" : i === 0 ? "establishing" : panel.characterIds.length === 1 && !panel.caption ? "closeup" : i === n - 1 ? "wide" : "medium";
+      panel === peak ? "splash" : i === 0 ? "establishing" : panel.characterIds.length === 1 && !captionText(panel) ? "closeup" : i === n - 1 ? "wide" : "medium";
     return { ...panel, shot: panel.shot ?? shot, beat: panel.beat ?? beat };
   });
 }
@@ -222,31 +229,4 @@ export function safeLayout(count: number): { template: PageTemplate; variant: Te
   });
   const variant: TemplateVariant = { focus: 0, height, slots };
   return { template: { id: `safe-${n}`, name: "Simple page", count: 4, variants: [variant] }, variant };
-}
-
-/** What a day needs for layout: its id, panels and any stored choice. */
-export interface LayoutDay {
-  id: string;
-  date: string;
-  createdAt: string;
-  sample?: boolean;
-  layout?: PageLayoutChoice;
-  panels: StoryPanel[];
-}
-
-/**
- * The layout of every day, oldest first. A stored choice is kept; a day made
- * before layouts gets one picked now, avoiding the day before it.
- */
-export function layoutChain(days: LayoutDay[]): Map<string, PageLayoutChoice | null> {
-  const ordered = [...days].sort((a, b) => a.date.localeCompare(b.date) || a.createdAt.localeCompare(b.createdAt));
-  const chosen = new Map<string, PageLayoutChoice | null>();
-  let previous: string | null = null;
-  for (const day of ordered) {
-    const stored = day.layout && resolveLayout(day.layout, day.panels.length).fallback === false ? day.layout : null;
-    const choice: PageLayoutChoice | null = stored ?? (day.panels.length > 0 ? pickLayout(normalizeStory(day.panels), day.id, previous) : null);
-    chosen.set(day.id, choice);
-    previous = choice?.template ?? previous;
-  }
-  return chosen;
 }

@@ -25,10 +25,12 @@ function clamp(min: number, value: number, max: number): number {
 
 /** Average advance of a lettering glyph, as a share of the font size. */
 const GLYPH = 0.53;
+/** Caption boxes can be set in capitals (Painterly narration), which run wider. */
+const CAPTION_GLYPH = 0.57;
 const LINE = 1.28;
 
-function linesFor(text: string, widthPx: number, font: number): number {
-  const perLine = Math.max(6, Math.floor(widthPx / (font * GLYPH)));
+function linesFor(text: string, widthPx: number, font: number, glyph = GLYPH): number {
+  const perLine = Math.max(6, Math.floor(widthPx / (font * glyph)));
   let lines = 1;
   let used = 0;
   for (const word of text.split(/\s+/).filter(Boolean)) {
@@ -59,7 +61,7 @@ export function letteringHeight({ caption, lines }: Lettering, columnPx: number,
   let height = 0;
   if (caption) {
     const width = columnPx * 0.92 - cap * 1.2;
-    height += linesFor(caption, width, cap) * cap * LINE + cap * 0.5;
+    height += linesFor(caption, width, cap, CAPTION_GLYPH) * cap * LINE + cap * 0.5;
   }
   for (let i = 0; i < lines.length; i += perRow) {
     const width = Math.min(columnPx * share, bub * 18) - bub * 1.9;
