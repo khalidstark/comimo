@@ -25,17 +25,15 @@
 - **Detail:** src/lib/guard.ts keeps per-visitor and daily counts in memory. Vercel instances don't share them and cold starts reset them, so the real ceiling is a multiple of the configured caps. Options: Vercel KV/Upstash Redis, or accept with low caps plus the Billing spend alert.
 - **Address in:** 05-01 (deploy)
 
-### ISS-009: Bubbles and captions cover faces on phones
-- **Found:** Phase 3, plan 03-02 (first real comics)
-- **Detail:** Panels now keep the top third empty, which works on desktop, but at 390 px the caption plus one or two bubbles cover most of a 3:2 frame, and wide 2:1 panels are cropped at the sides to 3:2, so faces end up under the lettering. A second bubble is placed lower and can cover a face on any screen. Needs reader layout work (bubble size and placement, or art crops per breakpoint), not prompts.
-- **Address in:** the dynamic panel layout plan
-
 ### ISS-010: "How Comimo kept faces the same" claims SAM ran while the check is still mock
 - **Found:** Phase 3, plan 03-02
 - **Detail:** Real comics show "SAM 3.1 compared every face… nothing needed redrawing" although checkConsistency is still the mock (it now reports no drift for real panels). The copy becomes true in 03-03; until then real comics overstate it.
 - **Address in:** 03-03
 
 ## Closed
+
+### ISS-009: Bubbles and captions cover faces on phones
+- **Closed:** 2026-10-31, fixed in 03-04. The page layout is picked before drawing, so every panel is drawn at its slot's aspect ratio (no side cropping: the phone page keeps each image's shape) and Muse Image is told exactly which part to leave as plain background for the lettering: a top band or a side column sized from that panel's caption and lines on the smallest page it is read on (at most 44%), with any inset corner folded into the band. Bubbles sit inside that zone (two to a row in wide panels), and wordy panels get their own row on phones. Checked on 7 real comics at 390 px and 1280 px: no lettering outside its panel; faces clear except where the art model ignored a band on the first drawings, which the 44% cap and bubble rows address.
 
 ### ISS-005: /api/panel body can exceed Vercel's 4.5 MB limit
 - **Closed:** 2026-10-31, fixed in 03-02. Reference sheets are uploaded once to Meta's Files API (30-day expiry) and kept on the character as a server-signed file token per art style; panel requests carry the token instead of the image. Only a sheet without a token travels inline (Muse Image sheets are 0.1 to 0.9 MB), and an expired or unverifiable token answers 409 "stale-reference" so the browser resends the sheet once and gets a fresh token.
