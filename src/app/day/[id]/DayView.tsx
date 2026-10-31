@@ -4,7 +4,7 @@ import { ComicBook, type BookPage } from "@/components/comic/ComicBook";
 import { FacesNote } from "@/components/comic/FacesNote";
 import { MoodBadge } from "@/components/comic/MoodBadge";
 import { pageView } from "@/components/comic/pageView";
-import type { FixedFace, PanelView } from "@/components/comic/view";
+import type { FacesSummary, PanelView } from "@/components/comic/view";
 import { CheckInCard } from "@/components/CheckInCard";
 import { EmptyState } from "@/components/EmptyState";
 import { NewPeopleCard } from "@/components/NewPeopleCard";
@@ -23,8 +23,8 @@ export interface DayLink {
 interface DayViewProps {
   day: Day;
   panels: PanelView[];
-  /** Characters SAM fixed; null when the day was never checked (sample days). */
-  faces: FixedFace[] | null;
+  /** What the face check truthfully did; null for sample days and days made before the real check. */
+  faces: FacesSummary | null;
   /** Each page's layout: stored, or picked for it on read (see pageLayoutChain). */
   layouts: (PageLayoutChoice | null)[];
   previous?: DayLink;
@@ -82,7 +82,7 @@ export function DayView({ day, panels, faces, layouts, previous, next }: DayView
         </details>
       ) : null}
 
-      {!crisis && faces ? <FacesNote faces={faces} /> : null}
+      {!crisis && faces ? <FacesNote summary={faces} /> : null}
 
       {day.heavy && !crisis ? <CheckInCard day={day} /> : null}
 

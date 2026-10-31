@@ -161,7 +161,7 @@ export function ComicPanel({ panel, slot, total }: ComicPanelProps) {
           </span>
         ) : null}
 
-        {fixable ? <FixedBadge names={panel.fixedNames} showingBefore={showingBefore} onToggle={toggle} /> : null}
+        {fixable ? <FixedBadge names={panel.fixedNames} showingBefore={showingBefore} bySam={panel.checkedBy === "sam"} onToggle={toggle} /> : null}
       </div>
     </li>
   );
