@@ -48,7 +48,7 @@ function legacyFrame(shape: unknown): PanelFrame {
 
 function parsePanel(value: unknown): ScriptPanel | null {
   if (!isRecord(value)) return null;
-  const { index, scene, caption, dialogue, characterIds, shot, beat, emphasis } = value;
+  const { index, scene, caption, dialogue, characterIds, shot, beat, emphasis, flashback } = value;
   if (typeof index !== "number" || !Number.isInteger(index) || index < 0 || index > 20) return null;
   if (!isText(scene, 2000)) return null;
   if (caption !== undefined && typeof caption !== "string") return null;
@@ -74,6 +74,7 @@ function parsePanel(value: unknown): ScriptPanel | null {
     ...(shot ? { shot } : {}),
     ...(beat ? { beat } : {}),
     ...(emphasis === true ? { emphasis: true } : {}),
+    ...(flashback === true ? { flashback: true } : {}),
   };
 }
 

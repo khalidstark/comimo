@@ -3,6 +3,7 @@ import { guard, guardResponse } from "@/lib/guard";
 import { getModels } from "@/lib/models";
 import { isRecord, isText, json, jsonError, modelErrorResponse, readJson } from "@/lib/models/wire";
 import type { CastBrief, CharacterRole, ScriptResponse } from "@/lib/types";
+import { DEFAULT_STORY_MODE, isStoryMode } from "@/lib/types";
 
 export const maxDuration = 60;
 
@@ -27,7 +28,7 @@ function parseCast(value: unknown): CastBrief[] | null {
 
 /**
  * POST /api/script
- * JSON: { transcript: string, cast?: CastBrief[] }  (cast defaults to the starter cast)
+ * JSON: { transcript: string, cast?: CastBrief[], storyMode?: StoryMode }  (cast defaults to the starter cast, storyMode to "both")
  */
 export async function POST(request: Request) {
   const body = await readJson(request);
@@ -44,6 +45,11 @@ export async function POST(request: Request) {
     cast = parsed;
   }
 
+  if (body.storyMode !== undefined && !isStoryMode(body.storyMode)) {
+    return jsonError(400, "`storyMode` must be \"narrated\", \"dialogue\" or \"both\".");
+  }
+  const storyMode = isStoryMode(body.storyMode) ? body.storyMode : DEFAULT_STORY_MODE;
+
   const models = getModels();
   const source = models.sources.writeScript;
   // One script is one comic: this is the call the per-visitor comic limit counts.
@@ -51,7 +57,7 @@ export async function POST(request: Request) {
   if (!check.ok) return guardResponse(check);
 
   try {
-    const script = await models.writeScript(body.transcript, cast, { visitorId: check.visitorId, signal: request.signal, meter: check.meter });
+    const script = await models.writeScript(body.transcript, cast, { visitorId: check.visitorId, signal: request.signal, meter: check.meter }, { storyMode });
     return json<ScriptResponse>({ mode: source, script }, source);
   } catch (error) {
     // Refund only when nothing billable reached Meta; an abort or timeout after sending still counts.

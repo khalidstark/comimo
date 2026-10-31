@@ -2,9 +2,12 @@ import "server-only";
 import { firstStrongDir } from "@/lib/bidi";
 import { isBeat, isShot, normalizeStory } from "@/lib/layout/pickLayout";
 import { MOODS, type CastBrief, type ComicScript, type DialogueLine, type Mood, type ScriptPanel } from "@/lib/types";
-import type { ModelCallContext } from "../index";
+import { DEFAULT_STORY_MODE, type ComicPage, type StoryMode } from "@/lib/types";
+import { localPanels, pagesFromNumbers } from "@/lib/layout/comicPages";
+import { applyStoryMode } from "../storyMode";
+import type { ModelCallContext, ScriptOptions } from "../index";
 import { MetaApiError, metaJson } from "./client";
-import { SCRIPT_SYSTEM_PROMPT, castBlock, scriptSchema, transcriptMessage } from "./prompts";
+import { SCRIPT_SYSTEM_PROMPT, castBlock, scriptSchema, storyModeBlock, transcriptMessage } from "./prompts";
 
 /**
  * Muse Spark writes the comic script: POST /v1/chat/completions with a
@@ -21,7 +24,7 @@ const MAX_OUTPUT_TOKENS = 6_000;
 const ATTEMPTS = 2;
 
 /** Same limits /api/panel accepts, so a script always draws. */
-const LIMITS = { title: 80, scene: 600, caption: 200, line: 200, question: 200, linesPerPanel: 3, charactersPerPanel: 3 };
+const LIMITS = { title: 80, scene: 600, caption: 200, narration: 320, line: 200, question: 200, linesPerPanel: 3, charactersPerPanel: 3 };
 
 interface ChatBody {
   choices?: { message?: { content?: string | null; refusal?: string | null }; finish_reason?: string }[];
@@ -90,10 +93,13 @@ function toPanel(value: unknown, index: number, castIds: Set<string>): ScriptPan
   }
 
   const caption = clip(raw.caption, LIMITS.caption);
+  const narration = clip(raw.narration, LIMITS.narration);
   return {
     index,
     scene,
     ...(caption ? { caption } : {}),
+    ...(narration ? { narration } : {}),
+    ...(raw.flashback === true ? { flashback: true } : {}),
     dialogue,
     characterIds,
     ...(isShot(raw.shot) ? { shot: raw.shot } : {}),
@@ -103,7 +109,7 @@ function toPanel(value: unknown, index: number, castIds: Set<string>): ScriptPan
 }
 
 /** Turn the model's JSON into a ComicScript, or throw ScriptShapeError so the call is tried again. */
-export function toComicScript(content: string, cast: CastBrief[]): ComicScript {
+export function toComicScript(content: string, cast: CastBrief[], mode: StoryMode = DEFAULT_STORY_MODE): ComicScript {
   let parsed: unknown;
   try {
     parsed = JSON.parse(content);
@@ -123,9 +129,15 @@ export function toComicScript(content: string, cast: CastBrief[]): ComicScript {
 
   const castIds = new Set(cast.map((member) => member.id));
   const rawPanels = asArray(raw.panels);
-  if (rawPanels.length < 4 || rawPanels.length > 6) throw new ScriptShapeError(`${rawPanels.length} panels, expected 4 to 6`);
-  // Exactly one splash: the page layout gives it the biggest slot.
-  const panels = normalizeStory(rawPanels.map((panel, index) => toPanel(panel, index, castIds)));
+  const groups = pagesFromNumbers(rawPanels.map((panel) => (typeof asRecord(panel).page === "number" ? (asRecord(panel).page as number) : 1)));
+  if (!groups) throw new ScriptShapeError(`${rawPanels.length} panels don't make 1 to 3 pages of 4 to 6`);
+  const all = rawPanels.map((panel, index) => toPanel(panel, index, castIds));
+  // Exactly one splash on each page: the page layout gives it the biggest slot.
+  const normalised = groups.flatMap((group) =>
+    normalizeStory(localPanels(group.map((index) => all[index]))).map((panel, i) => ({ ...panel, index: group[i] })),
+  );
+  const panels = applyStoryMode(normalised, groups, mode);
+  const pages: ComicPage[] = groups.map((group) => ({ panels: group }));
 
   const questions = asArray(raw.checkInQuestions)
     .map((question) => clip(question, LIMITS.question))
@@ -136,6 +148,8 @@ export function toComicScript(content: string, cast: CastBrief[]): ComicScript {
   return {
     title: clip(raw.title, LIMITS.title) || "Today",
     panels,
+    pages,
+    storyMode: mode,
     mood,
     heavy: raw.heavy,
     checkInQuestions: raw.heavy ? questions : [],
@@ -143,7 +157,13 @@ export function toComicScript(content: string, cast: CastBrief[]): ComicScript {
   };
 }
 
-export async function writeScript(transcript: string, cast: CastBrief[], context: ModelCallContext = {}): Promise<ComicScript> {
+export async function writeScript(
+  transcript: string,
+  cast: CastBrief[],
+  context: ModelCallContext = {},
+  options: ScriptOptions = {},
+): Promise<ComicScript> {
+  const mode = options.storyMode ?? DEFAULT_STORY_MODE;
   const request = {
     model: MODEL,
     reasoning_effort: "low",
@@ -152,6 +172,7 @@ export async function writeScript(transcript: string, cast: CastBrief[], context
     messages: [
       { role: "system", content: SCRIPT_SYSTEM_PROMPT },
       { role: "system", content: castBlock(cast) },
+      { role: "system", content: storyModeBlock(mode) },
       { role: "user", content: transcriptMessage(transcript) },
     ],
     response_format: {
@@ -176,7 +197,7 @@ export async function writeScript(transcript: string, cast: CastBrief[], context
     try {
       if (choice?.finish_reason === "length") throw new ScriptShapeError("answer was cut off");
       if (!content) throw new ScriptShapeError(choice?.message?.refusal ? "model refused" : "empty answer");
-      return toComicScript(content, cast);
+      return toComicScript(content, cast, mode);
     } catch (error) {
       if (!(error instanceof ScriptShapeError)) throw error;
       lastProblem = error.message;
