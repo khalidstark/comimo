@@ -10,6 +10,7 @@ import { pageView, type SlotView } from "@/components/comic/pageView";
 import { SlotOutline } from "@/components/comic/SlotOutline";
 import pageStyles from "@/components/comic/page.module.css";
 import { formatDay, moodWords } from "@/lib/format";
+import { splitPages } from "@/lib/layout/comicPages";
 import {
   ComicPipeline,
   PIPELINE_STEPS,
@@ -19,7 +20,7 @@ import {
   type StepStatus,
 } from "@/lib/pipeline";
 import type { ArtStyleId } from "@/lib/artStyles";
-import type { LanguageHint, LanguageMix, ScriptPanel } from "@/lib/types";
+import type { LanguageHint, LanguageMix, ScriptPanel, StoryMode } from "@/lib/types";
 import styles from "./making.module.css";
 
 const REDUCED_MOTION = "(prefers-reduced-motion: reduce)";
@@ -74,9 +75,12 @@ function stepDetail(step: PipelineStep, status: StepStatus, state: PipelineState
   switch (step) {
     case "listen":
       return state.transcript ? languageLabel(state.transcript.languages) : "";
-    case "write":
+    case "write": {
       if (!state.script) return "";
-      return state.script.safety === "crisis" ? "Comic paused" : `${total} panels`;
+      if (state.script.safety === "crisis") return "Comic paused";
+      const pages = state.pages?.length ?? 1;
+      return pages > 1 ? `${pages} pages, ${total} panels` : `${total} panels`;
+    }
     case "draw":
       return `${drawn} of ${total}`;
     case "check":
@@ -97,20 +101,29 @@ function captionFor(state: PipelineState, fixing: PanelProgress | undefined): st
   const { steps } = state;
   if (steps.save === "active") return "Binding the pages…";
   if (steps.draw === "active") {
-    const drawing = state.panels.filter((panel) => panel.status === "drawing").map((panel) => panel.index + 1);
-    const total = state.panels.length;
-    if (drawing.length === 0) return "Checking faces…";
-    if (drawing.length === 1) return `Drawing panel ${drawing[0]} of ${total}…`;
-    return `Drawing panels ${drawing.slice(0, -1).join(", ")} and ${drawing.at(-1)} of ${total}…`;
+    const pages = state.pages?.length ?? 1;
+    const drawingPanels = state.panels.filter((panel) => panel.status === "drawing");
+    if (drawingPanels.length === 0) return "Checking faces…";
+    // Name the panels by their place on their page: "Page 2 of 3 · drawing panel 4".
+    const page = drawingPanels[0].page;
+    const onPage = state.panels.filter((panel) => panel.page === page);
+    const numbers = drawingPanels.filter((panel) => panel.page === page).map((panel) => onPage.indexOf(panel) + 1);
+    const what = numbers.length === 1 ? `drawing panel ${numbers[0]}` : `drawing panels ${numbers.slice(0, -1).join(", ")} and ${numbers.at(-1)}`;
+    if (pages > 1) return `Page ${page + 1} of ${pages} · ${what}…`;
+    return `${what.charAt(0).toUpperCase()}${what.slice(1)} of ${onPage.length}…`;
   }
   if (steps.write === "active") return "Writing the script…";
   return "Listening to your day…";
 }
 
 interface MakingComicProps {
-  audio: Blob;
+  /** The voice note; null when the day was typed. */
+  audio: Blob | null;
+  /** The typed day, used instead of a voice note. */
+  text?: string;
   language: LanguageHint;
   style: ArtStyleId;
+  storyMode: StoryMode;
   /** Called after the screen is cancelled and closed. */
   onClose: () => void;
 }
@@ -120,8 +133,8 @@ interface MakingComicProps {
  * finishes. Panels are pencilled from the script, inked when drawn, and a
  * panel whose face was fixed flips from before to after.
  */
-export function MakingComic({ audio, language, style, onClose }: MakingComicProps) {
-  const [pipeline] = useState(() => new ComicPipeline({ audio, language, style }));
+export function MakingComic({ audio, text, language, style, storyMode, onClose }: MakingComicProps) {
+  const [pipeline] = useState(() => new ComicPipeline({ audio, text, language, style, storyMode }));
   const state = useSyncExternalStore(pipeline.subscribe, pipeline.getSnapshot, pipeline.getSnapshot);
   const [settled, setSettled] = useState<ReadonlySet<number>>(() => new Set());
   const dialogRef = useRef<HTMLDialogElement>(null);
@@ -182,17 +195,26 @@ export function MakingComic({ audio, language, style, onClose }: MakingComicProp
     setSettled((previous) => new Set(previous).add(index));
   }, []);
 
-  // The page builds in its final shape: the layout is picked right after the script.
+  // Each page builds in its final shape: the layouts are picked right after the script.
+  const slices = useMemo(
+    () => (script && script.panels.length > 0 ? splitPages(script.panels, state.pages ?? undefined, pipeline.dayId) : []),
+    [script, state.pages, pipeline],
+  );
+  // The page on the easel: the first one with a panel still to draw, else the last.
+  const pageCount = Math.max(1, slices.length);
+  const firstOpen = state.panels.find((panel) => panel.status !== "done");
+  const pageNumber = slices.length === 0 ? 0 : (firstOpen?.page ?? slices.length - 1);
+  const slice = slices[pageNumber];
   const page = useMemo(
     () =>
-      script && script.panels.length > 0
-        ? pageView(script.panels, state.layout, pipeline.dayId)
+      slice
+        ? pageView(slice.panels, slice.layout, slice.seed)
         : pageView(SKETCH_STORY, SKETCH_LAYOUT, pipeline.dayId),
-    [script, state.layout, pipeline],
+    [slice, pipeline],
   );
 
-  const frames: { index: number; scene?: ScriptPanel; progress?: PanelProgress }[] = script
-    ? script.panels.map((panel) => ({
+  const frames: { index: number; scene?: ScriptPanel; progress?: PanelProgress }[] = slice
+    ? slice.panels.map((panel) => ({
         index: panel.index,
         scene: panel,
         progress: state.panels.find((p) => p.index === panel.index),
@@ -280,12 +302,22 @@ export function MakingComic({ audio, language, style, onClose }: MakingComicProp
             </div>
 
             {crisis ? null : (
-              <div className={`${pageStyles.wrap} ${styles.frames}`} data-style={style}>
-                <ol className={pageStyles.page} style={page.vars as CSSProperties} aria-label="Panels">
+              <div key={pageNumber} className={`${pageStyles.wrap} ${styles.frames}`} data-style={style} data-turned={pageNumber > 0 || undefined}>
+                {pageCount > 1 ? (
+                  <p className={styles.pageTag}>
+                    Page {pageNumber + 1} of {pageCount}
+                  </p>
+                ) : null}
+                <ol
+                  className={pageStyles.page}
+                  style={page.vars as CSSProperties}
+                  aria-label={pageCount > 1 ? `Panels on page ${pageNumber + 1} of ${pageCount}` : "Panels"}
+                >
                   {frames.map((frame, i) => (
                     <ProgressFrame
                       key={frame.index}
                       index={frame.index}
+                      number={i + 1}
                       total={frames.length}
                       slot={page.slots.find((s) => s.index === frame.index) ?? page.slots[i]}
                       scene={frame.scene}
@@ -342,7 +374,10 @@ export function MakingComic({ audio, language, style, onClose }: MakingComicProp
 }
 
 interface ProgressFrameProps {
+  /** The panel's index in the comic. */
   index: number;
+  /** Its number on this page, from 1. */
+  number: number;
   total: number;
   slot: SlotView;
   scene?: ScriptPanel;
@@ -351,7 +386,7 @@ interface ProgressFrameProps {
 }
 
 /** One panel on the page: pencilled, being drawn, inked, or flipping from before to after. */
-function ProgressFrame({ index, total, slot, scene, progress, onSettled }: ProgressFrameProps) {
+function ProgressFrame({ index, number, total, slot, scene, progress, onSettled }: ProgressFrameProps) {
   const status = progress?.status ?? "waiting";
   const fixing = status === "done" && Boolean(progress?.beforeUrl);
   const [flipped, setFlipped] = useState(false);
@@ -389,15 +424,15 @@ function ProgressFrame({ index, total, slot, scene, progress, onSettled }: Progr
     >
       <span className={styles.cut}>
       <span className="visually-hidden">
-        Panel {index + 1} of {total}: {spoken}
+        Panel {number} of {total}: {spoken}
       </span>
       <span className={styles.frameNo} aria-hidden="true">
-        {index + 1}
+        {number}
       </span>
 
       {status === "waiting" && scene ? (
         <p className={styles.sketch} dir="auto" aria-hidden="true">
-          {scene.caption || scene.scene}
+          {scene.narration || scene.caption || scene.scene}
         </p>
       ) : null}
 
