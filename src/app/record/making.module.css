@@ -277,6 +277,7 @@
    The frames sit in the comic's own page layout (page.module.css), so the
    page builds in its final shape. */
 .frames {
+  position: relative;
   border: var(--panel-border-thin) solid var(--line);
 }
 
@@ -653,4 +654,37 @@
   min-block-size: 2.5rem;
   padding-inline: 0.9em;
   font-size: var(--step--1);
+}
+
+/* ---------- Multi-page comics: one page on the easel at a time ---------- */
+.pageTag {
+  position: absolute;
+  z-index: 4;
+  inset-block-start: 0;
+  inset-inline-end: 0;
+  margin: 0;
+  padding: 0.2rem 0.6rem 0.25rem;
+  background: #1b2148;
+  color: #fff;
+  font-family: var(--font-display-stack);
+  font-size: var(--step--1);
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+/* A new page slides onto the easel from the right edge, like the next sheet laid down */
+.frames[data-turned] {
+  animation: easel-next 620ms var(--ease-ink) both;
+}
+
+@keyframes easel-next {
+  from {
+    clip-path: polygon(100% 0, 100% 0, 100% 100%, 100% 100%);
+    translate: 3% 0;
+  }
+  to {
+    clip-path: polygon(-10% 0, 100% 0, 100% 100%, 0 100%);
+    translate: 0 0;
+  }
 }
