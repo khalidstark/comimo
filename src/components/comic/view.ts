@@ -27,7 +27,14 @@ export interface BubbleView {
 export interface PanelView {
   index: number;
   scene: string;
+  /** The caption box's text: the panel's narration when it has one, else its caption. */
   caption?: string;
+  /** True when the caption box holds first-person narration (lettered like a graphic novel). */
+  narrated: boolean;
+  /** A memory: tinted and framed as a flashback. */
+  flashback: boolean;
+  /** The first panel back in the present after a flashback. */
+  returning: boolean;
   bubbles: BubbleView[];
   image: PanelArt | null;
   /** The panel before SAM's face fix; null when nothing was fixed. */
@@ -66,12 +73,15 @@ export function toPanelViews(
 ): PanelView[] {
   return [...panels]
     .sort((a, b) => a.index - b.index)
-    .map((panel) => {
+    .map((panel, i, sorted) => {
       const before = panel.consistency.beforeImage ? resolve(panel, "before") : null;
       return {
         index: panel.index,
         scene: panel.scene,
-        caption: panel.caption,
+        caption: panel.narration || panel.caption,
+        narrated: Boolean(panel.narration),
+        flashback: panel.flashback === true,
+        returning: panel.flashback !== true && i > 0 && sorted[i - 1].flashback === true,
         bubbles: panel.dialogue.map((line, i) => ({
           speakerId: line.speakerId,
           speaker: nameOf(line.speakerId),

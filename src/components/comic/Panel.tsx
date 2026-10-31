@@ -2,6 +2,7 @@
 
 import { useState, type CSSProperties } from "react";
 import { Art } from "@/art/Art";
+import { firstStrongDir } from "@/lib/bidi";
 import { BidiText } from "./BidiText";
 import { Bubble } from "./Bubble";
 import { FixedBadge } from "./FixedBadge";
@@ -52,6 +53,7 @@ export function ComicPanel({ panel, slot, total }: ComicPanelProps) {
       data-inset={slot.inset || undefined}
       data-zone={slot.zone.side}
       data-stamp={slot.stamp}
+      data-flashback={panel.flashback || undefined}
       data-face={fixable ? face : undefined}
       data-flipped={flipped || undefined}
       tabIndex={-1}
@@ -89,7 +91,12 @@ export function ComicPanel({ panel, slot, total }: ComicPanelProps) {
 
         <div className={styles.layer}>
           {panel.caption ? (
-            <p className={`caption ${styles.caption}`} dir="auto">
+            <p
+              className={`caption ${styles.caption}`}
+              dir="auto"
+              data-narration={panel.narrated || undefined}
+              data-rtl={firstStrongDir(panel.caption) === "rtl" || undefined}
+            >
               <BidiText text={panel.caption} />
             </p>
           ) : null}
@@ -109,6 +116,12 @@ export function ComicPanel({ panel, slot, total }: ComicPanelProps) {
         </div>
 
         <SlotOutline slot={slot} />
+
+        {panel.flashback || panel.returning ? (
+          <span className={styles.timeTag} data-when={panel.flashback ? "then" : "now"}>
+            {panel.flashback ? "Memory" : "Now"}
+          </span>
+        ) : null}
 
         {fixable ? <FixedBadge names={panel.fixedNames} showingBefore={showingBefore} onToggle={toggle} /> : null}
       </div>
