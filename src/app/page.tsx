@@ -1,9 +1,10 @@
 import Link from "next/link";
 import { Art } from "@/art/Art";
 import { art, type MoodKey } from "@/art/manifest";
-import { BidiText } from "@/components/comic/BidiText";
+import { CastStage } from "@/components/home/CastStage";
+import { DemoDay } from "@/components/home/DemoDay";
+import { Magnetic } from "@/components/home/Magnetic";
 import { MagazineCover } from "@/components/MagazineCover";
-import { MascotSprite } from "@/components/MascotSprite";
 import { MoodCalendar } from "@/components/MoodCalendar";
 import { PAGE_TURN, PageTurn } from "@/components/PageTurn";
 import { RecordStamp } from "@/components/RecordStamp";
@@ -16,25 +17,25 @@ const WEEK: { day: string; mood?: MoodKey }[] = [
   { day: "Mon", mood: "rainy" },
   { day: "Tue" },
   { day: "Wed", mood: "sunny" },
-  { day: "Thu", mood: "cloudy" },
+  { day: "Thu", mood: "rainbow" },
   { day: "Fri" },
 ];
 
 const STEPS = [
   {
     art: art.how.talk,
-    title: "You talk for a minute",
-    body: "Arabic, English, or both in one sentence. Say it the way you'd tell a friend.",
+    title: "Talk for a minute",
+    body: "Arabic, English or both in one sentence. Say it the way you'd tell a friend.",
   },
   {
-    art: art.how.script,
-    title: "Comimo writes the script",
-    body: "It picks the moments worth drawing, the lines people said, and the day's weather.",
+    art: art.how.comic,
+    title: "Get your comic",
+    body: "Comimo picks the moments worth drawing, and your cast acts them out looking like themselves.",
   },
   {
-    art: art.how.draw,
-    title: "Your cast acts it out",
-    body: "The characters you made once show up in every panel, looking like themselves.",
+    art: art.how.book,
+    title: "Keep the month",
+    body: "On the last day, your comics are bound into a magazine you can flip through.",
   },
 ];
 
@@ -44,88 +45,114 @@ export default function Home() {
   return (
     <PageTurn>
       <main id="main" className={styles.main}>
-        {/* ---------- Hero: page one of the zine ---------- */}
-        <section className={`page ${styles.hero}`} aria-labelledby="hero-title">
-          <div className={`panel halftone ${styles.lead}`} style={{ "--i": 0 } as React.CSSProperties}>
-            <p className="caption">Tonight, before you sleep</p>
-            <h1 id="hero-title" className={styles.headline}>
-              <span>Talk about your day.</span> <span>Get a comic.</span>
-            </h1>
-            <p className={styles.intro}>
-              Record a minute in Arabic, English or both. Comimo turns it into a short comic starring the
-              characters you made.
-            </p>
-            <div className={styles.actions}>
-              <RecordStamp href="/record" label="Record" ariaLabel="Record today's voice note" />
-              <Link href="/day/sample" className="link" transitionTypes={PAGE_TURN}>
-                Read a sample day
-              </Link>
-            </div>
-            <div className={`sticker ${styles.mascot}`} style={{ "--tilt": "8deg" } as React.CSSProperties}>
-              <MascotSprite className={styles.mascotButton} />
-            </div>
+        {/* ---------- Hero: the zine's night cover ---------- */}
+        <section className={styles.hero} aria-labelledby="hero-title">
+          <div className={styles.heroArt}>
+            <Art asset={art.hero.scene} className={styles.heroImage} priority sizes="100vw" />
           </div>
 
-          <figure className={`panel ${styles.scene}`} style={{ "--i": 1 } as React.CSSProperties}>
-            <Art asset={art.hero.scene} className={styles.sceneArt} priority sizes="(min-width: 48rem) 40vw, 100vw" />
-            <p className={`caption ${styles.sceneCaption}`}>Thursday, 8:15 am</p>
-            <p className={`bubble bubble--tail-end ${styles.sceneBubble}`} dir="rtl">
-              <span className="bubble__who">Nour</span>
-              <BidiText text="الباص اتأخر again… بس الشاورما أنقذت اليوم" />
-            </p>
-            <figcaption className="visually-hidden">A sample panel from a day in Comimo</figcaption>
-          </figure>
+          <div className={`page ${styles.heroInner}`}>
+            <div className={styles.heroText}>
+              <p className={`caption ${styles.kicker}`}>Tonight, before you sleep</p>
+              <h1 id="hero-title" className={styles.headline}>
+                <span className={styles.line}>
+                  <span>Talk about your day.</span>
+                </span>{" "}
+                <span className={styles.line}>
+                  <span>Get a comic.</span>
+                </span>
+              </h1>
+              <p className={styles.intro}>
+                Record a minute in Arabic, English or both. Comimo draws it as a short comic starring the people in
+                your life.
+              </p>
+              <div className={styles.actions}>
+                <Magnetic className={styles.magnet}>
+                  <RecordStamp href="/record" label="Record" ariaLabel="Record today's voice note" />
+                </Magnetic>
+                <a href="#demo" className={styles.seeDemo}>
+                  See a real day
+                </a>
+              </div>
+            </div>
 
-          <Link
-            href="/month"
-            className={`panel halftone ${styles.week}`}
-            style={{ "--i": 2 } as React.CSSProperties}
-            transitionTypes={PAGE_TURN}
-          >
-            <h2 className={styles.weekTitle}>This week&apos;s weather</h2>
-            <ol className={styles.weekRow}>
-              {WEEK.map(({ day, mood }) => (
-                <li key={day} className={styles.weekDay}>
-                  {mood ? (
-                    <Art asset={art.mood[mood]} className={styles.weekIcon} />
-                  ) : (
-                    <span className={styles.weekBlank} aria-label="No comic" role="img" />
-                  )}
-                  <span aria-hidden="true">{day}</span>
-                </li>
-              ))}
-            </ol>
-          </Link>
+            <Link href="/month" className={styles.week} transitionTypes={PAGE_TURN}>
+              <span className={styles.weekTitle}>This week</span>
+              <ol className={styles.weekRow}>
+                {WEEK.map(({ day, mood }) => (
+                  <li key={day} className={styles.weekDay}>
+                    {mood ? (
+                      <Art asset={art.mood[mood]} className={styles.weekIcon} alt={`${day}: ${art.mood[mood].alt}`} />
+                    ) : (
+                      <span className={styles.weekBlank} role="img" aria-label={`${day}: no comic`} />
+                    )}
+                    <span aria-hidden="true">{day.slice(0, 2)}</span>
+                  </li>
+                ))}
+              </ol>
+            </Link>
+          </div>
+        </section>
+
+        {/* ---------- A real day ---------- */}
+        <section id="demo" className={`page section ${styles.demo}`} aria-labelledby="demo-title">
+          <h2 id="demo-title" className="section__title">
+            One real day, drawn by Comimo
+          </h2>
+          <p className="section__lede">
+            Nour talked for a minute about lunch at her grandmother&apos;s. This is the comic that came back. Nour and her
+            day are invented; the panels are real Muse Image output.
+          </p>
+          <DemoDay />
         </section>
 
         {/* ---------- How it works ---------- */}
         <section className={`page section ${styles.how}`} aria-labelledby="how-title">
           <h2 id="how-title" className="section__title">
-            From a voice note to a comic page
+            From a voice note to a comic
           </h2>
           <ol className={styles.steps}>
             {STEPS.map((step, i) => (
-              <li key={step.title} className={`panel ${styles.step}`}>
-                <span className={styles.stepNumber} aria-hidden="true">
-                  {i + 1}
-                </span>
-                <Art asset={step.art} className={styles.stepArt} alt="" sizes="(min-width: 48rem) 30vw, 100vw" />
-                <h3 className={styles.stepTitle}>{step.title}</h3>
+              <li key={step.title} className={styles.step}>
+                <Art asset={step.art} className={styles.stepArt} alt="" sizes="(min-width: 48rem) 30vw, 80vw" />
+                <h3 className={styles.stepTitle}>
+                  <span className={styles.stepNumber}>{i + 1}</span>
+                  {step.title}
+                </h3>
                 <p className={styles.stepBody}>{step.body}</p>
               </li>
             ))}
           </ol>
         </section>
 
+        {/* ---------- The cast ---------- */}
+        <section className={`page section ${styles.cast}`} aria-labelledby="cast-title">
+          <div className={styles.castHead}>
+            <h2 id="cast-title" className="section__title">
+              Your cast, drawn once
+            </h2>
+            <p className="section__lede">
+              Make the people in your days one time. They turn up in every comic looking like themselves. Tap one to say
+              hi.
+            </p>
+          </div>
+          <CastStage />
+          <p className={styles.castMore}>
+            <Link href="/cast" className="link" transitionTypes={PAGE_TURN}>
+              Meet the cast and add your own
+            </Link>
+          </p>
+        </section>
+
         {/* ---------- Check-in ---------- */}
         <section className={`page section ${styles.checkin}`} aria-labelledby="checkin-title">
-          <div className={styles.checkinText}>
+          <div>
             <h2 id="checkin-title" className="section__title">
               On heavy days, a softer last page
             </h2>
             <p className="section__lede">
-              When your day sounds like a lot, a short check-in card follows the comic. A few gentle questions,
-              no scores, no advice. Your answers stay with that day.
+              When your day sounds like a lot, a short check-in card follows the comic. A few gentle questions, no
+              scores, no advice. Your answers stay with that day.
             </p>
           </div>
           <aside className={styles.checkinCard} aria-label="Example check-in card">
