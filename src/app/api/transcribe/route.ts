@@ -1,4 +1,5 @@
 import { guard, guardResponse } from "@/lib/guard";
+import { requireSession } from "@/lib/server/session";
 import { getModels } from "@/lib/models";
 import { json, jsonError, modelErrorResponse } from "@/lib/models/wire";
 import { BODY_LIMITS, readBoundedForm } from "@/lib/requestBody";
@@ -34,6 +35,8 @@ function parseKeywords(value: FormDataEntryValue | null): string[] {
  * real model), optional `language` (auto | ar | en), optional `keywords` (JSON list)
  */
 export async function POST(request: Request) {
+  const session = await requireSession(request);
+  if (!session.ok) return session.response;
   // Read with a hard byte limit: Content-Length alone can't be trusted.
   const body = await readBoundedForm(request, BODY_LIMITS.transcribe, "Send the voice note as multipart/form-data with an `audio` file.");
   if (!body.ok) return body.response;
@@ -57,7 +60,7 @@ export async function POST(request: Request) {
 
   const models = getModels();
   const source = models.sources.transcribe;
-  const check = guard(request, "transcribe", { real: source === "meta" });
+  const check = await guard(request, "transcribe", { real: source === "meta" });
   if (!check.ok) return guardResponse(check);
 
   try {
