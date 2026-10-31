@@ -29,12 +29,22 @@ export interface KV {
    * created by this call expires after `ttlSec`; an existing one keeps its expiry.
    */
   incr(key: string, options?: { by?: number; ttlSec?: number }): Promise<number>;
+  /** One field of a hash, or `null`. */
+  hget(key: string, field: string): Promise<string | null>;
+  /** Set one field of a hash (each field is written on its own, so two writers to different fields never clash). */
+  hset(key: string, field: string, value: string): Promise<void>;
+  hdel(key: string, ...fields: string[]): Promise<void>;
+  /** Every field of a hash (an empty object when there is none). */
+  hgetall(key: string): Promise<Record<string, string>>;
 }
 
 /* ---------- Local JSON file ---------- */
 
 interface FileEntry {
-  v: string;
+  /** A plain value. */
+  v?: string;
+  /** A hash's fields (instead of `v`). */
+  h?: Record<string, string>;
   /** Expiry, epoch ms. */
   e?: number;
 }
@@ -84,6 +94,41 @@ export class FileKV implements KV {
     return this.locked(async () => (await this.load(Date.now()))[key]?.v ?? null);
   }
 
+  hget(key: string, field: string): Promise<string | null> {
+    return this.locked(async () => {
+      const hash = (await this.load(Date.now()))[key]?.h;
+      return hash && Object.hasOwn(hash, field) ? hash[field] : null;
+    });
+  }
+
+  hset(key: string, field: string, value: string): Promise<void> {
+    // A plain object holds the fields; "__proto__" would replace its prototype instead.
+    if (field === "__proto__") return Promise.reject(new Error("Bad hash field"));
+    return this.locked(async () => {
+      const data = await this.load(Date.now());
+      const entry = data[key];
+      const hash = entry?.h ?? {};
+      hash[field] = value;
+      data[key] = entry?.e === undefined ? { h: hash } : { h: hash, e: entry.e };
+      await this.save(data);
+    });
+  }
+
+  hdel(key: string, ...fields: string[]): Promise<void> {
+    return this.locked(async () => {
+      const data = await this.load(Date.now());
+      const hash = data[key]?.h;
+      if (!hash) return;
+      for (const field of fields) delete hash[field];
+      if (Object.keys(hash).length === 0) delete data[key];
+      await this.save(data);
+    });
+  }
+
+  hgetall(key: string): Promise<Record<string, string>> {
+    return this.locked(async () => ({ ...(await this.load(Date.now()))[key]?.h }));
+  }
+
   set(key: string, value: string, options: { ttlSec?: number; onlyIfNew?: boolean } = {}): Promise<boolean> {
     return this.locked(async () => {
       const now = Date.now();
@@ -109,7 +154,7 @@ export class FileKV implements KV {
       const now = Date.now();
       const data = await this.load(now);
       const current = data[key];
-      const value = (current ? Number.parseInt(current.v, 10) || 0 : 0) + (options.by ?? 1);
+      const value = (current ? Number.parseInt(current.v ?? "", 10) || 0 : 0) + (options.by ?? 1);
       const expiry = current ? current.e : options.ttlSec ? now + options.ttlSec * 1000 : undefined;
       data[key] = expiry === undefined ? { v: String(value) } : { v: String(value), e: expiry };
       await this.save(data);
@@ -162,6 +207,24 @@ export class UpstashKV implements KV {
     const ttl = options.ttlSec ? Math.ceil(options.ttlSec) : 0;
     const value = await this.redis.eval<[number, number], number | string>(INCR_WITH_TTL, [key], [by, ttl]);
     return Number(value);
+  }
+
+  async hget(key: string, field: string): Promise<string | null> {
+    const value = await this.redis.hget<string>(key, field);
+    return value ?? null;
+  }
+
+  async hset(key: string, field: string, value: string): Promise<void> {
+    await this.redis.hset(key, { [field]: value });
+  }
+
+  async hdel(key: string, ...fields: string[]): Promise<void> {
+    if (fields.length) await this.redis.hdel(key, ...fields);
+  }
+
+  async hgetall(key: string): Promise<Record<string, string>> {
+    const all = await this.redis.hgetall<Record<string, string>>(key);
+    return all ?? {};
   }
 }
 
