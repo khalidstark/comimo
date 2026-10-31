@@ -1,7 +1,8 @@
 import { starterCastBriefs } from "@/fixtures/cast";
 import { guard, guardResponse } from "@/lib/guard";
 import { getModels } from "@/lib/models";
-import { isRecord, isText, json, jsonError, modelErrorResponse, readJson } from "@/lib/models/wire";
+import { isRecord, isText, json, jsonError, modelErrorResponse } from "@/lib/models/wire";
+import { BODY_LIMITS, readBoundedJson } from "@/lib/requestBody";
 import { ALIAS_LIMITS } from "@/lib/names";
 import type { CastBrief, CharacterRole, ScriptResponse } from "@/lib/types";
 
@@ -37,7 +38,10 @@ function parseCast(value: unknown): CastBrief[] | null {
  * JSON: { transcript: string, cast?: CastBrief[] }  (cast defaults to the starter cast)
  */
 export async function POST(request: Request) {
-  const body = await readJson(request);
+  // Read with a hard byte limit: Content-Length alone can't be trusted.
+  const read = await readBoundedJson(request, BODY_LIMITS.script);
+  if (!read.ok) return read.response;
+  const body = read.value;
   if (!isRecord(body)) return jsonError(400, "Send JSON like {\"transcript\": \"...\"}.");
 
   if (!isText(body.transcript, MAX_TRANSCRIPT)) {

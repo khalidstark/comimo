@@ -4,7 +4,8 @@ import { guard, guardResponse } from "@/lib/guard";
 import { getModels, type CharacterReference } from "@/lib/models";
 import { isTrustedSheet, signFileId, verifyFileToken } from "@/lib/models/fileTokens";
 import { isMissingFileError, isSendableImage, pickReferences } from "@/lib/models/meta/image";
-import { fromWire, isRecord, isText, json, jsonError, modelErrorResponse, readJson, toWire } from "@/lib/models/wire";
+import { fromWire, isRecord, isText, json, jsonError, modelErrorResponse, toWire } from "@/lib/models/wire";
+import { BODY_LIMITS, readBoundedJson } from "@/lib/requestBody";
 import { isBeat, isShot } from "@/lib/layout/pickLayout";
 import { snapAspect } from "@/lib/layout/page";
 import type { ApiError, Corner, DialogueLine, LetteringZone, PanelFrame, PanelResponse, ScriptPanel, TextDir, UploadedReference } from "@/lib/types";
@@ -124,7 +125,10 @@ function staleReference(): Response {
  * 409 with code "stale-reference": an uploaded sheet is gone; resend the images.
  */
 export async function POST(request: Request) {
-  const body = await readJson(request);
+  // Read with a hard byte limit: Content-Length alone can't be trusted.
+  const read = await readBoundedJson(request, BODY_LIMITS.panel);
+  if (!read.ok) return read.response;
+  const body = read.value;
   if (!isRecord(body)) return jsonError(400, "Send JSON like {\"panel\": {...}, \"references\": [...]}.");
 
   const panel = parsePanel(body.panel);

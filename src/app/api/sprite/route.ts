@@ -3,7 +3,8 @@ import { isMockMode } from "@/lib/models";
 import { isTrustedSheet } from "@/lib/models/fileTokens";
 import { isSendableImage } from "@/lib/models/meta/image";
 import { drawSpritePoses, headRegionFor } from "@/lib/models/meta/sprite";
-import { fromWire, isRecord, isText, json, jsonError, modelErrorResponse, readJson } from "@/lib/models/wire";
+import { fromWire, isRecord, isText, json, jsonError, modelErrorResponse } from "@/lib/models/wire";
+import { BODY_LIMITS, readBoundedJson } from "@/lib/requestBody";
 import { SpriteAssemblyError, assembleSprite } from "@/lib/sprites/assemble";
 import type { ApiError, CharacterRole, SpriteResponse } from "@/lib/types";
 
@@ -27,7 +28,10 @@ function base64(bytes: Uint8Array): string {
  * the static portrait.
  */
 export async function POST(request: Request) {
-  const body = await readJson(request);
+  // Read with a hard byte limit: Content-Length alone can't be trusted.
+  const read = await readBoundedJson(request, BODY_LIMITS.sprite);
+  if (!read.ok) return read.response;
+  const body = read.value;
   if (!isRecord(body)) return jsonError(400, "Send JSON like {\"characterId\": \"...\", \"sheet\": {...}}.");
   const { characterId, name, role, look, sheet, sheetToken } = body;
   if (!isText(characterId, 100) || !isText(name, 100)) return jsonError(400, "`characterId` and `name` are required.");
