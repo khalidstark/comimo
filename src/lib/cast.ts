@@ -1,7 +1,8 @@
 import { artAt } from "@/art/manifest";
 import { starterCast, starterCastById } from "@/fixtures/cast";
 import { ALIAS_LIMITS, namesOf, normalizeName, parseAliases } from "./names";
-import { getMeta, listCast, newId, putImage, saveCharacter, setMeta } from "./store";
+import { ANIMATIONS } from "@/art/sprites";
+import { getCharacter, getImage, getMeta, listCast, newId, putImage, saveCharacter, setMeta } from "./store";
 import type { ArtStyleId } from "./artStyles";
 import type {
   ApiError,
@@ -11,9 +12,12 @@ import type {
   CharacterSheetResponse,
   ImageRef,
   ReferenceSheet,
+  SpriteRequest,
+  SpriteResponse,
   SpriteSheet,
+  WireImage,
 } from "./types";
-import { wireToBlob } from "./wireImage";
+import { blobToWire, wireToBlob } from "./wireImage";
 
 /* ---------- Loading and seeding ---------- */
 
@@ -110,12 +114,37 @@ export class SheetError extends Error {
  * image on this device and save the character with it. Returns the updated character.
  */
 export async function drawReferenceSheet(character: Character, style: ArtStyleId, signal?: AbortSignal): Promise<Character> {
+  return (await requestSheet(character, style, signal)).character;
+}
+
+/**
+ * Draw the character's sheet with the person cut from their photo as the
+ * reference. The photo goes in this one request and is never stored: the
+ * caller drops it once this resolves. `photoRefused` is true when Muse Image
+ * wouldn't use the photo and drew from the written look instead.
+ */
+export function drawReferenceSheetFromPhoto(
+  character: Character,
+  style: ArtStyleId,
+  photo: WireImage,
+  signal?: AbortSignal,
+): Promise<{ character: Character; photoRefused: boolean }> {
+  return requestSheet(character, style, signal, photo);
+}
+
+async function requestSheet(
+  character: Character,
+  style: ArtStyleId,
+  signal?: AbortSignal,
+  photo?: WireImage,
+): Promise<{ character: Character; photoRefused: boolean }> {
   const body: CharacterSheetRequest = {
     characterId: character.id,
     name: character.name,
     role: character.role,
     look: character.look,
     style,
+    ...(photo ? { photo, consent: true } : {}),
   };
   let response: Response;
   try {
@@ -142,11 +171,93 @@ export async function drawReferenceSheet(character: Character, style: ArtStyleId
   const sheet: ReferenceSheet = { image };
   if (result.sheetToken) sheet.sheetToken = result.sheetToken;
   if (result.fileToken) sheet.file = { token: result.fileToken, sheet: referenceKey(image) };
-  const drawn: Character = { ...character, referenceSheets: { ...character.referenceSheets, [style]: sheet } };
-  if (!(await saveCharacter(drawn))) {
-    throw new SheetError("Couldn't save the sheet on this device. Private windows can block storage.");
+  const drawn = await updateStoredCharacter(character, (current) => ({
+    ...current,
+    referenceSheets: { ...current.referenceSheets, [style]: sheet },
+  }));
+  if (!drawn) throw new SheetError("Couldn't save the sheet on this device. Private windows can block storage.");
+  return { character: drawn, photoRefused: result.photoRefused === true };
+}
+
+/**
+ * Apply a change to the stored copy of a character (falling back to the one
+ * in hand) and save it, so a sheet and a sprite finishing at the same time
+ * don't overwrite each other. Null when storage refused.
+ */
+async function updateStoredCharacter(character: Character, change: (current: Character) => Character): Promise<Character | null> {
+  const stored = await getCharacter(character.id);
+  const next = change(stored ? withStarterAliases(stored) : character);
+  return (await saveCharacter(next)) ? next : null;
+}
+
+/* ---------- Animated sprites ---------- */
+
+/** A drawn sheet the server will animate: a stored Blob with its server signature (prefers the zine one). */
+function animatableSheet(character: Character): ReferenceSheet | null {
+  for (const style of ["zine", "painterly"] as const) {
+    const sheet = character.referenceSheets?.[style];
+    if (sheet?.image.kind === "blob" && sheet.sheetToken) return sheet;
   }
-  return drawn;
+  return null;
+}
+
+/** True when the character has no sprite yet but a sheet that can be animated. */
+export function canAnimate(character: Character): boolean {
+  return !spriteSheetFor(character) && animatableSheet(character) !== null;
+}
+
+const animating = new Map<string, Promise<Character | null>>();
+/** Set when the server said sprites aren't available (mock mode), so nobody asks again this session. */
+let spritesUnavailable = false;
+
+/**
+ * Give a character their animated sprite once: five Muse Image poses from
+ * their reference sheet, assembled on the server. Resolves to the updated
+ * character, or null when it couldn't be made (the card keeps the still
+ * picture). Concurrent calls for one character share the request.
+ */
+export function animateCharacter(character: Character): Promise<Character | null> {
+  if (spritesUnavailable || !canAnimate(character)) return Promise.resolve(null);
+  const pending = animating.get(character.id);
+  if (pending) return pending;
+  const run = (async () => {
+    const sheet = animatableSheet(character)!;
+    const blob = sheet.image.kind === "blob" ? await getImage(sheet.image.id) : undefined;
+    if (!blob) return null;
+    const body: SpriteRequest = {
+      characterId: character.id,
+      name: character.name,
+      role: character.role,
+      look: character.look,
+      sheet: await blobToWire(blob),
+      ...(sheet.sheetToken ? { sheetToken: sheet.sheetToken } : {}),
+    };
+    let response: Response;
+    try {
+      response = await fetch("/api/sprite", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    } catch {
+      return null;
+    }
+    const result = (await response.json().catch(() => null)) as SpriteResponse | ApiError | null;
+    if (!response.ok || !result || !("image" in result)) {
+      if ((result as ApiError | null)?.code === "unavailable") spritesUnavailable = true;
+      return null;
+    }
+    const spriteId = `${character.id}-sprite`;
+    const portraitId = `${character.id}-portrait`;
+    const stored = (await putImage(spriteId, wireToBlob(result.image))) && (await putImage(portraitId, wireToBlob(result.portrait)));
+    if (!stored) return null;
+    const spriteSheet: SpriteSheet = {
+      image: { kind: "blob", id: spriteId },
+      frameWidth: result.frameWidth,
+      frameHeight: result.frameHeight,
+      columns: result.columns,
+      animations: ANIMATIONS,
+    };
+    return updateStoredCharacter(character, (current) => ({ ...current, spriteSheet, portrait: { kind: "blob", id: portraitId } }));
+  })().finally(() => animating.delete(character.id));
+  animating.set(character.id, run);
+  return run;
 }
 
 /* ---------- Roles ---------- */

@@ -7,15 +7,19 @@ import { art, artAt } from "@/art/manifest";
 import { BidiText } from "@/components/comic/BidiText";
 import { Sprite } from "@/components/Sprite";
 import { useTalkWhenShown } from "@/components/useTalkWhenShown";
-import { ART_STYLE_IDS, ART_STYLES, type ArtStyleId } from "@/lib/artStyles";
+import { PhotoLook } from "@/components/PhotoLook";
+import { ART_STYLE_IDS, ART_STYLES, DEFAULT_ART_STYLE, type ArtStyleId } from "@/lib/artStyles";
 import { firstStrongDir } from "@/lib/bidi";
 import {
   LIMITS,
   ROLE_OPTIONS,
   SheetError,
+  animateCharacter,
+  canAnimate,
   characterFromDraft,
   defaultRoleLabel,
   drawReferenceSheet,
+  drawReferenceSheetFromPhoto,
   draftFrom,
   loadCast,
   referenceSheetFor,
@@ -26,7 +30,7 @@ import {
   type DraftField,
 } from "@/lib/cast";
 import { deleteCharacter, getImage, saveCharacter } from "@/lib/store";
-import type { Character, CharacterRole, ImageRef } from "@/lib/types";
+import type { Character, CharacterRole, ImageRef, WireImage } from "@/lib/types";
 import styles from "./cast.module.css";
 
 const TILTS = ["-3deg", "2deg", "-1.5deg", "3deg"];
@@ -43,6 +47,8 @@ export function CastEditor() {
   const [editing, setEditing] = useState<Editing>(null);
   const [confirming, setConfirming] = useState<string | null>(null);
   const [notice, setNotice] = useState("");
+  /** Work in progress or news per character (drawing from a photo, animating). */
+  const [statuses, setStatuses] = useState<Record<string, CardStatus>>({});
   /** Where focus goes after the list re-renders (a card's edit button, or the add button). */
   const focusAfter = useRef<string | null>(null);
 
@@ -66,7 +72,7 @@ export function CastEditor() {
 
   const list = cast;
 
-  async function save(character: Character, isNew: boolean) {
+  async function save(character: Character, isNew: boolean, photo: WireImage | null) {
     const ok = await saveCharacter(character);
     if (!ok) return "This browser isn't letting Comimo save right now. Try again in a normal (not private) window.";
     setCast((current) => {
@@ -76,7 +82,53 @@ export function CastEditor() {
     setEditing(null);
     setNotice(isNew ? `${character.name} joined your cast.` : `Saved ${character.name}.`);
     focusAfter.current = `edit-${character.id}`;
+    if (photo) void drawFromPhoto(character, photo);
     return null;
+  }
+
+  function replace(character: Character) {
+    setCast((current) => (current ?? []).map((m) => (m.id === character.id ? character : m)));
+  }
+
+  function setStatus(id: string, status: CardStatus | null) {
+    setStatuses((current) => {
+      const next = { ...current };
+      if (status) next[id] = status;
+      else delete next[id];
+      return next;
+    });
+  }
+
+  /** Draw the sheet from the photo's cut-out once; the cut-out is dropped when this returns. */
+  async function drawFromPhoto(character: Character, photo: WireImage) {
+    setStatus(character.id, { busy: true, text: `Drawing ${character.name} from the photo. This takes about a minute.` });
+    try {
+      const { character: drawn, photoRefused } = await drawReferenceSheetFromPhoto(character, DEFAULT_ART_STYLE, photo);
+      replace(drawn);
+      const text = photoRefused
+        ? `Muse Image wouldn't draw from that photo, so ${drawn.name} was drawn from the description instead. The photo is gone.`
+        : `Drew ${drawn.name} from the photo. The photo is gone; only the drawing is kept.`;
+      setStatus(drawn.id, { busy: false, text });
+      setNotice(text);
+      void animate(drawn);
+    } catch (problem) {
+      const text = problem instanceof SheetError ? problem.message : "The sheet didn't draw. Try again from the card.";
+      setStatus(character.id, { busy: false, text, error: true });
+    }
+  }
+
+  /** Give a character their animated sprite once their first sheet exists. */
+  async function animate(character: Character) {
+    if (!canAnimate(character)) return;
+    setStatus(character.id, { busy: true, text: `Bringing ${character.name} to life. This takes a couple of minutes.` });
+    const animated = await animateCharacter(character);
+    if (animated) {
+      replace(animated);
+      setStatus(character.id, null);
+      setNotice(`${character.name} is animated now.`);
+    } else {
+      setStatus(character.id, { busy: false, text: `${character.name} keeps a still picture for now.` });
+    }
   }
 
   async function remove(member: Character) {
@@ -94,8 +146,9 @@ export function CastEditor() {
   }
 
   function sheetDrawn(character: Character) {
-    setCast((current) => (current ?? []).map((m) => (m.id === character.id ? character : m)));
+    replace(character);
     setNotice(`Drew a reference sheet for ${character.name}.`);
+    void animate(character);
   }
 
   function cancel(returnTo: string) {
@@ -116,7 +169,7 @@ export function CastEditor() {
               <CharacterForm
                 character={member}
                 others={list.filter((m) => m.id !== member.id)}
-                onSave={(character) => save(character, false)}
+                onSave={(character, photo) => save(character, false, photo)}
                 onCancel={() => cancel(`edit-${member.id}`)}
               />
             </li>
@@ -125,6 +178,8 @@ export function CastEditor() {
               key={member.id}
               member={member}
               tilt={TILTS[i % TILTS.length]}
+              status={statuses[member.id] ?? null}
+              onAnimate={() => void animate(member)}
               confirming={confirming === member.id}
               onEdit={() => {
                 setConfirming(null);
@@ -145,7 +200,7 @@ export function CastEditor() {
           <li className={styles.editing}>
             <CharacterForm
               others={list}
-              onSave={(character) => save(character, true)}
+              onSave={(character, photo) => save(character, true, photo)}
               onCancel={() => cancel("add-character")}
             />
           </li>
@@ -178,9 +233,18 @@ export function CastEditor() {
 
 /* ---------- One character ---------- */
 
+/** What a card shows about work on its character: busy (drawing, animating) or news (a photo refused). */
+interface CardStatus {
+  busy: boolean;
+  text: string;
+  error?: boolean;
+}
+
 interface CastCardProps {
   member: Character;
   tilt: string;
+  status: CardStatus | null;
+  onAnimate: () => void;
   confirming: boolean;
   onEdit: () => void;
   onAskRemove: () => void;
@@ -189,12 +253,24 @@ interface CastCardProps {
   onSheetDrawn: (character: Character) => void;
 }
 
-function CastCard({ member, tilt, confirming, onEdit, onAskRemove, onKeep, onRemove, onSheetDrawn }: CastCardProps) {
+/** The still picture of a drawn character without a sprite: their portrait, or the front view from a sheet. */
+function stillFor(member: Character): { ref: ImageRef; fromSheet: boolean } | null {
+  if (member.portrait.kind === "blob") return { ref: member.portrait, fromSheet: false };
+  for (const style of ART_STYLE_IDS) {
+    const sheet = referenceSheetFor(member, style);
+    if (sheet) return { ref: sheet.image, fromSheet: true };
+  }
+  return null;
+}
+
+function CastCard({ member, tilt, status, onAnimate, confirming, onEdit, onAskRemove, onKeep, onRemove, onSheetDrawn }: CastCardProps) {
   const cardRef = useRef<HTMLLIElement>(null);
   const bubbleRef = useRef<HTMLParagraphElement>(null);
   const confirmRef = useRef<HTMLButtonElement>(null);
   const talking = useTalkWhenShown(bubbleRef, member.line ?? "");
   const sheet = spriteSheetFor(member);
+  const still = sheet ? null : stillFor(member);
+  const stillUrl = useSheetUrl(still?.ref ?? null);
   const nameId = `name-${member.id}`;
 
   useEffect(() => {
@@ -206,6 +282,12 @@ function CastCard({ member, tilt, confirming, onEdit, onAskRemove, onKeep, onRem
       <div className={`sticker ${styles.sprite}`}>
         {sheet ? (
           <Sprite sheet={sheet} label={member.name} talking={talking} hostRef={cardRef} />
+        ) : still && stillUrl ? (
+          <div className={styles.undrawn}>
+            {/* A stored Blob or a drawn sheet; next/image can't optimise Blobs. */}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={stillUrl} alt={member.name} className={still.fromSheet ? styles.stillSheet : styles.still} />
+          </div>
         ) : (
           <div className={styles.undrawn}>
             {member.portrait.kind === "art" ? <Art asset={artAt(member.portrait.path)} alt="" /> : null}
@@ -238,6 +320,19 @@ function CastCard({ member, tilt, confirming, onEdit, onAskRemove, onKeep, onRem
         ) : null}
 
         <ReferenceSheets member={member} onDrawn={onSheetDrawn} />
+
+        <p
+          className={status?.error ? styles.error : styles.sheetStatus}
+          role={status?.error ? "alert" : "status"}
+          aria-busy={status?.busy || undefined}
+        >
+          {status?.text ?? ""}
+        </p>
+        {!status?.busy && canAnimate(member) ? (
+          <button type="button" className={styles.textButton} onClick={onAnimate}>
+            Animate<span className="visually-hidden"> {member.name}</span>
+          </button>
+        ) : null}
 
         {confirming ? (
           <div className={styles.confirm} role="group" aria-labelledby={`confirm-${member.id}`}>
@@ -385,7 +480,8 @@ function ReferenceSheet({
 interface CharacterFormProps {
   character?: Character;
   others: Character[];
-  onSave: (character: Character) => Promise<string | null>;
+  /** `photo` is the cut-out from "Start from a photo", to draw their sheet from once; null without one. */
+  onSave: (character: Character, photo: WireImage | null) => Promise<string | null>;
   onCancel: () => void;
 }
 
@@ -397,6 +493,8 @@ function CharacterForm({ character, others, onSave, onCancel }: CharacterFormPro
   const [errors, setErrors] = useState<DraftErrors>({});
   const [saveError, setSaveError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  /** The person cut from a photo, held in memory until the sheet is drawn; never stored. */
+  const [crop, setCrop] = useState<WireImage | null>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
   const fieldId = (field: DraftField) => `${id}-${field}`;
 
@@ -421,9 +519,10 @@ function CharacterForm({ character, others, onSave, onCancel }: CharacterFormPro
       return;
     }
     setBusy(true);
-    const problem = await onSave(characterFromDraft(draft, character));
+    const problem = await onSave(characterFromDraft(draft, character), crop);
     setBusy(false);
     setSaveError(problem);
+    if (!problem) setCrop(null);
   }
 
   const describedBy = (field: DraftField, hint?: boolean) =>
@@ -519,6 +618,16 @@ function CharacterForm({ character, others, onSave, onCancel }: CharacterFormPro
           </label>
         </div>
 
+        <PhotoLook
+          name={draft.name}
+          crop={crop}
+          onDescribed={(look, cut) => {
+            set("look", look);
+            setCrop(cut);
+          }}
+          onCleared={() => setCrop(null)}
+        />
+
         <label className={styles.field} htmlFor={fieldId("look")}>
           <span className={styles.label}>How they look</span>
           <span id={`${fieldId("look")}-hint`} className={styles.hint}>
@@ -574,9 +683,11 @@ function CharacterForm({ character, others, onSave, onCancel }: CharacterFormPro
         <div className={styles.refSlot}>
           <span className={styles.label}>Reference sheet</span>
           <p>
-            {character && ART_STYLE_IDS.some((style) => referenceSheetFor(character, style))
-              ? "Drawn. Comimo uses their sheets to keep their face the same. Changed how they look? Redraw the sheets from their card."
-              : "Once they're saved, draw a sheet for each art style from their card. Comimo uses them to keep their face the same in every panel."}
+            {crop
+              ? "Comimo draws their zine sheet from the photo as soon as they're saved, then animates them. The other style is drawn the first time a comic needs it."
+              : character && ART_STYLE_IDS.some((style) => referenceSheetFor(character, style))
+                ? "Drawn. Comimo uses their sheets to keep their face the same. Changed how they look? Redraw the sheets from their card."
+                : "Comimo draws a sheet in each art style the first time a comic needs one, or draw them now from their card. The sheets keep their face the same in every panel."}
           </p>
         </div>
       </div>
