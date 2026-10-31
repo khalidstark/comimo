@@ -1,5 +1,6 @@
 import { artStyleOf, isArtStyleId } from "@/lib/artStyles";
 import { guard, guardResponse } from "@/lib/guard";
+import { requireSession } from "@/lib/server/session";
 import { isMockMode, type CharacterReference } from "@/lib/models";
 import { isTrustedSheet, verifyFileToken } from "@/lib/models/fileTokens";
 import { drawCoverArt, writeCoverConcept } from "@/lib/models/meta/cover";
@@ -47,6 +48,8 @@ function parseStars(value: unknown): CharacterReference[] | "untrusted" | "stale
  * 503 "unavailable" and the issue keeps the shipped cover art.
  */
 export async function POST(request: Request) {
+  const session = await requireSession(request);
+  if (!session.ok) return session.response;
   const read = await readBoundedJson(request, MAX_BODY_BYTES);
   if (!read.ok) return read.response;
   const body = read.value;
@@ -75,7 +78,7 @@ export async function POST(request: Request) {
   }
 
   // One text and one image call; the image is counted against the daily cap by the meter as it is sent.
-  const check = guard(request, "cover", { real: true });
+  const check = await guard(request, "cover", { real: true });
   if (!check.ok) return guardResponse(check);
 
   try {

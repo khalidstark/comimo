@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { Art } from "@/art/Art";
 import { Icon } from "@/art/Icon";
 import { art, type IconKey } from "@/art/manifest";
+import { AccountMenu } from "./account/AccountMenu";
 import { PAGE_TURN } from "./PageTurn";
 import { ThemeToggle } from "./ThemeToggle";
 import styles from "./Nav.module.css";
@@ -62,7 +63,10 @@ export function Nav() {
           </ul>
         </nav>
 
-        <ThemeToggle className={styles.themeToggle} />
+        <div className={styles.corner}>
+          <AccountMenu />
+          <ThemeToggle className={styles.themeToggle} />
+        </div>
       </div>
     </header>
   );

@@ -6,6 +6,7 @@ import { DemoDay } from "@/components/home/DemoDay";
 import { Magnetic } from "@/components/home/Magnetic";
 import { MagazineCover } from "@/components/MagazineCover";
 import { MoodCalendar } from "@/components/MoodCalendar";
+import { StartNudge } from "@/components/account/StartNudge";
 import { PAGE_TURN, PageTurn } from "@/components/PageTurn";
 import { RecordStamp } from "@/components/RecordStamp";
 import { sampleCheckInQuestions, sampleDays } from "@/fixtures/days";
@@ -70,6 +71,7 @@ export default function Home() {
                 <Magnetic className={styles.magnet}>
                   <RecordStamp href="/record" label="Record" ariaLabel="Record today's voice note" />
                 </Magnetic>
+                <StartNudge className={styles.seeDemo} />
                 <a href="#demo" className={styles.seeDemo}>
                   See a real day
                 </a>
@@ -192,7 +194,7 @@ export default function Home() {
         </section>
 
         <footer className={`page ${styles.footer}`}>
-          <p>Your days stay on this device. Comimo has no accounts.</p>
+          <p>Your account keeps your place. Your comics are kept on this device.</p>
         </footer>
       </main>
     </PageTurn>
