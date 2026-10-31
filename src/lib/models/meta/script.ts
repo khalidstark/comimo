@@ -8,8 +8,8 @@ import { applyStoryMode, silenceForgottenSpeech } from "../storyMode";
 import type { ModelCallContext, ScriptOptions } from "../index";
 import { MetaApiError, metaJson } from "./client";
 import { SCRIPT_SYSTEM_PROMPT, castBlock, scriptSchema, storyModeBlock, transcriptMessage } from "./prompts";
-// Cast by name (03-05): aliases in, new people out.
-import { cleanNewPeople } from "@/lib/newPeople";
+// Cast by name (03-05): aliases in; new people (03-06) under placeholders until the user names them.
+import { NEW_PERSON_IDS, isNewPersonId, remapPanel, resolveNewPeople } from "@/lib/newPeople";
 import { CAST_NAMES_PROMPT, castNamesBlock, withNewPeopleSchema } from "./prompts";
 
 /**
@@ -130,11 +130,15 @@ export function toComicScript(content: string, cast: CastBrief[], mode: StoryMod
   if (!mood) throw new ScriptShapeError("unknown mood");
   if (typeof raw.heavy !== "boolean") throw new ScriptShapeError("missing heavy flag");
 
-  const castIds = new Set(cast.map((member) => member.id));
+  // New people (03-06) are drawn under placeholders new1 to new4 until the user says who they are.
+  const castIds = new Set<string>([...cast.map((member) => member.id), ...NEW_PERSON_IDS]);
   const rawPanels = asArray(raw.panels);
   const groups = pagesFromNumbers(rawPanels.map((panel) => (typeof asRecord(panel).page === "number" ? (asRecord(panel).page as number) : 1)));
   if (!groups) throw new ScriptShapeError(`${rawPanels.length} panels don't make 1 to 3 pages of 4 to 6`);
-  const all = rawPanels.map((panel, index) => toPanel(panel, index, castIds));
+  // A placeholder for someone the cast already covers becomes their cast id; one for nobody is dropped.
+  const { people: newPeople, ids } = resolveNewPeople(raw.newPeople, cast);
+  const to = (id: string) => (isNewPersonId(id) ? (ids.get(id) ?? null) : id);
+  const all = rawPanels.map((panel, index) => remapPanel(toPanel(panel, index, castIds), to));
   // Exactly one splash on each page: the page layout gives it the biggest slot.
   const normalised = groups.flatMap((group) =>
     normalizeStory(localPanels(group.map((index) => all[index]))).map((panel, i) => ({ ...panel, index: group[i] })),
@@ -159,6 +163,7 @@ export function toComicScript(content: string, cast: CastBrief[], mode: StoryMod
     heavy,
     checkInQuestions: heavy ? questions : [],
     safety: "ok",
+    ...(newPeople.length > 0 ? { newPeople } : {}),
   };
 }
 
@@ -183,7 +188,7 @@ export async function writeScript(
     ],
     response_format: {
       type: "json_schema",
-      json_schema: { name: "comic_script", strict: true, schema: withNewPeopleSchema(scriptSchema(cast.map((member) => member.id))) },
+      json_schema: { name: "comic_script", strict: true, schema: withNewPeopleSchema(scriptSchema([...cast.map((member) => member.id), ...NEW_PERSON_IDS])) },
     },
   };
 
@@ -203,7 +208,7 @@ export async function writeScript(
     try {
       if (choice?.finish_reason === "length") throw new ScriptShapeError("answer was cut off");
       if (!content) throw new ScriptShapeError(choice?.message?.refusal ? "model refused" : "empty answer");
-      return withNewPeople(toComicScript(content, cast, mode), content, cast);
+      return toComicScript(content, cast, mode);
     } catch (error) {
       if (!(error instanceof ScriptShapeError)) throw error;
       lastProblem = error.message;
@@ -211,19 +216,4 @@ export async function writeScript(
     }
   }
   throw new MetaApiError("server", 200, `script unusable after ${ATTEMPTS} attempts: ${lastProblem}`);
-}
-
-/* ---------- Cast by name (03-05) ---------- */
-
-/** Add the named people the note mentioned who aren't in the cast (none on a crisis note). */
-function withNewPeople(script: ComicScript, content: string, cast: CastBrief[]): ComicScript {
-  if (script.safety === "crisis") return script;
-  let raw: unknown;
-  try {
-    raw = (JSON.parse(content) as { newPeople?: unknown }).newPeople;
-  } catch {
-    return script;
-  }
-  const newPeople = cleanNewPeople(raw, cast);
-  return newPeople.length > 0 ? { ...script, newPeople } : script;
 }
