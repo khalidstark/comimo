@@ -2,6 +2,7 @@ import "server-only";
 import type { ModelCallContext, ModelImage } from "../index";
 import { MetaApiError, metaJson } from "./client";
 import { dataUrl } from "./image";
+import { segment } from "./sam";
 
 /**
  * A person from a reference photo, for "add someone from a photo":
@@ -15,7 +16,6 @@ import { dataUrl } from "./image";
  * Docs: dev.meta.ai/docs/sam/segmenting, /docs/sam/reading-segmentation, /docs/image-understanding
  */
 
-const SAM_MODEL = "sam-3.1";
 const SPARK_MODEL = "muse-spark-1.3";
 /** Standard Spark prices per token, for the log line. */
 const PRICE = { input: 1.25e-6, output: 4.25e-6 };
@@ -27,40 +27,6 @@ export interface PersonBox {
   y2: number;
   /** Confidence 0 to 1, when given. */
   score: number;
-}
-
-interface ResponsesBody {
-  output_text?: string;
-  output?: { type?: string; content?: { type?: string; text?: string }[] }[];
-}
-
-/** The text of a Responses answer (the raw JSON has no `output_text` convenience field). */
-function outputText(body: ResponsesBody): string {
-  if (typeof body.output_text === "string") return body.output_text;
-  return (body.output ?? [])
-    .flatMap((item) => item.content ?? [])
-    .map((part) => (typeof part.text === "string" ? part.text : ""))
-    .join("");
-}
-
-/**
- * Boxes from SAM's token output: `<|box;x1=57;y1=59;x2=781;y2=999;w=800;h=1000;c=0.98|>`
- * (pixels of the image sent). Masks are ignored.
- */
-export function parseSamBoxes(text: string): PersonBox[] {
-  const boxes: PersonBox[] = [];
-  for (const match of text.matchAll(/<\|box;([^|]*)\|>/g)) {
-    const fields = new Map<string, number>();
-    for (const pair of match[1].split(";")) {
-      const [k, v] = pair.split("=");
-      const value = Number(v);
-      if (k && Number.isFinite(value)) fields.set(k.trim(), value);
-    }
-    const [x1, y1, x2, y2] = ["x1", "y1", "x2", "y2"].map((k) => fields.get(k));
-    if (x1 === undefined || y1 === undefined || x2 === undefined || y2 === undefined || x2 <= x1 || y2 <= y1) continue;
-    boxes.push({ x1, y1, x2, y2, score: fields.get("c") ?? 1 });
-  }
-  return boxes;
 }
 
 /**
@@ -85,30 +51,10 @@ export function pickPerson(boxes: PersonBox[], width: number, height: number): P
   return best;
 }
 
-/** SAM 3.1: every "person" in the photo, as boxes. One call ($0.0025). */
+/** SAM 3.1: every "person" in the photo, as boxes. One call ($0.0025), through the shared SAM client. */
 export async function findPeople(image: ModelImage, context?: ModelCallContext): Promise<PersonBox[]> {
-  const body = await metaJson<ResponsesBody>("/responses", {
-    method: "POST",
-    json: {
-      model: SAM_MODEL,
-      store: false,
-      metadata: { mask_encoding: "one_bit", include_confidence: "true" },
-      input: [
-        {
-          type: "message",
-          role: "user",
-          content: [
-            { type: "input_text", text: "person" },
-            { type: "input_image", image_url: dataUrl(image) },
-          ],
-        },
-      ],
-    },
-    timeoutMs: 60_000,
-    signal: context?.signal,
-    onSend: () => context?.meter?.beforeCall("sam"),
-  });
-  return parseSamBoxes(outputText(body));
+  const detections = await segment(image, "person", context);
+  return detections.map(({ box, score }) => ({ ...box, score }));
 }
 
 const DESCRIBE_PROMPT = `You help someone turn a person from their own photo into a recurring comic character. Look at the photo and describe how this person looks so an illustrator can draw them the same way every time.

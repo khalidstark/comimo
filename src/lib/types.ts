@@ -144,6 +144,53 @@ export interface PanelConsistency {
   fixedCharacterIds: string[];
   /** The panel before the fix (the after is Panel.image); null if nothing was fixed. */
   beforeImage: ImageRef | null;
+  /**
+   * What actually checked the panel: "sam" when SAM 3.1 looked for the
+   * characters, "mock" in practice mode. Missing on days made before 03-03,
+   * whose check was never real.
+   */
+  method?: "sam" | "mock";
+  /** With method "sam": what SAM 3.1 found and what Muse Spark judged. */
+  sam?: SamReport;
+}
+
+/** One panel's SAM 3.1 pass, as shown in the "faces" note and the progress screen. */
+export interface SamReport {
+  /** Cast members in the panel SAM looked for. */
+  sought: string[];
+  /** Of those, the ones SAM found (on the final image). */
+  found: string[];
+  /** The ones Muse Spark compared with their reference sheet (needs a sheet). */
+  judged: string[];
+  /** Redraws made (0 to 2). */
+  redraws: number;
+  /** False when COMIMO_SAM_CHECK=0: SAM only placed the lettering, nothing was judged. */
+  checked: boolean;
+}
+
+/** A box as fractions (0 to 1) of the drawn image. */
+export interface UnitBox {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+/** Someone SAM found in a panel. */
+export interface PanelFigure {
+  /** The cast member it was matched to; missing for background people. */
+  characterId?: string;
+  kind: "person" | "animal";
+  box: UnitBox;
+  /** Where the head is (from the mask): lettering never goes here. */
+  head: UnitBox;
+}
+
+/** Everyone SAM found in a drawn panel, for lettering placement and cropping. */
+export interface PanelFigures {
+  /** Width over height of the image the boxes are measured on. */
+  aspect: number;
+  items: PanelFigure[];
 }
 
 /**
@@ -216,6 +263,8 @@ export interface Panel {
   /** The drawn panel; null until drawn. */
   image: ImageRef | null;
   consistency: PanelConsistency;
+  /** People and animals SAM 3.1 found in the final image; missing on days made before 03-03 and in practice mode. */
+  figures?: PanelFigures;
 }
 
 /* ------------------------------------------------------------------ */
@@ -305,7 +354,7 @@ export interface Transcript {
 }
 
 /** A panel as the script model writes it, before any drawing. */
-export type ScriptPanel = Omit<Panel, "image" | "consistency">;
+export type ScriptPanel = Omit<Panel, "image" | "consistency" | "figures">;
 
 export interface ComicScript {
   title: string;
@@ -360,6 +409,8 @@ export interface WireReference {
   characterId: string;
   name: string;
   look: string;
+  /** "pet" characters are found and judged as animals. */
+  role?: CharacterRole;
   image?: WireImage;
   /** Required with `image` unless it is a shipped starter sheet: proves this server drew it. */
   sheetToken?: string;
@@ -391,7 +442,12 @@ export interface PanelResponse {
     fixedCharacterIds: string[];
     /** The panel before the fix; null if nothing drifted. */
     before: WireImage | null;
+    /** "sam" when SAM 3.1 checked the panel, "mock" in practice mode. */
+    method: "sam" | "mock";
+    sam?: SamReport;
   };
+  /** Everyone SAM found in the final image; missing in practice mode. */
+  figures?: PanelFigures;
 }
 
 /** POST /api/character: draw a character's reference sheet. */

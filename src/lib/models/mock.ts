@@ -303,11 +303,12 @@ function stampFixed(image: ModelImage, name: string): ModelImage {
  */
 async function checkConsistency(image: ModelImage, references: CharacterReference[]): Promise<ConsistencyResult> {
   await wait(DELAY_MS.check);
-  if (references.length === 0 || image.mimeType !== SVG_TYPE) return { driftedCharacterIds: [], fixedImage: null };
+  const none: ConsistencyResult = { driftedCharacterIds: [], fixedCharacterIds: [], fixedImage: null, method: "mock" };
+  if (references.length === 0 || image.mimeType !== SVG_TYPE) return none;
   const h = hash(image.data);
-  if (h % 3 !== 0) return { driftedCharacterIds: [], fixedImage: null };
+  if (h % 3 !== 0) return none;
   const drifted = references[h % references.length];
-  return { driftedCharacterIds: [drifted.characterId], fixedImage: stampFixed(image, drifted.name) };
+  return { ...none, driftedCharacterIds: [drifted.characterId], fixedCharacterIds: [drifted.characterId], fixedImage: stampFixed(image, drifted.name) };
 }
 
 export const mockModels: ComicModels = {

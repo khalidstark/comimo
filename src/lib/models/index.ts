@@ -5,7 +5,9 @@ import type {
   ComicScript,
   LanguageHint,
   ModelMode,
+  PanelFigures,
   PanelFrame,
+  SamReport,
   ScriptPanel,
   StoryMode,
   Transcript,
@@ -45,6 +47,8 @@ export interface CharacterReference {
   image: ModelImage | null;
   /** The sheet in Meta's Files API (already verified); used instead of `image` when set. */
   fileId?: string;
+  /** "pet" characters are found and judged as animals. Missing from older clients. */
+  role?: CharacterRole;
 }
 
 /** Who a reference sheet is drawn for. */
@@ -60,13 +64,27 @@ export interface SheetSubject {
 export interface PanelOptions {
   frame: PanelFrame;
   style: ArtStyleId;
+  /** Corrections for a redraw after a failed face check ("Karim: olive bomber jacket, not grey"). */
+  fixes?: string[];
+}
+
+/** What the consistency check needs besides the image: the panel it is, drawn how. */
+export interface ConsistencyOptions extends PanelOptions {
+  panel: ScriptPanel;
 }
 
 export interface ConsistencyResult {
   /** Characters whose look drifted from their reference sheet. */
   driftedCharacterIds: string[];
-  /** The panel with drifted characters redrawn; null when nothing drifted. */
+  /** Drifted characters a redraw fixed (judged a match afterwards). */
+  fixedCharacterIds: string[];
+  /** The panel with drifted characters redrawn; null when nothing was fixed. */
   fixedImage: ModelImage | null;
+  /** "sam" when SAM 3.1 checked the panel, "mock" in practice mode. */
+  method: "sam" | "mock";
+  sam?: SamReport;
+  /** Everyone SAM found in the final image. */
+  figures?: PanelFigures;
 }
 
 /** Who is asking, and when to give up. Passed by the API routes. */
@@ -105,7 +123,7 @@ export interface ComicModels {
   /** Draw one panel using the reference sheets of the characters in it. */
   drawPanel(panel: ScriptPanel, references: CharacterReference[], options: PanelOptions, context?: ModelCallContext): Promise<ModelImage>;
   /** Find characters that drifted from their reference sheet and redraw them. */
-  checkConsistency(image: ModelImage, references: CharacterReference[], context?: ModelCallContext): Promise<ConsistencyResult>;
+  checkConsistency(image: ModelImage, references: CharacterReference[], options: ConsistencyOptions, context?: ModelCallContext): Promise<ConsistencyResult>;
 }
 
 /** Thrown when a voice note or other input can't be sent to a model as it is. */
