@@ -139,6 +139,7 @@ export interface Candidate {
 }
 
 const MIN_SCORE = 0.35;
+const MAX_PER_SET = 20;
 /** Detections smaller than this share of the image are noise for our purposes. */
 const MIN_AREA = 0.004;
 
@@ -159,7 +160,8 @@ export function mergeDetections(sets: DetectionSet[], width: number, height: num
   const candidates: Candidate[] = [];
   for (const set of sets) {
     if (set.faces) continue;
-    for (const detection of set.detections) {
+    // A phrase can match a crowd; the best 20 per request are plenty for matching and lettering.
+    for (const detection of [...set.detections].sort((a, b) => b.score - a.score).slice(0, MAX_PER_SET)) {
       if (detection.score < MIN_SCORE || area(detection.box) / (width * height) < MIN_AREA) continue;
       let match = candidates.find((c) => iou(c.box, detection.box) > 0.6);
       if (!match) {
@@ -178,72 +180,114 @@ export function mergeDetections(sets: DetectionSet[], width: number, height: num
   return candidates;
 }
 
+/** Most figures considered for matching, and most cast members (a panel never has more). */
+export const MAX_MATCH_CANDIDATES = 12;
+export const MAX_MATCH_CAST = 8;
+const IMPROVE_ROUNDS = 20;
+
 /**
- * Which figure is which cast member. Every way of giving each character a
- * different figure (or none) is scored: the character's own phrase score,
- * a little for a plain "person" hit of the right kind, and a bonus when the
- * figures stand in the script's left-to-right order (characterIds order),
- * which settles two people that match the same phrase.
+ * How well a figure fits a cast member on its own, or null when it may not
+ * be given to them: a character gets a figure its own phrase found, or (people
+ * only) a plain "person" hit. A phrase hit the "person" sweep didn't see is
+ * often a poster, a reflection or a coat on a chair, so it counts for less.
+ */
+function fit(member: CastInPanel, candidate: Candidate): number | null {
+  const own = candidate.scores.get(member.characterId) ?? 0;
+  if (member.animal) return own > 0 ? own : null;
+  if (own > 0) return candidate.person > 0 ? own : own * 0.4;
+  if (candidate.person <= 0) return null;
+  return 0.2 + 0.1 * candidate.person;
+}
+
+/** Bonus for figures standing in the script's left-to-right order (characterIds order). */
+function orderScore(assignment: (number | null)[], candidates: Candidate[]): number {
+  let total = 0;
+  for (let i = 0; i < assignment.length; i++) {
+    for (let j = i + 1; j < assignment.length; j++) {
+      const a = assignment[i];
+      const b = assignment[j];
+      if (a === null || b === null) continue;
+      const ax = candidates[a].box.x1 + candidates[a].box.x2;
+      const bx = candidates[b].box.x1 + candidates[b].box.x2;
+      total += ax < bx ? 0.3 : -0.3;
+    }
+  }
+  return total;
+}
+
+/**
+ * Which figure is which cast member (index into `candidates`, or null when
+ * none fits). Bounded work whatever SAM returns: at most 12 figures (best
+ * scores first) and 8 cast members; a greedy best-score match, then a few
+ * rounds of swaps and moves that keep any change raising the total, where
+ * the total adds the left-to-right order bonus that settles two people found
+ * by the same phrase.
  */
 export function matchCast(cast: CastInPanel[], candidates: Candidate[]): (number | null)[] {
-  let best: (number | null)[] = cast.map(() => null);
-  let bestScore = -Infinity;
-  const pick: (number | null)[] = [];
+  const seen = new Set<string>();
+  const members = cast.map((member, i) => ({ member, i })).filter(({ member }) => !seen.has(member.characterId) && seen.add(member.characterId)).slice(0, MAX_MATCH_CAST);
+  const best = (candidate: Candidate) => Math.max(candidate.person, ...candidate.scores.values());
+  const pool = candidates
+    .map((candidate, c) => ({ candidate, c }))
+    .sort((a, b) => best(b.candidate) - best(a.candidate))
+    .slice(0, MAX_MATCH_CANDIDATES)
+    .map(({ c }) => c);
 
-  const score = (assignment: (number | null)[]): number => {
-    let total = 0;
-    assignment.forEach((c, i) => {
-      if (c === null) return;
-      const candidate = candidates[c];
-      const own = candidate.scores.get(cast[i].characterId) ?? 0;
-      if (cast[i].animal) {
-        total += own > 0 ? own : -5;
-      } else if (candidate.animal && candidate.person <= 0) {
-        total -= 5;
-      } else if (own > 0) {
-        // A phrase hit the "person" sweep didn't see is often a poster, a reflection or a coat on a chair.
-        total += candidate.person > 0 ? own : own * 0.4;
-      } else {
-        total += 0.2 + 0.1 * candidate.person;
+  const fits = members.map(({ member }) => new Map(pool.flatMap((c) => {
+    const value = fit(member, candidates[c]);
+    return value === null ? [] : [[c, value] as const];
+  })));
+  const total = (assignment: (number | null)[]) =>
+    assignment.reduce<number>((sum, c, k) => sum + (c === null ? 0 : fits[k].get(c)!), 0) + orderScore(assignment, candidates);
+
+  // Greedy: the strongest (member, figure) pairs first.
+  const assignment: (number | null)[] = members.map(() => null);
+  const pairs = fits.flatMap((row, k) => [...row].map(([c, value]) => ({ k, c, value }))).sort((a, b) => b.value - a.value);
+  const taken = new Set<number>();
+  for (const { k, c } of pairs) {
+    if (assignment[k] !== null || taken.has(c)) continue;
+    assignment[k] = c;
+    taken.add(c);
+  }
+
+  // Local improvement: swap two members' figures, or move one to a free figure (or to none).
+  let score = total(assignment);
+  for (let round = 0; round < IMPROVE_ROUNDS; round++) {
+    let improved = false;
+    for (let a = 0; a < members.length; a++) {
+      for (let b = a + 1; b < members.length; b++) {
+        const [ca, cb] = [assignment[a], assignment[b]];
+        if ((cb !== null && !fits[a].has(cb)) || (ca !== null && !fits[b].has(ca))) continue;
+        assignment[a] = cb;
+        assignment[b] = ca;
+        const next = total(assignment);
+        if (next > score + 1e-9) {
+          score = next;
+          improved = true;
+        } else {
+          assignment[a] = ca;
+          assignment[b] = cb;
+        }
       }
-    });
-    for (let i = 0; i < assignment.length; i++) {
-      for (let j = i + 1; j < assignment.length; j++) {
-        const a = assignment[i];
-        const b = assignment[j];
-        if (a === null || b === null) continue;
-        const ax = (candidates[a].box.x1 + candidates[a].box.x2) / 2;
-        const bx = (candidates[b].box.x1 + candidates[b].box.x2) / 2;
-        total += ax < bx ? 0.3 : -0.3;
+      const current = assignment[a];
+      for (const option of [null, ...fits[a].keys()]) {
+        if (option === current || (option !== null && assignment.includes(option))) continue;
+        assignment[a] = option;
+        const next = total(assignment);
+        if (next > score + 1e-9) {
+          score = next;
+          improved = true;
+          break;
+        }
+        assignment[a] = current;
       }
     }
-    return total;
-  };
+    if (!improved) break;
+  }
 
-  const walk = (i: number) => {
-    if (i === cast.length) {
-      const s = score(pick);
-      if (s > bestScore) {
-        bestScore = s;
-        best = [...pick];
-      }
-      return;
-    }
-    pick.push(null);
-    walk(i + 1);
-    pick.pop();
-    candidates.forEach((candidate, c) => {
-      if (pick.includes(c)) return;
-      // A character is only given a figure its own phrase found, or a plain "person" hit for a person.
-      const own = candidate.scores.get(cast[i].characterId) ?? 0;
-      if (own <= 0 && (cast[i].animal || candidate.person <= 0)) return;
-      pick.push(c);
-      walk(i + 1);
-      pick.pop();
-    });
-  };
-  walk(0);
-  return best;
+  const result: (number | null)[] = cast.map(() => null);
+  members.forEach(({ i }, k) => (result[i] = assignment[k]));
+  return result;
 }
 
 /* ---------- Heads ---------- */
