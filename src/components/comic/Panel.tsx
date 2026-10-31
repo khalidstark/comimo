@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type CSSProperties } from "react";
+import { useLayoutEffect, useRef, useState, type CSSProperties, type RefObject } from "react";
 import { Art } from "@/art/Art";
 import { firstStrongDir } from "@/lib/bidi";
 import { BidiText } from "./BidiText";
@@ -21,6 +21,42 @@ function PanelImage({ art, alt }: { art: PanelArt; alt: string }) {
   return <img className={styles.image} src={art.src} alt={alt} decoding="async" />;
 }
 
+/** Lettering sizes tried in turn: two steps to fit the band the art left empty, a last one to stay inside the panel. */
+const FIT_STEPS = [0.88, 0.78, 0.7];
+
+/**
+ * Keep a panel's caption and bubbles in its lettering band: when they run
+ * taller than the band, shrink them a step at a time; as a last resort shrink
+ * once more so they at least stay inside their own panel and never spill over
+ * a neighbour. Re-fits when the panel changes size.
+ */
+function useFitLettering(ref: RefObject<HTMLDivElement | null>) {
+  useLayoutEffect(() => {
+    const layer = ref.current;
+    const sheet = layer?.parentElement;
+    if (!layer || !sheet || layer.childElementCount === 0) return;
+    const fit = () => {
+      delete layer.dataset.fit;
+      layer.style.removeProperty("--fit");
+      const band = layer.clientHeight;
+      const box = sheet.getBoundingClientRect();
+      const bottomInset = Number.parseFloat(getComputedStyle(layer).getPropertyValue("--ib")) || 0;
+      const room = box.bottom - (box.height * bottomInset) / 100 - layer.getBoundingClientRect().top;
+      for (let step = 0; step < FIT_STEPS.length; step++) {
+        const need = layer.scrollHeight;
+        const limit = step < 2 ? band : room;
+        if (need <= limit + 1) break;
+        layer.dataset.fit = String(step + 1);
+        layer.style.setProperty("--fit", String(FIT_STEPS[step]));
+      }
+    };
+    fit();
+    const observer = new ResizeObserver(fit);
+    observer.observe(sheet);
+    return () => observer.disconnect();
+  }, [ref]);
+}
+
 interface ComicPanelProps {
   panel: PanelView;
   slot: SlotView;
@@ -35,6 +71,8 @@ interface ComicPanelProps {
 export function ComicPanel({ panel, slot, total }: ComicPanelProps) {
   const [face, setFace] = useState<"after" | "before">("after");
   const [flipped, setFlipped] = useState(false);
+  const layerRef = useRef<HTMLDivElement>(null);
+  useFitLettering(layerRef);
   const fixable = Boolean(panel.image && panel.before);
   const showingBefore = fixable && face === "before";
   const number = panel.index + 1;
@@ -89,7 +127,7 @@ export function ComicPanel({ panel, slot, total }: ComicPanelProps) {
           </div>
         </div>
 
-        <div className={styles.layer}>
+        <div ref={layerRef} className={styles.layer}>
           {panel.caption ? (
             <p
               className={`caption ${styles.caption}`}
