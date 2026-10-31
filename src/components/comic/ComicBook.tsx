@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, type PointerEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type PointerEvent, type ReactNode } from "react";
 import type { ArtStyleId } from "@/lib/artStyles";
 import { Comic } from "./Comic";
 import type { PageView } from "./pageView";
@@ -22,6 +22,8 @@ interface ComicBookProps {
   label: string;
   /** Arabic comics turn right to left, like an Arabic book. */
   rtl?: boolean;
+  /** Printed at the foot of the last page (the photo album's QR code). */
+  endnote?: ReactNode;
 }
 
 type Turn = { from: number; dir: "forward" | "back" };
@@ -37,7 +39,7 @@ function isTyping(target: EventTarget | null): boolean {
  * the next page inks in underneath. Turn with the buttons, the arrow keys or a
  * swipe. A one-page comic is just the page.
  */
-export function ComicBook({ pages, style, label, rtl = false }: ComicBookProps) {
+export function ComicBook({ pages, style, label, rtl = false, endnote }: ComicBookProps) {
   const [current, setCurrent] = useState(0);
   const [turn, setTurn] = useState<Turn | null>(null);
   const bookRef = useRef<HTMLElement>(null);
@@ -108,7 +110,14 @@ export function ComicBook({ pages, style, label, rtl = false }: ComicBookProps) 
   };
 
   if (count === 0) return null;
-  if (count === 1) return <Comic panels={pages[0].panels} page={pages[0].page} style={style} label={label} />;
+  if (count === 1) {
+    return (
+      <>
+        <Comic panels={pages[0].panels} page={pages[0].page} style={style} label={label} />
+        {endnote}
+      </>
+    );
+  }
 
   const shown = pages[current];
   const leaving = turn ? pages[turn.from] : null;
@@ -137,6 +146,7 @@ export function ComicBook({ pages, style, label, rtl = false }: ComicBookProps) 
       <div className={styles.leaves} onPointerDown={onPointerDown} onPointerUp={onPointerUp} onPointerCancel={() => (swipe.current = null)}>
         <div key={current} className={styles.leaf} data-arriving={turn ? turn.dir : undefined}>
           <Comic panels={shown.panels} page={shown.page} style={style} label={`${label}, page ${current + 1} of ${count}`} />
+          {current === count - 1 ? endnote : null}
         </div>
         {leaving && turn ? (
           <div

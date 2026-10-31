@@ -6,6 +6,7 @@ import { MoodBadge } from "@/components/comic/MoodBadge";
 import { pageView } from "@/components/comic/pageView";
 import type { FacesSummary, PanelView } from "@/components/comic/view";
 import { AlbumPanel } from "@/components/AlbumPanel";
+import { AlbumQr } from "@/components/album/AlbumQr";
 import { CheckInCard } from "@/components/CheckInCard";
 import { EmptyState } from "@/components/EmptyState";
 import { NewPeopleCard } from "@/components/NewPeopleCard";
@@ -69,6 +70,7 @@ export function DayView({ day, panels, faces, layouts, previous, next }: DayView
           style={artStyleOf(day.artStyle)}
           label={`Comic for ${date}, ${book.length > 1 ? `${book.length} pages, ` : ""}${panels.length} panels`}
           rtl={day.languages.dominant === "ar"}
+          endnote={day.sample ? undefined : <AlbumQr dayId={day.id} />}
         />
       ) : null}
 
