@@ -21,6 +21,8 @@ Talking about your day for a minute gives you back a comic that feels like your 
 - [ ] Cast: create characters once (name, look, personality), each with a Muse Image reference sheet; ships with an invented starter cast
 - [ ] Panels drawn with Muse Image using the reference sheets of the characters in each panel
 - [ ] SAM 3.1 checks every panel, finds characters whose look drifted from their reference sheet, and redraws them; the app shows the before and after
+- [ ] Walkthrough motion video of the whole flow with our own cast and story, ending with a month merging into one comic book (home page, after sign-up, and the demo)
+- [ ] Unknown names are resolved before drawing: add to cast or keep as a one-off character
 - [ ] Quick accounts: email + password sign up/in, no verification (user's choice); guest try-out for judges
 - [ ] Comics, cast and images synced per account (Upstash Redis + Vercel Blob); local dev fallbacks
 - [ ] Photo album per comic: upload real photos (or paste an album link); QR code on the last page opens the album

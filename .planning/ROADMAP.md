@@ -50,7 +50,7 @@ Plans:
 **Depends on**: Phase 2, and the credits being on the Billing page
 **Research**: Likely (external API)
 **Research topics**: Meta Model API model ids and request shapes for Muse Voice Transcribe, Muse Image (reference images, edits or inpainting), SAM 3.1 (prompted segmentation, masks); Muse Spark structured JSON output; pricing per call
-**Plans**: 5 plans
+**Plans**: 6 plans
 
 Plans:
 - [x] 03-01: Server model client, transcription and comic script generation with spending guard
@@ -58,6 +58,7 @@ Plans:
 - [ ] 03-03: SAM 3.1 consistency check and redraw loop
 - [x] 03-04: Dynamic manga-style page layouts (shot types, varied panel sizes, splash, slants, insets)
 - [x] 03-05: Storytelling modes (narrated / dialogue / both) and cast recognised by name
+- [ ] 03-06: Ask about new names before drawing: add to cast or keep as a one-off character
 
 ### Phase 3.1: Design Refresh (INSERTED)
 **Goal**: More beautiful, easier and more interactive site with real Muse Image art (user request)
@@ -86,7 +87,7 @@ Plans:
 
 Plans:
 - [ ] 04-01: Monthly magazine flip-through with the mood strip
-- [ ] 04-02: (mostly delivered by 03.1 design refresh) sample month of real comics for the demo, performance and favicon
+- [ ] 04-02: Walkthrough motion video (Remotion): our story and cast, new-faces choice, photos and QR, page building, month merging into one comic book; on the site and reused in the demo
 
 ### Phase 5: Ship
 **Goal**: Live URL, public repo, README, voice-note scripts and a ready demo, submitted before the deadline
@@ -106,7 +107,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 |-------|----------------|--------|-----------|
 | 1. Foundation | 2/2 | Complete | 2026-10-30 |
 | 2. Comic Experience | 3/3 | Complete | 2026-10-30 |
-| 3. Meta Model Pipeline | 4/5 | In progress | - |
+| 3. Meta Model Pipeline | 4/6 | In progress | - |
 | 3.1. Design Refresh (INSERTED) | 1/1 | Complete (merged; user review pending) | 2026-10-31 |
 | 3.2. Accounts and Cloud (INSERTED) | 0/2 | Not started | - |
 | 4. Magazine and Art | 0/2 | Not started | - |
