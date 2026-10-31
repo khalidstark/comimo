@@ -1,0 +1,10 @@
+{
+  "frameWidth": 500,
+  "frameHeight": 600,
+  "frames": [
+    "idle",
+    "blink",
+    "wave1",
+    "wave2"
+  ]
+}
