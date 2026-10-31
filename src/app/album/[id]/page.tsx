@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
-import { Suspense } from "react";
 import Link from "next/link";
 import { ownedAlbum, publicAlbum, type PublicAlbum } from "@/lib/server/album";
 import { readSession, sessionCookieName } from "@/lib/server/session";
@@ -27,17 +26,14 @@ interface AlbumPageProps {
   params: Promise<{ id: string }>;
 }
 
-export default function AlbumPage({ params }: AlbumPageProps) {
-  return (
-    <main id="main" className={`page ${styles.main}`}>
-      <Suspense fallback={<AlbumLoading />}>
-        <AlbumContent params={params} />
-      </Suspense>
-    </main>
-  );
-}
+/**
+ * Every album address is unknown at build time and private to its link, so
+ * the page renders per request and waits for the album before sending
+ * anything: a missing one answers a real 404 (the proxy checks first too).
+ */
+export const instant = false;
 
-async function AlbumContent({ params }: AlbumPageProps) {
+export default async function AlbumPage({ params }: AlbumPageProps) {
   const { id } = await params;
   const album = await publicAlbum(id);
   if (!album) notFound();
@@ -46,10 +42,10 @@ async function AlbumContent({ params }: AlbumPageProps) {
   const owned = session ? await ownedAlbum(session.id, id) : null;
 
   return (
-    <>
+    <main id="main" className={`page ${styles.main}`}>
       <AlbumView album={album} />
       {owned?.ok ? <AlbumOwner album={owned.value} /> : null}
-    </>
+    </main>
   );
 }
 
@@ -119,14 +115,5 @@ function AlbumView({ album }: { album: PublicAlbum }) {
         </p>
       </footer>
     </article>
-  );
-}
-
-function AlbumLoading() {
-  return (
-    <div className={styles.loading} aria-busy="true">
-      <p className={`caption ${styles.kicker}`}>The real day</p>
-      <p role="status">Opening the album…</p>
-    </div>
   );
 }
