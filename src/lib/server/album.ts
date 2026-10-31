@@ -176,6 +176,11 @@ async function viewable(id: string, kv: KV): Promise<Album | null> {
   return album && (await isAccountLive(album.owner, kv)) ? album : null;
 }
 
+/** True when anyone with the link may open this album (a cheap check for the proxy). */
+export async function albumIsViewable(id: string, kv: KV = getKV()): Promise<boolean> {
+  return (await viewable(id, kv)) !== null;
+}
+
 /** The public view: photos, captions, title and link. Null when there is no such album. */
 export async function publicAlbum(id: string, kv: KV = getKV()): Promise<PublicAlbum | null> {
   const album = await viewable(id, kv);
