@@ -2,13 +2,14 @@ import { starterCastById } from "@/fixtures/cast";
 import { artStyleOf, isArtStyleId } from "@/lib/artStyles";
 import { guard, guardResponse } from "@/lib/guard";
 import { getModels, type CharacterReference } from "@/lib/models";
-import { isTrustedSheet, signFileId, verifyFileToken } from "@/lib/models/fileTokens";
+import { isTrustedSheet, signFileId, signSheet, verifyFileToken } from "@/lib/models/fileTokens";
+import { cutOneOffs } from "@/lib/models/oneOff";
 import { isMissingFileError, isSendableImage, pickReferences } from "@/lib/models/meta/image";
 import { fromWire, isRecord, isText, json, jsonError, modelErrorResponse, toWire } from "@/lib/models/wire";
 import { BODY_LIMITS, readBoundedJson } from "@/lib/requestBody";
 import { isBeat, isShot } from "@/lib/layout/pickLayout";
 import { snapAspect } from "@/lib/layout/page";
-import type { ApiError, CharacterRole, Corner, DialogueLine, LetteringZone, PanelFrame, PanelResponse, ScriptPanel, TextDir, UploadedReference } from "@/lib/types";
+import type { ApiError, CharacterRole, Corner, DialogueLine, LetteringZone, PanelFrame, PanelResponse, ScriptPanel, TextDir, UnitBox, UploadedReference } from "@/lib/types";
 
 /** Muse Image can take a minute or two with reasoning_strength "high", plus one retry. */
 export const maxDuration = 300;
@@ -85,7 +86,7 @@ function parseReferences(value: unknown): CharacterReference[] | "stale" | "untr
   const references: CharacterReference[] = [];
   for (const item of value) {
     if (!isRecord(item)) return null;
-    const { characterId, name, look, image, sheetToken, fileToken, role } = item;
+    const { characterId, name, look, image, sheetToken, fileToken, role, oneOff, box } = item;
     if (!isText(characterId, 100) || !isText(name, 100) || typeof look !== "string" || look.length > 2000) return null;
     if (role !== undefined && !ROLES.includes(role as CharacterRole)) return null;
     const wire = image === undefined ? null : fromWire(image);
@@ -97,7 +98,17 @@ function parseReferences(value: unknown): CharacterReference[] | "stale" | "untr
     const fileId = fileToken === undefined ? null : verifyFileToken(fileToken);
     // A token this server can't use (another key, tampered) without the image: ask for the image instead.
     if (fileToken !== undefined && !fileId && !decoded) return "stale";
-    references.push({ characterId, name, look, image: decoded, ...(fileId ? { fileId } : {}), ...(role ? { role: role as CharacterRole } : {}) });
+    // A one-off (03-06) sends the earlier panel it first appeared in (signed by imageToken) and where it is in it.
+    const at = oneOff === true && isRecord(box) ? (box as unknown as UnitBox) : undefined;
+    references.push({
+      characterId,
+      name,
+      look,
+      image: decoded,
+      ...(fileId ? { fileId } : {}),
+      ...(role ? { role: role as CharacterRole } : {}),
+      ...(oneOff === true ? { oneOff: true, ...(at ? { box: at } : {}) } : {}),
+    });
   }
   return references;
 }
@@ -159,7 +170,7 @@ export async function POST(request: Request) {
     if (parsed === "stale") return staleReference();
     if (parsed === "untrusted") return jsonError(400, "That reference sheet wasn't drawn by Comimo. Redraw it from the cast screen.");
     if (!parsed) return jsonError(400, "`references` must be a list of {characterId, name, look, image?, fileToken?}.");
-    references = parsed;
+    references = await cutOneOffs(parsed);
   }
   const inPanel = references.filter((ref) => panel.characterIds.includes(ref.characterId));
   const panelFrame = isRecord(body.panel) && body.panel.frame !== undefined ? parseFrame(body.panel.frame) : legacyFrame(body.shape);
@@ -217,6 +228,8 @@ export async function POST(request: Request) {
           ...(sam ? { sam } : {}),
         },
         ...(figures ? { figures } : {}),
+        // A panel with a one-off may become their reference for later panels: sign what was drawn.
+        ...(inPanel.some((ref) => ref.oneOff) ? { imageToken: signSheet((fixedImage ?? drawn).data) ?? undefined } : {}),
       },
       source,
     );
