@@ -3,7 +3,7 @@ import { sniffImageType } from "@/lib/models/meta/image";
 import { getBlobStore, type BlobStore, type StoredBlob } from "./blob";
 import { randomBytes } from "node:crypto";
 import { getKV, versionOf, type KV } from "./kv";
-import { hit } from "./rateLimit";
+import { hit, windowOf } from "./rateLimit";
 
 /**
  * Each account's comic book on the server: days, cast, a few synced settings
@@ -447,4 +447,7 @@ export async function deleteLibrary(account: string, kv: KV = getKV(), blobs: Bl
   }
   await blobs.delPrefix(accountBlobPrefix(account));
   await Promise.all([kv.del(keys.meta(account)), kv.del(keys.images(account)), kv.del(keys.imageBytes(account))]);
+  // This hour's counters too (they would expire on their own within the hour).
+  const hour = windowOf(3600).index;
+  await Promise.all([kv.del(`lib:${account}:writes:${hour}`), kv.del(`lib:${account}:uploads:${hour}`), kv.del(`lib:${account}:imgrecount`)]);
 }

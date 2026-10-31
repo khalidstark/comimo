@@ -182,3 +182,9 @@ export async function checkCredentials(email: string, password: string, kv: KV =
   }
   return (await verifyPassword(password, account.passwordHash)) ? account : null;
 }
+
+/** Remove the account record and free its email (only if the email still points at this account). */
+export async function deleteAccountRecord(account: Account, kv: KV = getKV()): Promise<void> {
+  if ((await kv.get(emailKey(account.email))) === account.id) await kv.del(emailKey(account.email));
+  await kv.del(accountKey(account.id));
+}

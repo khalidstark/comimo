@@ -40,8 +40,17 @@ interface SessionRecord {
 /** 32 random bytes as base64url: exactly 43 characters. */
 const SESSION_ID = /^[A-Za-z0-9_-]{43}$/;
 
+function sessionHash(sessionId: string): string {
+  return createHash("sha256").update(sessionId).digest("hex");
+}
+
 function sessionKey(sessionId: string): string {
-  return `session:${createHash("sha256").update(sessionId).digest("hex")}`;
+  return `session:${sessionHash(sessionId)}`;
+}
+
+/** Each account's live sessions (hash of id -> created), so deleting the account can end them all. */
+function accountSessionsKey(accountId: string): string {
+  return `sessions:${accountId}`;
 }
 
 /** Start a session for an account; returns the id for the cookie. */
@@ -49,6 +58,13 @@ export async function createSession(account: SessionAccount, kv: KV = getKV()): 
   const sessionId = randomBytes(32).toString("base64url");
   const record: SessionRecord = { accountId: account.id, name: account.name, createdAt: new Date().toISOString() };
   await kv.set(sessionKey(sessionId), JSON.stringify(record), { ttlSec: SESSION_TTL_SEC });
+  await kv.hset(accountSessionsKey(account.id), sessionHash(sessionId), record.createdAt);
+  // Forget sessions that have expired on their own, so the list stays short.
+  const listed = await kv.hgetall(accountSessionsKey(account.id));
+  const expired = Object.entries(listed)
+    .filter(([, created]) => Date.parse(created) < Date.now() - SESSION_TTL_SEC * 1000)
+    .map(([hash]) => hash);
+  if (expired.length) await kv.hdel(accountSessionsKey(account.id), ...expired);
   return sessionId;
 }
 
@@ -67,7 +83,16 @@ export async function readSession(sessionId: string | null | undefined, kv: KV =
 
 export async function destroySession(sessionId: string | null | undefined, kv: KV = getKV()): Promise<void> {
   if (!sessionId || !SESSION_ID.test(sessionId)) return;
+  const account = await readSession(sessionId, kv);
   await kv.del(sessionKey(sessionId));
+  if (account) await kv.hdel(accountSessionsKey(account.id), sessionHash(sessionId));
+}
+
+/** End every session of an account at once (account deletion). */
+export async function destroyAllSessions(accountId: string, kv: KV = getKV()): Promise<void> {
+  const hashes = Object.keys(await kv.hgetall(accountSessionsKey(accountId)));
+  for (const hash of hashes) await kv.del(`session:${hash}`);
+  await kv.del(accountSessionsKey(accountId));
 }
 
 /**
