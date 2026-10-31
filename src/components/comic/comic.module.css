@@ -173,6 +173,11 @@
   pointer-events: none;
 }
 
+/* Lettering that doesn't fit its band is set a step smaller (see useFitLettering in Panel.tsx) */
+.layer > * {
+  zoom: var(--fit, 1);
+}
+
 /* Caption pinned to the panel's corner, like a narration box in a graphic novel */
 .caption {
   margin: -0.45rem 0 0 -0.45rem;
