@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-10-30)
 ## Current Position
 
 Phase: 3 of 5 (Meta Model Pipeline)
-Plan: 3 of 5 in current phase (03-01, 03-02, 03-04 done; 03-03 and 03-05 to go)
+Plan: 4 of 5 in current phase (03-03 SAM next)
 Status: In progress
-Last activity: 2026-10-31 — Completed 03-04 (dynamic manga page layouts, ISS-009 closed)
+Last activity: 2026-10-31 — 03-04 layouts, 03-05 storyteller/pages/cast-by-name and 03.1 design refresh merged on main
 
-Progress: ██████░░░░ 57% (8 of 14 plans)
+Progress: ███████░░░ 71% (10 of 14 plans)
 
 ## Performance Metrics
 

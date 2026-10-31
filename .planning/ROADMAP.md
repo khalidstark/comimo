@@ -56,7 +56,7 @@ Plans:
 - [x] 03-02: Character reference sheets and panel generation, with a second art theme: Painterly
 - [ ] 03-03: SAM 3.1 consistency check and redraw loop
 - [x] 03-04: Dynamic manga-style page layouts (shot types, varied panel sizes, splash, slants, insets)
-- [ ] 03-05: Storytelling modes (narrated / dialogue / both) and cast recognised by name
+- [x] 03-05: Storytelling modes (narrated / dialogue / both) and cast recognised by name
 
 ### Phase 3.1: Design Refresh (INSERTED)
 **Goal**: More beautiful, easier and more interactive site with real Muse Image art (user request)
@@ -65,7 +65,7 @@ Plans:
 **Plans**: 1 plan
 
 Plans:
-- [ ] 03.1-01: Real site art and mascot sprites with Muse Image; home and nav refresh; user design check
+- [x] 03.1-01: Real site art and mascot sprites with Muse Image; home and nav refresh; user design check
 
 ### Phase 4: Magazine and Art
 **Goal**: The monthly comic book, the real Muse-generated art across the site, and demo content that makes the site impressive even without recording
@@ -95,7 +95,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 |-------|----------------|--------|-----------|
 | 1. Foundation | 2/2 | Complete | 2026-10-30 |
 | 2. Comic Experience | 3/3 | Complete | 2026-10-30 |
-| 3. Meta Model Pipeline | 3/5 | In progress | - |
-| 3.1. Design Refresh (INSERTED) | 0/1 | Not started | - |
+| 3. Meta Model Pipeline | 4/5 | In progress | - |
+| 3.1. Design Refresh (INSERTED) | 1/1 | Complete (merged; user review pending) | 2026-10-31 |
 | 4. Magazine and Art | 0/2 | Not started | - |
 | 5. Ship | 0/1 | Not started | - |
