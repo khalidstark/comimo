@@ -1,0 +1,212 @@
+/* The reader around the magazine: issue switcher, page controls and tools. */
+
+.reader {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-s);
+}
+
+/* ---------- Title and issue switcher ---------- */
+
+.top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2xs) var(--space-m);
+}
+
+.issues {
+  flex: 1 1 16rem;
+  min-inline-size: 0;
+  max-inline-size: 100%;
+}
+
+.issueList {
+  display: flex;
+  gap: var(--space-2xs);
+  margin: 0;
+  padding: 0.25rem 0.25rem 0.5rem;
+  overflow-x: auto;
+  list-style: none;
+  scrollbar-width: thin;
+}
+
+.issueChip {
+  display: grid;
+  justify-items: start;
+  gap: 0.05rem;
+  min-block-size: 2.75rem;
+  padding: 0.35rem 0.85rem 0.4rem;
+  border: var(--panel-border-thin) solid var(--line);
+  border-radius: 6px 9px 7px 8px;
+  background: var(--surface);
+  color: var(--ink);
+  font-family: var(--font-display-stack);
+  line-height: 1.1;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    translate var(--dur-quick) var(--ease-ink),
+    box-shadow var(--dur-quick) var(--ease-ink);
+}
+
+.issueChip:hover {
+  translate: 0 -2px;
+  box-shadow: var(--shadow-small);
+}
+
+.issueChip[aria-pressed="true"] {
+  background: var(--ink);
+  color: var(--paper);
+  box-shadow: var(--shadow-small);
+}
+
+.issueMonth {
+  font-size: var(--step-0);
+  font-weight: 800;
+}
+
+.issueNo {
+  font-size: var(--step--1);
+  font-weight: 600;
+  opacity: 0.8;
+}
+
+/* Chips sit at the end of the title row; auto margin (not flex-end) keeps an overflowing list scrollable from its start */
+.issueList > :first-child {
+  margin-inline-start: auto;
+}
+
+/* ---------- Page controls ---------- */
+
+.controls {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-s);
+  max-inline-size: 52rem;
+  inline-size: 100%;
+  margin-inline: auto;
+  padding-block-start: var(--space-xs);
+}
+
+.turn:disabled {
+  opacity: 0.35;
+  pointer-events: none;
+}
+
+@media (max-width: 30rem) {
+  .turnWord {
+    display: none;
+  }
+}
+
+.scrubber {
+  display: grid;
+  gap: 0.2rem;
+  min-inline-size: 0;
+}
+
+.scrubLabel {
+  overflow: hidden;
+  font-family: var(--font-display-stack);
+  font-size: var(--step--1);
+  font-weight: 700;
+  color: var(--ink-soft);
+  text-align: center;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* A slider like a ribbon bookmark on the page edges */
+.range {
+  --track: color-mix(in srgb, var(--ink) 18%, transparent);
+  inline-size: 100%;
+  block-size: 2rem;
+  margin: 0;
+  background: transparent;
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+}
+
+.range::-webkit-slider-runnable-track {
+  block-size: 0.6rem;
+  border: 2px solid var(--line);
+  border-radius: 99px;
+  background: linear-gradient(90deg, var(--accent) 0 var(--fill), var(--surface) var(--fill));
+}
+
+.range::-moz-range-track {
+  block-size: 0.6rem;
+  border: 2px solid var(--line);
+  border-radius: 99px;
+  background: linear-gradient(90deg, var(--accent) 0 var(--fill), var(--surface) var(--fill));
+}
+
+.range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  inline-size: 1.4rem;
+  block-size: 1.7rem;
+  margin-block-start: -0.65rem;
+  border: 2px solid var(--line);
+  border-radius: 4px 4px 2px 2px;
+  background: var(--highlight);
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 78%, 0 100%);
+}
+
+.range::-moz-range-thumb {
+  inline-size: 1.4rem;
+  block-size: 1.7rem;
+  border: 2px solid var(--line);
+  border-radius: 4px 4px 2px 2px;
+  background: var(--highlight);
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 78%, 0 100%);
+}
+
+.range:focus-visible {
+  outline: none;
+}
+
+.range:focus-visible::-webkit-slider-thumb {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* ---------- Tools ---------- */
+
+.tools {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-2xs) var(--space-s);
+  padding-block-start: var(--space-xs);
+}
+
+.coverError {
+  text-align: center;
+  color: var(--accent-text);
+  font-weight: 600;
+}
+
+.hint {
+  text-align: center;
+  font-size: var(--step--1);
+  color: var(--ink-soft);
+}
+
+@media (hover: none) {
+  .hint {
+    display: none;
+  }
+}
+
+.loading {
+  display: grid;
+  place-items: center;
+  min-block-size: 60vh;
+  font-family: var(--font-display-stack);
+  font-size: var(--step-1);
+  color: var(--ink-soft);
+}

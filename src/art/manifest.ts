@@ -102,6 +102,8 @@ export const art = {
   },
   month: {
     cover: drawn("site/month-cover.webp", "", 1000, 1250),
+    /** The sample issue's own cover, drawn by Muse Image from the starter sheets through the cover route (04-01). */
+    sampleCover: drawn("site/cover-sample-2026-10.webp", "", 1000, 1500),
   },
   /**
    * The home page's demo day: one real Comimo run on an invented lunch story,
