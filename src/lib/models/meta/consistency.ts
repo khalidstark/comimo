@@ -57,10 +57,20 @@ function hasSheet(ref: CharacterReference): boolean {
   return Boolean(ref.fileId || (ref.image && isSendableImage(ref.image)));
 }
 
-/** Where review crops go when COMIMO_SAM_DEBUG_DIR is set (local testing only). */
+/**
+ * Detailed logs (names, what the judge saw) and review crops are for local
+ * testing only: on in development or with COMIMO_SAM_DEBUG=1, never on Vercel.
+ * Production logs carry panel indexes, character ids, counts and timings.
+ */
+function debugging(): boolean {
+  if (process.env.VERCEL === "1") return false;
+  return process.env.NODE_ENV !== "production" || process.env.COMIMO_SAM_DEBUG === "1";
+}
+
+/** Where review crops go when debugging with COMIMO_SAM_DEBUG_DIR set. */
 async function saveCrop(label: string, crop: ModelImage) {
   const dir = process.env.COMIMO_SAM_DEBUG_DIR;
-  if (!dir) return;
+  if (!dir || !debugging()) return;
   try {
     await mkdir(dir, { recursive: true });
     await writeFile(join(dir, `${new Date().toISOString().replace(/[:.]/g, "-")}-${label}.png`), crop.data);
@@ -195,7 +205,8 @@ export async function checkConsistency(
   if (first.length === 0) {
     return finish({ driftedCharacterIds: [], fixedCharacterIds: [], fixedImage: null, figures: located.figures, sam: report(references, located, judgeable.map((r) => r.characterId), 0, true) });
   }
-  console.info(`Comimo: ${label} drifted: ${first.map((v) => `${byId.get(v.characterId)?.name}: ${v.differences.join("; ")}`).join(" | ")}`);
+  console.info(`Comimo: ${label} drifted: ${driftedIds.join(", ")} (${first.reduce((sum, v) => sum + v.differences.length, 0)} differences)`);
+  if (debugging()) console.info(`Comimo: ${label} differences: ${first.map((v) => `${byId.get(v.characterId)?.name}: ${v.differences.join("; ")}`).join(" | ")}`);
 
   const original = { image, located };
   let current = { image, located };
@@ -218,7 +229,8 @@ export async function checkConsistency(
     } catch (error) {
       if (context?.signal?.aborted) throw error;
       // A refused or failed redraw keeps the best panel so far.
-      console.warn(`Comimo: ${label} redraw ${redraws} failed (${error instanceof Error ? error.message : "unknown"})`);
+      const reason = error instanceof MetaApiError ? `${error.status ?? "-"} ${error.kind}${error.code ? ` ${error.code}` : ""}` : "unknown";
+      console.warn(`Comimo: ${label} redraw ${redraws} failed (${reason})`);
       break;
     }
     const nextLocated = await locate(next, references, context);
