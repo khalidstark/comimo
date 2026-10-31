@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-10-30)
 
 **Core value:** Talking about your day for a minute gives you back a comic that feels like your life, with the same faces in every panel; the check-in card and monthly magazine matter equally.
-**Current focus:** Phase 3 — Meta Model Pipeline
+**Current focus:** Phase 3 complete; next Phase 3.2 — Accounts and Cloud
 
 ## Current Position
 
-Phase: 3 of 5 (Meta Model Pipeline)
-Plan: 5 of 6 in current phase (03-06 new names before drawing next)
-Status: In progress
-Last activity: 2026-10-31 — Completed 03-03 (SAM 3.1 consistency loop, lettering off faces, full-width phone pages)
+Phase: 3 of 5 (Meta Model Pipeline) — Complete
+Plan: 6 of 6 in current phase
+Status: Phase complete
+Last activity: 2026-10-31 — Completed 03-06 (new faces asked about before drawing; one-off characters)
 
-Progress: ██████▌░░░ 65% (11 of 17 plans)
+Progress: ███████░░░ 71% (12 of 17 plans)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 11
+- Total plans completed: 12
 - Average duration: 70 min
-- Total execution time: about 12.8 hours
+- Total execution time: about 14 hours
 
 **By Phase:**
 
@@ -29,10 +29,10 @@ Progress: ██████▌░░░ 65% (11 of 17 plans)
 |-------|-------|-------|----------|
 | 1. Foundation | 2 | 48 min | 24 min |
 | 2. Comic Experience | 3 | 87 min | 29 min |
-| 3. Meta Model Pipeline | 5 | 12 h | 144 min |
+| 3. Meta Model Pipeline | 6 | 13.3 h | 133 min |
 
 **Recent Trend:**
-- Last 5 plans: 22, 75, 225, 180, 220 min
+- Last 5 plans: 75, 225, 180, 220, 75 min
 - Trend: longer (real model calls, visual review rounds)
 
 ## Accumulated Context
@@ -66,6 +66,8 @@ Recent decisions affecting current work:
 - 03-03: Every panel gets a SAM 3.1 pass (one phrase per cast member + person + face sweeps, 1280 px copy, store:false); Spark judges cut-outs against sheets; at most 2 redraws; COMIMO_SAM_CHECK=0 keeps only the SAM pass. Panel.figures and consistency.method/sam are stored; UI copy about SAM comes only from them.
 - 03-03: Phone pages are full-width rows (one panel or a pair), cover-cropped around the characters (crop.ts shared by pageView and lettering); panels with figures letter in free space off every head.
 - 03-03: Test servers are built from a scratch copy so the user's :3000 server keeps its .next.
+- 03-06: New people (named, or unnamed but taking part, e.g. "the cashier") are drawn under placeholders new1..new4 until the user answers the "New faces" step before drawing: Add to cast / Just this story (one-off, `oneoff:<placeholder>`, Day.oneOffs) / Never ask (one-off now and later). Skip all = one-offs, offered once after the comic.
+- 03-06: A one-off's later panels use their first panel (signed via PanelResponse.imageToken, cut to their SAM box on the server) as the reference, and the face judge compares against it. One-offs are left out of the magazine cast.
 
 ### Deferred Issues
 
@@ -75,11 +77,11 @@ Recent decisions affecting current work:
 
 - REMIND USER (they said yes, do later): create Vercel Blob store and accept Upstash Redis terms in the Vercel dashboard; needed for 03.2 in production and for 05-01 deploy.
 
-- Credits arrived ($150) and the key works. Free credits: Meta may use submitted content, so test with invented days. 03-04 spent about $0.36, 03-03 about $0.80 (total about $2.90).
+- Credits arrived ($150) and the key works. Free credits: Meta may use submitted content, so test with invented days. 03-04 spent about $0.36, 03-03 about $0.80, 03-06 about $0.27 (total about $3.17).
 - Billing spend alert was set to $500; user asked to lower it to $140.
 
 ## Session Continuity
 
-Last session: 2026-10-31 12:25
-Stopped at: Completed 03-03-PLAN.md; next is 03-06 (new names before drawing), then 03.2
+Last session: 2026-10-31 13:30
+Stopped at: Completed 03-06-PLAN.md; Phase 3 complete; next is 03.2 (accounts and cloud)
 Resume file: None

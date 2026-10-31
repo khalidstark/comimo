@@ -16,7 +16,7 @@ None
 
 - [x] **Phase 1: Foundation** - Next.js skeleton, design system, art manifest with placeholders, on-device storage, mock mode
 - [x] **Phase 2: Comic Experience** - Record, progress, comic reader with RTL bubbles, check-in card, day weather and cast, all on mock data
-- [ ] **Phase 3: Meta Model Pipeline** - Real Voice Transcribe, Spark, Image and SAM 3.1 calls with the consistency fix loop and a spending guard
+- [x] **Phase 3: Meta Model Pipeline** - Real Voice Transcribe, Spark, Image and SAM 3.1 calls with the consistency fix loop and a spending guard
 - [ ] **Phase 3.1: Design Refresh (INSERTED)** - Real Muse art on the home page, simpler path, more interaction
 - [ ] **Phase 3.2: Accounts and Cloud (INSERTED)** - Quick email/password accounts, comics synced per account, photo albums with QR codes
 - [ ] **Phase 4: Magazine and Art** - Monthly flip-through comic book, Muse-generated site art and sprites, sample days and demo content
@@ -58,7 +58,7 @@ Plans:
 - [x] 03-03: SAM 3.1 consistency check and redraw loop
 - [x] 03-04: Dynamic manga-style page layouts (shot types, varied panel sizes, splash, slants, insets)
 - [x] 03-05: Storytelling modes (narrated / dialogue / both) and cast recognised by name
-- [ ] 03-06: Ask about new names before drawing: add to cast or keep as a one-off character
+- [x] 03-06: Ask about new names before drawing: add to cast or keep as a one-off character
 
 ### Phase 3.1: Design Refresh (INSERTED)
 **Goal**: More beautiful, easier and more interactive site with real Muse Image art (user request)
@@ -107,7 +107,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 |-------|----------------|--------|-----------|
 | 1. Foundation | 2/2 | Complete | 2026-10-30 |
 | 2. Comic Experience | 3/3 | Complete | 2026-10-30 |
-| 3. Meta Model Pipeline | 5/6 | In progress (03-06 left) | - |
+| 3. Meta Model Pipeline | 6/6 | Complete | 2026-10-31 |
 | 3.1. Design Refresh (INSERTED) | 1/1 | Complete (merged; user review pending) | 2026-10-31 |
 | 3.2. Accounts and Cloud (INSERTED) | 0/2 | Not started | - |
 | 4. Magazine and Art | 0/2 | Not started | - |
