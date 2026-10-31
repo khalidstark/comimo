@@ -164,8 +164,18 @@ async function previousTemplate(): Promise<string | null> {
 
 /* ---------- Cast ---------- */
 
-function toBrief({ id, name, role, look, personality }: Character): CastBrief {
-  return { id, name, role, look, personality };
+function toBrief({ id, name, aliases, role, look, personality }: Character): CastBrief {
+  return { id, name, role, look, personality, ...(aliases?.length ? { aliases } : {}) };
+}
+
+/** The names a panel's characters and speakers had when it was made (ISS-007). */
+function nameSnapshot(panel: ScriptPanel, cast: Character[]): Record<string, string> {
+  const names: Record<string, string> = {};
+  for (const id of new Set([...panel.characterIds, ...panel.dialogue.map((line) => line.speakerId)])) {
+    const member = cast.find((character) => character.id === id);
+    if (member) names[id] = member.name;
+  }
+  return names;
 }
 
 /* ---------- Pipeline ---------- */
@@ -321,7 +331,9 @@ export class ComicPipeline {
     form.append("audio", wav, "voice-note.wav");
     form.append("language", this.input.language);
     // Cast names help the transcriber spell them the way the script needs them.
-    form.append("keywords", JSON.stringify(this.cast.map((member) => member.name).slice(0, 20)));
+    // Names first, then the other names they go by, within the transcriber's 20.
+    const names = [...this.cast.map((member) => member.name), ...this.cast.flatMap((member) => member.aliases ?? [])];
+    form.append("keywords", JSON.stringify([...new Set(names)].slice(0, 20)));
     const { transcript } = await request<TranscribeResponse>("listen", "/api/transcribe", {
       method: "POST",
       body: form,
@@ -516,6 +528,11 @@ export class ComicPipeline {
       ...(this.state.layout ? { layout: this.state.layout } : {}),
       createdAt: this.createdAt,
     };
+
+    // Cast by name (03-05): keep each panel's names as they are today (ISS-007), and the new people to offer once.
+    const cast = this.cast ?? [];
+    day.panels = day.panels.map((panel) => ({ ...panel, names: nameSnapshot(panel, cast) }));
+    if (!crisis && script.newPeople?.length) day.newPeople = script.newPeople;
 
     // Read it back: only route to the day once it is really on the device.
     const saved = (await saveDay(day)) && (await getDay(day.id));

@@ -2,6 +2,7 @@ import { starterCastBriefs } from "@/fixtures/cast";
 import { guard, guardResponse } from "@/lib/guard";
 import { getModels } from "@/lib/models";
 import { isRecord, isText, json, jsonError, modelErrorResponse, readJson } from "@/lib/models/wire";
+import { ALIAS_LIMITS } from "@/lib/names";
 import type { CastBrief, CharacterRole, ScriptResponse } from "@/lib/types";
 
 export const maxDuration = 60;
@@ -10,17 +11,23 @@ const MAX_TRANSCRIPT = 20_000;
 const MAX_CAST = 20;
 const ROLES: CharacterRole[] = ["self", "friend", "family", "teacher", "pet", "other"];
 
+/** Other names a character goes by: a short list of short names. */
+function isAliasList(value: unknown): value is string[] {
+  return Array.isArray(value) && value.length <= ALIAS_LIMITS.count && value.every((alias) => isText(alias, ALIAS_LIMITS.length));
+}
+
 function parseCast(value: unknown): CastBrief[] | null {
   if (!Array.isArray(value) || value.length === 0 || value.length > MAX_CAST) return null;
   const cast: CastBrief[] = [];
   for (const item of value) {
     if (!isRecord(item)) return null;
-    const { id, name, role, look, personality } = item;
+    const { id, name, aliases, role, look, personality } = item;
     if (!isText(id, 100) || !isText(name, 100)) return null;
     if (typeof role !== "string" || !ROLES.includes(role as CharacterRole)) return null;
     if (typeof look !== "string" || look.length > 2000) return null;
     if (typeof personality !== "string" || personality.length > 2000) return null;
-    cast.push({ id, name, role: role as CharacterRole, look, personality });
+    if (aliases !== undefined && !isAliasList(aliases)) return null;
+    cast.push({ id, name, role: role as CharacterRole, look, personality, ...(aliases?.length ? { aliases } : {}) });
   }
   return cast;
 }
