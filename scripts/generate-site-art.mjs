@@ -483,8 +483,14 @@ async function keyOut(file) {
       stack.push(i);
     }
   };
-  for (let x = 0; x < w; x++) push(x), push((h - 1) * w + x);
-  for (let y = 0; y < h; y++) push(y * w), push(y * w + w - 1);
+  for (let x = 0; x < w; x++) {
+    push(x);
+    push((h - 1) * w + x);
+  }
+  for (let y = 0; y < h; y++) {
+    push(y * w);
+    push(y * w + w - 1);
+  }
   // Pockets of pure key colour enclosed by the drawing (between an arm and the body, inside curls).
   for (let i = 0; i < w * h; i++) if (dist[i] < 36) push(i);
   while (stack.length) {
@@ -703,7 +709,6 @@ async function buildSprite(id) {
   const scale = Math.min((cellW * 0.92) / unionW, (cellH * 0.94) / unionH);
   const drawW = Math.round(unionW * scale);
   const drawH = Math.round(unionH * scale);
-  const offX = Math.round((cellW - drawW) / 2);
   const offY = cellH - drawH - Math.round(cellH * 0.02);
 
   const frame = async (img, breathe = 0) => {
@@ -733,7 +738,6 @@ async function buildSprite(id) {
       }),
     ),
   );
-  void offX;
   const sheet = sharp({ create: { width: cellW * 6, height: cellH * 4, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } } }).composite(
     composites,
   );
