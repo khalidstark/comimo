@@ -36,8 +36,8 @@ export async function readPhoto(bytes: Uint8Array): Promise<ModelImage & { width
   if (!type || !PHOTO_TYPES.has(type)) throw new PhotoInputError("Use a JPEG, PNG or WebP photo.");
   let meta: Metadata;
   try {
-    // Reads the header only; the pixel limit stops decompression bombs before decoding.
-    meta = await sharp(bytes, { limitInputPixels: MAX_PHOTO_SIDE * MAX_PHOTO_SIDE, failOn: "error" }).metadata();
+    // Reads the header only (no decoding), so an oversized photo gets a clear answer.
+    meta = await sharp(bytes, { failOn: "error" }).metadata();
   } catch {
     throw new PhotoInputError("That photo couldn't be read. Try another one.");
   }
