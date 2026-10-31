@@ -105,7 +105,7 @@ async function judge(
       model: JUDGE_MODEL,
       store: false,
       reasoning: { effort: "low" },
-      max_output_tokens: 2_000,
+      max_output_tokens: 4_000,
       ...(context?.visitorId ? { safety_identifier: context.visitorId } : {}),
       instructions: JUDGE_PROMPT,
       input: [{ type: "message", role: "user", content }],
@@ -130,6 +130,11 @@ async function judge(
     const confidence = typeof item?.confidence === "number" ? Math.max(0, Math.min(1, item.confidence)) : 0;
     return { characterId: ref.characterId, same: item?.sameCharacter !== false, differences, confidence };
   });
+}
+
+/** A failure for the log: status, kind and code only, never upstream text. */
+function failure(error: unknown): string {
+  return error instanceof MetaApiError ? `${error.status ?? "-"} ${error.kind}${error.code ? ` ${error.code}` : ""}` : "unknown";
 }
 
 function drifted(verdicts: Verdict[]): Verdict[] {
@@ -199,7 +204,16 @@ export async function checkConsistency(
     return finish({ driftedCharacterIds: [], fixedCharacterIds: [], fixedImage: null, figures: located.figures, sam: report(references, located, [], 0, true) });
   }
   const t1 = Date.now();
-  const first = drifted(await judge(image, located, judgeable, context, `${label}-check`));
+  let verdicts: Verdict[];
+  try {
+    verdicts = await judge(image, located, judgeable, context, `${label}-check`);
+  } catch (error) {
+    if (context?.signal?.aborted) throw error;
+    // A judge that fails leaves the panel as drawn: SAM's boxes still place the lettering.
+    console.warn(`Comimo: ${label} face judge failed (${failure(error)})`);
+    return finish({ driftedCharacterIds: [], fixedCharacterIds: [], fixedImage: null, figures: located.figures, sam: report(references, located, [], 0, true) });
+  }
+  const first = drifted(verdicts);
   timing.push(`judge ${((Date.now() - t1) / 1000).toFixed(1)} s`);
   const driftedIds = first.map((v) => v.characterId);
   if (first.length === 0) {
@@ -229,17 +243,25 @@ export async function checkConsistency(
     } catch (error) {
       if (context?.signal?.aborted) throw error;
       // A refused or failed redraw keeps the best panel so far.
-      const reason = error instanceof MetaApiError ? `${error.status ?? "-"} ${error.kind}${error.code ? ` ${error.code}` : ""}` : "unknown";
-      console.warn(`Comimo: ${label} redraw ${redraws} failed (${reason})`);
+      console.warn(`Comimo: ${label} redraw ${redraws} failed (${failure(error)})`);
       break;
     }
-    const nextLocated = await locate(next, references, context);
-    // An edit only touched the drifted characters; a full redraw is checked whole.
-    const recheck = (redraws === 1 ? still.map((v) => byId.get(v.characterId)!) : judgeable).filter(
-      (ref) => hasSheet(ref) && nextLocated.boxes.has(ref.characterId),
-    );
-    const verdicts = recheck.length > 0 ? await judge(next, nextLocated, recheck, context, `${label}-redraw${redraws}`) : [];
-    const wrong = drifted(verdicts);
+    let nextLocated: Located;
+    let wrong: Verdict[];
+    try {
+      nextLocated = await locate(next, references, context);
+      // An edit only touched the drifted characters; a full redraw is checked whole.
+      const recheck = (redraws === 1 ? still.map((v) => byId.get(v.characterId)!) : judgeable).filter(
+        (ref) => hasSheet(ref) && nextLocated.boxes.has(ref.characterId),
+      );
+      wrong = drifted(recheck.length > 0 ? await judge(next, nextLocated, recheck, context, `${label}-redraw${redraws}`) : []);
+    } catch (error) {
+      if (context?.signal?.aborted) throw error;
+      // A redraw that can't be checked isn't used.
+      console.warn(`Comimo: ${label} redraw ${redraws} check failed (${failure(error)})`);
+      timing.push(`redraw ${redraws} ${((Date.now() - t) / 1000).toFixed(1)} s (unchecked)`);
+      continue;
+    }
     // The redraw counts only if every drifted character is found again and fewer are wrong.
     const lost = still.some((v) => !nextLocated.boxes.has(v.characterId));
     timing.push(`redraw ${redraws} ${((Date.now() - t) / 1000).toFixed(1)} s`);
