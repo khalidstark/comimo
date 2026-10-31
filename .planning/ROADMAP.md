@@ -76,7 +76,7 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 03.2-01: Quick accounts (email + password, no verification), sessions, per-account shared limits, guest try-out
+- [x] 03.2-01: Quick accounts (email + password, no verification), sessions, per-account shared limits, guest try-out
 - [ ] 03.2-02: Cloud comics and cast per account, photo album with QR code on the last page
 
 ### Phase 4: Magazine and Art
@@ -86,7 +86,7 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 04-01: Monthly magazine flip-through with the mood strip
+- [x] 04-01: Monthly magazine flip-through with the mood strip
 - [ ] 04-02: Walkthrough motion video (Remotion): our story and cast, new-faces choice, photos and QR, page building, month merging into one comic book; on the site and reused in the demo
 
 ### Phase 5: Ship
@@ -109,6 +109,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 | 2. Comic Experience | 3/3 | Complete | 2026-10-30 |
 | 3. Meta Model Pipeline | 6/6 | Complete | 2026-10-31 |
 | 3.1. Design Refresh (INSERTED) | 1/1 | Complete (merged; user review pending) | 2026-10-31 |
-| 3.2. Accounts and Cloud (INSERTED) | 0/2 | Not started | - |
-| 4. Magazine and Art | 0/2 | Not started | - |
+| 3.2. Accounts and Cloud (INSERTED) | 1/2 | In progress | - |
+| 4. Magazine and Art | 1/2 | In progress (video in review) | - |
 | 5. Ship | 0/1 | Not started | - |
