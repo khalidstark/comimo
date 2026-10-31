@@ -1,0 +1,394 @@
+/* The demo day: a voice note and controls beside a real comic page. */
+.demo {
+  display: grid;
+  gap: var(--space-xl);
+  margin-block-start: var(--space-xl);
+}
+
+@media (min-width: 60rem) {
+  .demo {
+    grid-template-columns: minmax(17rem, 21rem) minmax(0, 1fr);
+    gap: var(--space-2xl);
+    align-items: start;
+  }
+
+  .side {
+    position: sticky;
+    inset-block-start: calc(var(--topbar-h) + var(--space-l));
+  }
+}
+
+.side {
+  display: grid;
+  gap: var(--space-l);
+}
+
+/* ---------- The voice note ---------- */
+.note {
+  margin: 0;
+  padding: var(--space-s) var(--space-m) var(--space-m);
+  background: var(--surface);
+  border-radius: 20px 20px 20px 6px;
+  box-shadow: var(--lift);
+}
+
+.noteHead {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2xs);
+  font-family: var(--font-display-stack);
+  font-size: var(--step--1);
+  font-weight: 700;
+}
+
+.play {
+  display: inline-grid;
+  place-items: center;
+  inline-size: 1.9rem;
+  block-size: 1.9rem;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.play::after {
+  content: "";
+  inline-size: 0;
+  block-size: 0;
+  margin-inline-start: 3px;
+  border-block: 6px solid transparent;
+  border-inline-start: 10px solid var(--on-accent);
+}
+
+.wave {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  block-size: 2.25rem;
+  margin-block: var(--space-xs);
+}
+
+.wave span {
+  flex: 1;
+  block-size: calc(var(--h) * 1px + 3px);
+  max-block-size: 100%;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--ink) 70%, transparent);
+}
+
+.wave span:nth-child(-n + 11) {
+  background: var(--accent);
+}
+
+.transcript {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: var(--step-0);
+  line-height: 1.6;
+}
+
+/* ---------- Controls ---------- */
+.controls {
+  display: grid;
+  gap: var(--space-m);
+}
+
+.switch {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  max-inline-size: 18rem;
+  padding: 4px;
+  border: var(--panel-border-thin) solid var(--line);
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  isolation: isolate;
+}
+
+.switchButton {
+  min-block-size: 2.75rem;
+  padding: 0 var(--space-s);
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: none;
+  font-family: var(--font-display-stack);
+  font-weight: 700;
+  cursor: pointer;
+  transition: color var(--dur-quick);
+}
+
+.switchButton[aria-pressed="true"] {
+  color: var(--paper);
+}
+
+.switchThumb {
+  position: absolute;
+  inset-block: 4px;
+  inset-inline-start: 4px;
+  inline-size: calc(50% - 4px);
+  z-index: -1;
+  border-radius: var(--radius-pill);
+  background: var(--ink);
+  transition: translate 420ms var(--ease-cine);
+}
+
+.switchThumb[data-at="painterly"] {
+  translate: 100% 0;
+}
+
+:global(:root[dir="rtl"]) .switchThumb[data-at="painterly"] {
+  translate: -100% 0;
+}
+
+.guide {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-xs);
+}
+
+.guideSprite {
+  flex: none;
+  inline-size: 5rem;
+}
+
+.guideBubble {
+  margin-block-end: 2.6rem;
+  font-size: var(--step--1);
+}
+
+/* ---------- The comic page ---------- */
+.page {
+  display: grid;
+  gap: calc(var(--gutter) + 4px);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+@media (min-width: 36rem) {
+  .page {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .wide {
+    grid-column: 1 / -1;
+  }
+}
+
+.cell {
+  position: relative;
+  --rx: 0deg;
+  --ry: 0deg;
+  transition:
+    transform 320ms var(--ease-cine),
+    clip-path 760ms var(--ease-ink) calc(var(--i) * 170ms);
+}
+
+@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  .cell {
+    transform: perspective(1100px) rotateX(var(--rx)) rotateY(var(--ry));
+  }
+}
+
+/* Assembly: panels are wiped in one by one with a slanted ink edge. */
+.page[data-armed]:not([data-shown]) .cell {
+  clip-path: polygon(0 -6%, 0 -6%, -12% 106%, -12% 106%);
+}
+
+.page[data-armed][data-shown] .cell {
+  clip-path: polygon(-6% -6%, 112% -6%, 106% 106%, -12% 106%);
+}
+
+.card {
+  position: relative;
+  aspect-ratio: 3 / 2;
+  transform-style: preserve-3d;
+  transition: transform 760ms var(--ease-cine);
+}
+
+.wide .card {
+  aspect-ratio: 2 / 1;
+}
+
+.card[data-flipped] {
+  transform: rotateY(180deg);
+}
+
+.face {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background: var(--surface);
+  border: var(--panel-border) solid var(--line);
+  border-radius: var(--radius-panel);
+  box-shadow: var(--shadow-panel);
+  backface-visibility: hidden;
+}
+
+.back {
+  transform: rotateY(180deg);
+}
+
+.layer {
+  position: absolute;
+  inset: 0;
+}
+
+.layerArt,
+.beforeArt {
+  inline-size: 100%;
+  block-size: 100%;
+  object-fit: cover;
+}
+
+.layer[data-state="in"] {
+  z-index: 2;
+}
+
+.layer[data-state="out"] {
+  z-index: 1;
+}
+
+.layer[data-state="off"] {
+  opacity: 0;
+}
+
+/* Print pass: when the style changes, the new inks roll across each panel in turn. */
+.face:has(> .layer[data-state="out"]) > .layer[data-state="in"] {
+  animation: print-in 780ms var(--ease-ink) calc(var(--i) * 120ms) both;
+}
+
+@keyframes print-in {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+.roller {
+  position: absolute;
+  inset-block: 0;
+  z-index: 3;
+  inline-size: 18%;
+  background:
+    radial-gradient(rgb(27 33 72 / 0.28) 30%, transparent 32%) 0 0 / 7px 7px,
+    linear-gradient(90deg, transparent, var(--highlight) 35%, var(--accent) 100%);
+  mix-blend-mode: multiply;
+  pointer-events: none;
+  animation: roll 780ms var(--ease-ink) calc(var(--i) * 120ms) both;
+}
+
+@keyframes roll {
+  from {
+    inset-inline-start: -18%;
+    opacity: 1;
+  }
+  90% {
+    opacity: 1;
+  }
+  to {
+    inset-inline-start: 100%;
+    opacity: 0;
+  }
+}
+
+.caption {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-start: 0;
+  z-index: 4;
+  max-inline-size: 62%;
+  border-width: 0 var(--panel-border-thin) var(--panel-border-thin) 0;
+  unicode-bidi: plaintext; /* Arabic captions read right to left but stay in the corner */
+  font-size: clamp(0.72rem, 0.62rem + 0.35vw, 0.85rem);
+}
+
+.bubble {
+  position: absolute;
+  inset-block-start: 2.1rem;
+  inset-inline-end: 0.7rem;
+  z-index: 4;
+  max-inline-size: min(58%, 17rem);
+  font-size: clamp(0.78rem, 0.66rem + 0.4vw, 0.95rem);
+}
+
+.wide .bubble {
+  inset-block-start: 0.7rem;
+  max-inline-size: min(44%, 18rem);
+}
+
+.caption,
+.bubble {
+  transition:
+    opacity 260ms ease-out calc(var(--i) * 170ms + 560ms),
+    scale 420ms var(--ease-pop) calc(var(--i) * 170ms + 560ms);
+}
+
+.page[data-armed]:not([data-shown]) .caption,
+.page[data-armed]:not([data-shown]) .bubble {
+  opacity: 0;
+  scale: 0.6;
+}
+
+/* The honest before */
+.stamp {
+  position: absolute;
+  inset-block-start: 0.7rem;
+  inset-inline-start: 0.7rem;
+  padding: 0.25rem 0.7rem 0.3rem;
+  background: var(--accent);
+  color: var(--on-accent);
+  border: var(--panel-border-thin) solid #1b2148;
+  border-radius: 6px;
+  font-family: var(--font-display-stack);
+  font-size: var(--step--1);
+  font-weight: 800;
+  rotate: -3deg;
+}
+
+.flip {
+  position: absolute;
+  inset-block-end: 0.7rem;
+  inset-inline-end: 0.7rem;
+  z-index: 5;
+  min-block-size: 2.5rem;
+  padding: 0.35rem 0.95rem 0.4rem;
+  border: var(--panel-border-thin) solid #1b2148;
+  border-radius: var(--radius-pill);
+  background: #ffffff;
+  color: #1b2148;
+  box-shadow: 3px 3px 0 #1b2148;
+  font-family: var(--font-display-stack);
+  font-size: var(--step--1);
+  font-weight: 700;
+  cursor: pointer;
+  transition: translate var(--dur-quick) var(--ease-ink);
+}
+
+.flip:hover {
+  translate: -1px -1px;
+}
+
+.flip[aria-pressed="true"] {
+  background: var(--highlight);
+}
+
+.flipNote {
+  grid-column: 1 / -1;
+  min-block-size: 1.5em;
+  max-inline-size: 60ch;
+  justify-self: end;
+  color: var(--ink-soft);
+  font-size: var(--step--1);
+}
+
+.flipNote:empty {
+  display: none;
+}
+
+/* The line itself reads in the language it starts in; the box stays where it is. */
+.text {
+  display: block;
+  unicode-bidi: isolate;
+}
