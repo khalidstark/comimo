@@ -80,9 +80,18 @@ describe("cookie", () => {
   it("reads the session id from the Cookie header", () => {
     const id = "a".repeat(43);
     expect(sessionIdFrom(post({ cookie: `theme=dark; comimo_session=${id}` }))).toBe(id);
-    expect(sessionIdFrom(post({ cookie: `__Host-comimo_session=${id}` }))).toBe(id);
     expect(sessionIdFrom(post({ cookie: "comimo_session=nope" }))).toBeNull();
     expect(sessionIdFrom(post({}))).toBeNull();
+  });
+
+  it("accepts only the __Host- cookie in production, so a tossed plain cookie is ignored", () => {
+    const real = "a".repeat(43);
+    const tossed = "b".repeat(43);
+    const production = sessionCookieName(true);
+    expect(sessionIdFrom(post({ cookie: `comimo_session=${tossed}` }), production)).toBeNull();
+    expect(sessionIdFrom(post({ cookie: `comimo_session=${tossed}; __Host-comimo_session=${real}` }), production)).toBe(real);
+    // And in development the __Host- name isn't read either.
+    expect(sessionIdFrom(post({ cookie: `__Host-comimo_session=${real}` }), sessionCookieName(false))).toBeNull();
   });
 });
 
