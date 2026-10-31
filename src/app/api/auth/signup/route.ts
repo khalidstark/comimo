@@ -32,15 +32,20 @@ export async function POST(request: Request) {
 
   const kv = getKV();
   try {
+    // Per-IP caps need a trusted IP (Vercel, or COMIMO_TRUSTED_IP_HEADER). Without one they are
+    // skipped instead of sharing one bucket that a single visitor could fill for everyone;
+    // the per-account and global daily caps still bound the spending.
     const ip = ipTag(request);
-    const hourly = await hit(kv, `signup:ip:${ip}:hour`, envInt("COMIMO_SIGNUPS_PER_IP_HOUR", 5), 3600);
-    if (!hourly.ok) {
-      return authError(429, `Lots of new accounts from here. Try again in ${minutesText(hourly.retryAfterSec)}.`, { retryAfterSec: hourly.retryAfterSec });
-    }
-    const daily = await hit(kv, `signup:ip:${ip}:day`, envInt("COMIMO_SIGNUPS_PER_IP_DAY", 20), 86_400);
-    if (!daily.ok) {
-      await hourly.undo();
-      return authError(429, "Lots of new accounts from here today. Try again tomorrow.", { retryAfterSec: daily.retryAfterSec });
+    if (ip) {
+      const hourly = await hit(kv, `signup:ip:${ip}:hour`, envInt("COMIMO_SIGNUPS_PER_IP_HOUR", 5), 3600);
+      if (!hourly.ok) {
+        return authError(429, `Lots of new accounts from here. Try again in ${minutesText(hourly.retryAfterSec)}.`, { retryAfterSec: hourly.retryAfterSec });
+      }
+      const daily = await hit(kv, `signup:ip:${ip}:day`, envInt("COMIMO_SIGNUPS_PER_IP_DAY", 20), 86_400);
+      if (!daily.ok) {
+        await hourly.undo();
+        return authError(429, "Lots of new accounts from here today. Try again tomorrow.", { retryAfterSec: daily.retryAfterSec });
+      }
     }
 
     const account = await createAccount({ name: name.name, email: email.email, password: password.password }, kv);

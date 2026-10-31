@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { FileKV } from "./kv";
-import { isSameOrigin } from "./request";
+import { clientIp, ipTag, isSameOrigin } from "./request";
 import {
   createSession,
   destroySession,
@@ -127,5 +127,33 @@ describe("isSameOrigin", () => {
     expect(isSameOrigin(post({ "sec-fetch-site": "cross-site" }))).toBe(false);
     expect(isSameOrigin(post({ "sec-fetch-site": "same-site" }))).toBe(false);
     expect(isSameOrigin(post({}))).toBe(true);
+  });
+});
+
+describe("clientIp", () => {
+  const saved = { ...process.env };
+  afterEach(() => {
+    process.env = { ...saved };
+  });
+
+  it("is unknown off Vercel, so per-IP limits are skipped instead of shared", () => {
+    delete process.env.VERCEL;
+    delete process.env.COMIMO_TRUSTED_IP_HEADER;
+    const request = post({ "x-forwarded-for": "1.2.3.4" });
+    expect(clientIp(request)).toBeNull();
+    expect(ipTag(request)).toBeNull();
+  });
+
+  it("trusts Vercel's header on Vercel", () => {
+    process.env.VERCEL = "1";
+    expect(clientIp(post({ "x-vercel-forwarded-for": "5.6.7.8, 10.0.0.1", "x-forwarded-for": "9.9.9.9" }))).toBe("5.6.7.8");
+    expect(ipTag(post({ "x-vercel-forwarded-for": "5.6.7.8" }))).toMatch(/^[0-9a-f]{32}$/);
+  });
+
+  it("trusts a configured proxy header elsewhere", () => {
+    delete process.env.VERCEL;
+    process.env.COMIMO_TRUSTED_IP_HEADER = "CF-Connecting-IP";
+    expect(clientIp(post({ "cf-connecting-ip": "4.4.4.4", "x-forwarded-for": "1.1.1.1" }))).toBe("4.4.4.4");
+    expect(clientIp(post({ "x-forwarded-for": "1.1.1.1" }))).toBeNull();
   });
 });
