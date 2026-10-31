@@ -263,3 +263,100 @@
 .wave[data-live] span {
   background: var(--accent);
 }
+
+/* ---------- Story mode: a segmented control, each segment with a one-line preview ---------- */
+.modes {
+  inline-size: min(100%, 36rem);
+}
+
+.segments {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  border: var(--panel-border-thin) solid var(--line);
+  background: var(--surface);
+}
+
+.segment {
+  position: relative;
+  display: grid;
+  align-content: start;
+  gap: 0.2rem;
+  padding: 0.55rem 0.65rem 0.65rem;
+  cursor: pointer;
+  text-align: start;
+}
+
+.segment + .segment {
+  border-inline-start: var(--panel-border-thin) solid var(--line);
+}
+
+.segment input {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.segmentLabel {
+  font-family: var(--font-display-stack);
+  font-size: var(--step-0);
+  font-weight: 800;
+}
+
+.segmentPreview {
+  color: var(--ink-soft);
+  font-size: var(--step--2, 0.78rem);
+  line-height: 1.35;
+}
+
+.segment:has(input:checked) {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.segment:has(input:checked) .segmentPreview {
+  color: color-mix(in srgb, var(--paper) 82%, transparent);
+}
+
+.segment:has(input:focus-visible) {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+  z-index: 1;
+}
+
+@media (max-width: 30rem) {
+  .segments {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .segment + .segment {
+    border-inline-start: 0;
+    border-block-start: var(--panel-border-thin) solid var(--line);
+  }
+}
+
+/* ---------- Type it instead ---------- */
+.typed {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-s);
+  padding-block: var(--space-xs);
+}
+
+.typedText {
+  inline-size: 100%;
+  min-block-size: 12rem;
+  padding: var(--space-xs) var(--space-s);
+  border: var(--panel-border-thin) solid var(--line);
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  line-height: 1.5;
+  resize: vertical;
+}
+
+.typedText:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
