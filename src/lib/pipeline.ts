@@ -1,7 +1,7 @@
 import { artAt } from "@/art/manifest";
 import type { ArtStyleId } from "./artStyles";
 import { AudioConvertError, toWav } from "./audio/toWav";
-import { loadCast, referenceFileTokenFor, referenceSheetFor, withReferenceFile } from "./cast";
+import { animateCharacter, drawReferenceSheet, loadCast, referenceFileTokenFor, referenceSheetFor, withReferenceFile } from "./cast";
 import { panelFrames } from "./layout/frames";
 import { layoutChain, normalizeStory, pickLayout } from "./layout/pickLayout";
 import { getDay, getImage, listDays, newId, putImage, saveCharacter, saveDay } from "./store";
@@ -417,8 +417,34 @@ export class ComicPipeline {
     return references;
   }
 
+  /**
+   * Cast by name (03-05): a character in this comic without a sheet in its
+   * style gets one drawn once, before any panel, and kept (each sheet is a
+   * guarded, metered call). Their animated sprite follows in the background.
+   * A sheet that fails isn't fatal: the panels draw from the written look.
+   */
+  private async ensureSheets(script: ComicScript, signal: AbortSignal) {
+    const ids = new Set(script.panels.flatMap((panel) => panel.characterIds));
+    const missing = (this.cast ?? []).filter(
+      (member) => ids.has(member.id) && !referenceSheetFor(member, this.input.style) && member.look.trim().length >= 12,
+    );
+    await Promise.all(
+      missing.map(async (member) => {
+        try {
+          const drawn = await drawReferenceSheet(member, this.input.style, signal);
+          this.cast = (this.cast ?? []).map((m) => (m.id === drawn.id ? drawn : m));
+          this.references.delete(drawn.id);
+          void animateCharacter(drawn);
+        } catch (error) {
+          if (signal.aborted || isAbort(error)) throw error;
+        }
+      }),
+    );
+  }
+
   private async drawPanels(script: ComicScript, signal: AbortSignal) {
     this.cast ??= await loadCast();
+    await this.ensureSheets(script, signal);
     const queue = script.panels.filter((panel) => this.state.panels.find((p) => p.index === panel.index)?.status !== "done");
     for (const panel of queue) this.setPanel(panel.index, { status: "waiting", error: undefined });
     this.set({ steps: { ...this.state.steps, draw: "active", check: "active" } });
