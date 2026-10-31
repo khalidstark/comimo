@@ -191,6 +191,13 @@ export interface Panel {
   /** What happens and where, written for the image model. */
   scene: string;
   caption?: string;
+  /**
+   * First-person narration in the speaker's voice, lettered in a caption box
+   * pinned to the panel's edge (Narrated and Both modes). Missing on days made before story modes.
+   */
+  narration?: string;
+  /** A memory rather than the day itself: painted and framed as a faded flashback. */
+  flashback?: boolean;
   dialogue: DialogueLine[];
   /** Characters drawn in this panel. */
   characterIds: string[];
@@ -205,6 +212,33 @@ export interface Panel {
   /** The drawn panel; null until drawn. */
   image: ImageRef | null;
   consistency: PanelConsistency;
+}
+
+/* ------------------------------------------------------------------ */
+/* Story modes and pages                                               */
+/* ------------------------------------------------------------------ */
+
+/**
+ * How a comic tells the day: "narrated" in first-person caption boxes like a
+ * graphic novel, "dialogue" in speech bubbles, or "both" (the default).
+ */
+export const STORY_MODES = ["narrated", "dialogue", "both"] as const;
+export type StoryMode = (typeof STORY_MODES)[number];
+export const DEFAULT_STORY_MODE: StoryMode = "both";
+
+export function isStoryMode(value: unknown): value is StoryMode {
+  return typeof value === "string" && (STORY_MODES as readonly string[]).includes(value);
+}
+
+/** A comic runs to at most this many pages, 4 to 6 panels each. */
+export const MAX_PAGES = 3;
+export const PANELS_PER_PAGE = { min: 4, max: 6 } as const;
+
+/** One page of a comic: which panels it holds (by `Panel.index`, in reading order) and how they are laid out. */
+export interface ComicPage {
+  panels: number[];
+  /** Picked before drawing; missing on a script's pages until they are laid out. */
+  layout?: PageLayoutChoice;
 }
 
 export interface CheckIn {
@@ -237,6 +271,13 @@ export interface Day {
   artStyle?: ArtStyleId;
   /** The page layout picked before drawing; days made before layouts get one picked when read. */
   layout?: PageLayoutChoice;
+  /** How the story is told; missing means "dialogue" (days made before story modes). */
+  storyMode?: StoryMode;
+  /**
+   * The comic's pages in reading order, each with its panels and layout.
+   * Missing on single-page days made before multi-page comics: all panels are one page laid out with `layout`.
+   */
+  pages?: ComicPage[];
   /** True for the invented sample days. */
   sample?: boolean;
   createdAt: string;
@@ -262,7 +303,12 @@ export type ScriptPanel = Omit<Panel, "image" | "consistency">;
 
 export interface ComicScript {
   title: string;
+  /** Every panel of every page, in reading order; `index` runs across pages. */
   panels: ScriptPanel[];
+  /** How the panels split into pages (1 to MAX_PAGES); missing means one page. */
+  pages?: ComicPage[];
+  /** The story mode the script was written in. */
+  storyMode?: StoryMode;
   mood: Mood;
   heavy: boolean;
   /** Gentle reflection questions; empty unless `heavy`. */
@@ -289,6 +335,8 @@ export interface ScriptRequest {
   transcript: string;
   /** Defaults to the starter cast. */
   cast?: CastBrief[];
+  /** Defaults to DEFAULT_STORY_MODE. */
+  storyMode?: StoryMode;
 }
 export interface ScriptResponse {
   mode: ModelMode;
