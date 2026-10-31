@@ -113,7 +113,7 @@ export function DayView({ day, panels, faces, layouts, previous, next }: DayView
   );
 }
 
-/** The day isn't in this browser (cleared data, another device, a bad link). */
+/** The day isn't in this comic book (another account, deleted, a bad link). */
 export function MissingDay() {
   return (
     <main id="main" className="page">
@@ -121,7 +121,7 @@ export function MissingDay() {
         <EmptyState
           as="h1"
           art={art.empty.days}
-          title="This day isn't on this device"
+          title="This day isn't in your comic book"
           action={
             <div className={styles.missingActions}>
               <Link href="/record" className="btn btn--accent" transitionTypes={PAGE_TURN}>
@@ -134,8 +134,8 @@ export function MissingDay() {
           }
         >
           <p>
-            Comics live only in the browser where they were made. If you cleared your browser data or opened this link
-            somewhere else, the day won&apos;t show up here.
+            Your comics follow your account to every device you sign in on. If this day belongs to another account, was
+            deleted, or the link is wrong, it won&apos;t show up here.
           </p>
         </EmptyState>
       </div>

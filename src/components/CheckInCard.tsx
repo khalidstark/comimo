@@ -136,7 +136,7 @@ export function CheckInCard({ day }: { day: Day }) {
         {status === "saving" ? "Saving…" : null}
         {status === "saved" ? "Saved with this day" : null}
         {status === "failed" ? "This browser isn't letting Comimo save right now, so your answers won't be kept." : null}
-        {status === "idle" ? "Your answers save on this device as you write. Only you can see them." : null}
+        {status === "idle" ? "Your answers save to your account as you write. Only you can see them." : null}
       </p>
     </section>
   );

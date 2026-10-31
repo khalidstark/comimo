@@ -134,7 +134,7 @@ export function CastEditor() {
   async function remove(member: Character) {
     const ok = await deleteCharacter(member.id);
     if (!ok) {
-      setNotice(`Couldn't remove ${member.name} on this device.`);
+      setNotice(`Couldn't remove ${member.name} right now.`);
       return;
     }
     const at = list.findIndex((m) => m.id === member.id);
