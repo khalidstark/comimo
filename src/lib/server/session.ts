@@ -20,9 +20,6 @@ export function sessionCookieName(production = process.env.NODE_ENV === "product
   return production ? "__Host-comimo_session" : "comimo_session";
 }
 
-/** Both names, for code that only checks whether a cookie is present. */
-export const SESSION_COOKIE_NAMES = ["__Host-comimo_session", "comimo_session"] as const;
-
 export function sessionCookieOptions(production = process.env.NODE_ENV === "production") {
   return {
     httpOnly: true,
@@ -78,16 +75,20 @@ export async function destroySession(sessionId: string | null | undefined, kv: K
   await kv.del(sessionKey(sessionId));
 }
 
-/** The session id from a request's Cookie header (either cookie name). */
-export function sessionIdFrom(request: Request): string | null {
+/**
+ * The session id from a request's Cookie header. Only this environment's
+ * cookie name counts: in production that is the __Host- cookie alone, so a
+ * plain `comimo_session` planted by a sibling subdomain (cookie tossing,
+ * session fixation) is ignored.
+ */
+export function sessionIdFrom(request: Request, cookieName = sessionCookieName()): string | null {
   const header = request.headers.get("cookie");
   if (!header) return null;
-  const wanted = new Set<string>(SESSION_COOKIE_NAMES);
   for (const part of header.split(";")) {
     const index = part.indexOf("=");
     if (index < 0) continue;
     const name = part.slice(0, index).trim();
-    if (wanted.has(name)) {
+    if (name === cookieName) {
       const value = part.slice(index + 1).trim();
       if (SESSION_ID.test(value)) return value;
     }
