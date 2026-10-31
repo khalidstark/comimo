@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useId, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
 import { Art } from "@/art/Art";
 import { art } from "@/art/manifest";
+import { AlbumQr } from "@/components/album/AlbumQr";
 import { Comic } from "@/components/comic/Comic";
 import type { BookPage } from "@/components/comic/ComicBook";
 import type { PanelArt } from "@/components/comic/view";
@@ -296,6 +297,7 @@ function ComicSheet({
             Open this day
           </Link>
         ) : null}
+        {!ctx.issue.sample && page.page === day.pageCount - 1 ? <AlbumQr dayId={day.id} size="small" /> : null}
       </footer>
     </article>
   );
