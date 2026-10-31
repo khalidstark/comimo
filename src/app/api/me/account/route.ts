@@ -1,11 +1,10 @@
 import { readBoundedJson } from "@/lib/requestBody";
-import { deleteAllAlbums } from "@/lib/server/album";
-import { burnPasswordCheck, deleteAccountRecord, getAccount, verifyPassword } from "@/lib/server/auth";
+import { finishAccountDeletion, startAccountDeletion } from "@/lib/server/accountDeletion";
+import { burnPasswordCheck, getAccount, verifyPassword } from "@/lib/server/auth";
 import { getKV } from "@/lib/server/kv";
-import { deleteLibrary } from "@/lib/server/library";
 import { jsonNoStore, logLibraryError } from "@/lib/server/libraryHttp";
 import { hit, minutesText } from "@/lib/server/rateLimit";
-import { destroyAllSessions, requireSession, sessionCookieName, sessionCookieOptions } from "@/lib/server/session";
+import { requireSession, sessionCookieName, sessionCookieOptions } from "@/lib/server/session";
 
 /** An expired session cookie with the attributes it was set with (written here so the route needs no request scope). */
 function expiredCookie(): string {
@@ -45,17 +44,12 @@ export async function DELETE(request: Request) {
       return jsonNoStore({ error: "That password isn't right.", field: "password" }, 401);
     }
 
-    // The account record goes first: from that moment every session of it is
-    // refused (readSession checks the record) and no new one can start
-    // (createSession checks it too). Then the albums (their public links die),
-    // the library and its blob folder, and the session list, twice: once more
-    // at the very end for anything that raced the teardown.
-    await deleteAccountRecord(account, kv);
-    await deleteAllAlbums(accountId, kv);
-    await deleteLibrary(accountId, kv);
-    await destroyAllSessions(accountId, kv);
-    await destroyAllSessions(accountId, kv);
+    // Mark first (every session is refused from here, public albums go dark),
+    // then tear down; a failure part way is finished later (accountDeletion.ts).
+    await startAccountDeletion(account, kv);
+    await finishAccountDeletion(account.id, kv);
   } catch (error) {
+    // The account is already unusable; the rest is finished at the next sign-in attempt or by the sweep.
     return logLibraryError("account deletion", error);
   }
   return jsonNoStore({ ok: true }, 200, { "Set-Cookie": expiredCookie() });

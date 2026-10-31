@@ -56,17 +56,30 @@ function accountSessionsKey(accountId: string): string {
 /** The account record's key (see auth.ts); a session counts only while it exists. */
 const accountRecordKey = (accountId: string) => `account:${accountId}`;
 
+/** Set while an account is being deleted (see accountDeletion.ts); its sessions are revoked from that moment. */
+export const deletingKey = (accountId: string) => `account:${accountId}:deleting`;
+
+/**
+ * True while the account can be used: its record exists and it isn't being
+ * deleted. Every session read, every new session and every public album
+ * view checks this, so revocation holds even when a list missed something.
+ */
+export async function isAccountLive(accountId: string, kv: KV = getKV()): Promise<boolean> {
+  const [record, deleting] = await Promise.all([kv.get(accountRecordKey(accountId)), kv.get(deletingKey(accountId))]);
+  return record !== null && deleting === null;
+}
+
 export class NoSuchAccountError extends Error {
   name = "NoSuchAccountError";
 }
 
 /**
  * Start a session for an account; returns the id for the cookie. Refuses an
- * account whose record is gone (deleted, or being deleted), so a sign-in
+ * account whose record is gone or that is being deleted, so a sign-in
  * racing an account deletion can't bring a session back.
  */
 export async function createSession(account: SessionAccount, kv: KV = getKV()): Promise<string> {
-  if (!(await kv.get(accountRecordKey(account.id)))) throw new NoSuchAccountError("No such account");
+  if (!(await isAccountLive(account.id, kv))) throw new NoSuchAccountError("No such account");
   const sessionId = randomBytes(32).toString("base64url");
   const record: SessionRecord = { accountId: account.id, name: account.name, createdAt: new Date().toISOString() };
   await kv.set(sessionKey(sessionId), JSON.stringify(record), { ttlSec: SESSION_TTL_SEC });
@@ -97,7 +110,7 @@ export async function readSession(sessionId: string | null | undefined, kv: KV =
     return null;
   }
   if (typeof record.accountId !== "string") return null;
-  if (!(await kv.get(accountRecordKey(record.accountId)))) return null;
+  if (!(await isAccountLive(record.accountId, kv))) return null;
   return { id: record.accountId, name: record.name };
 }
 
