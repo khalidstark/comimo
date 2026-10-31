@@ -208,6 +208,7 @@
 /* ---------- The printed QR code at the end of a comic ---------- */
 
 .qr {
+  text-decoration: none;
   display: flex;
   align-items: center;
   gap: var(--space-s);

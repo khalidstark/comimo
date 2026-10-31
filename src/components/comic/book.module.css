@@ -187,3 +187,17 @@
     animation: none;
   }
 }
+
+/* Printed at the foot of the last page (the photo album's QR code), tucked against the page's lower corner. */
+.endnote {
+  display: flex;
+  justify-content: flex-end;
+  max-inline-size: 60rem;
+  margin-block-start: calc(-1 * var(--space-s));
+  padding-inline-end: var(--space-s);
+  position: relative;
+}
+
+.endnote:empty {
+  display: none;
+}
