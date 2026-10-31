@@ -1,5 +1,6 @@
 import "server-only";
-import type { LanguageHint, LanguageMix, LanguageTag, Transcript } from "@/lib/types";
+import { detectLanguages } from "@/lib/languages";
+import type { LanguageHint, Transcript } from "@/lib/types";
 import { ModelInputError, type AudioInput, type ModelCallContext } from "../index";
 import { MetaApiError, metaJson } from "./client";
 
@@ -67,26 +68,7 @@ function readWav(data: Uint8Array): WavInfo | null {
   return null;
 }
 
-const ARABIC = /[؀-ۿݐ-ݿࢠ-ࣿﭐ-﷿ﹰ-﻿]/;
-const LATIN = /[A-Za-zÀ-ɏ]/;
-
-/** Which languages the transcript uses, by counting words in each script. */
-export function detectLanguages(text: string, hint: LanguageHint): LanguageMix {
-  let ar = 0;
-  let en = 0;
-  for (const word of text.split(/\s+/)) {
-    if (ARABIC.test(word)) ar += 1;
-    else if (LATIN.test(word)) en += 1;
-  }
-  if (ar === 0 && en === 0) {
-    const dominant: LanguageTag = hint === "ar" ? "ar" : "en";
-    return { spoken: [dominant], dominant, mixed: false };
-  }
-  const dominant: LanguageTag = ar === en ? (hint === "en" ? "en" : "ar") : ar > en ? "ar" : "en";
-  const other: LanguageTag = dominant === "ar" ? "en" : "ar";
-  const mixed = ar > 0 && en > 0;
-  return { spoken: mixed ? [dominant, other] : [dominant], dominant, mixed };
-}
+export { detectLanguages };
 
 /** Small clean-ups seen in real output: an ideographic full stop after Arabic ("حلو.。"), doubled spaces. */
 function tidy(text: string): string {
