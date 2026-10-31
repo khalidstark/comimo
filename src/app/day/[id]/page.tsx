@@ -4,7 +4,7 @@ import { PageTurn } from "@/components/PageTurn";
 import { toPanelViews } from "@/components/comic/view";
 import { starterCastById } from "@/fixtures/cast";
 import { getSampleDay, sampleDays } from "@/fixtures/days";
-import { layoutChain } from "@/lib/layout/pickLayout";
+import { pageLayoutChain } from "@/lib/layout/comicPages";
 import { DayReader } from "./DayReader";
 import { DayView } from "./DayView";
 
@@ -54,7 +54,7 @@ export default async function DayPage({ params }: DayPageProps) {
         day={day}
         panels={panels}
         faces={null}
-        layout={layoutChain(sampleDays).get(day.id) ?? null}
+        layouts={pageLayoutChain(sampleDays).get(day.id) ?? []}
         previous={previous ? { href: `/day/${previous.id}`, title: previous.title } : undefined}
         next={next ? { href: `/day/${next.id}`, title: next.title } : undefined}
       />
