@@ -2,25 +2,27 @@ import { artAt } from "@/art/manifest";
 import type { ArtStyleId } from "./artStyles";
 import { AudioConvertError, toWav } from "./audio/toWav";
 import { loadCast, referenceFileTokenFor, referenceSheetFor, withReferenceFile } from "./cast";
+import { layoutPages, localPanels, pageLayoutChain } from "./layout/comicPages";
 import { panelFrames } from "./layout/frames";
-import { layoutChain, normalizeStory, pickLayout } from "./layout/pickLayout";
+import { detectLanguages } from "./languages";
 import { getDay, getImage, listDays, newId, putImage, saveCharacter, saveDay } from "./store";
 import { blobToWire, wireToBlob } from "./wireImage";
 import type {
   ApiError,
   CastBrief,
   Character,
+  ComicPage,
   ComicScript,
   Day,
   ImageRef,
   LanguageHint,
-  PageLayoutChoice,
   Panel,
   PanelRequest,
   PanelResponse,
   ScriptPanel,
   ScriptRequest,
   ScriptResponse,
+  StoryMode,
   TranscribeResponse,
   Transcript,
   WireImage,
@@ -45,6 +47,8 @@ export type PanelStatus = "waiting" | "drawing" | "done" | "error";
 
 export interface PanelProgress {
   index: number;
+  /** Zero-based page the panel is on. */
+  page: number;
   status: PanelStatus;
   /** Object URL of the final panel. */
   imageUrl?: string;
@@ -64,8 +68,8 @@ export interface PipelineState {
   transcript: Transcript | null;
   /** The script, its panels carrying the frame each is drawn for. */
   script: ComicScript | null;
-  /** The page layout, picked right after the script so the page builds in its final shape. */
-  layout: PageLayoutChoice | null;
+  /** The pages and their layouts, picked right after the script so each page builds in its final shape. */
+  pages: ComicPage[] | null;
   panels: PanelProgress[];
   /** Local date of the day being made (YYYY-MM-DD). */
   date: string;
@@ -74,14 +78,21 @@ export interface PipelineState {
 }
 
 export interface PipelineInput {
-  audio: Blob;
+  /** The voice note; null when the day was typed instead. */
+  audio: Blob | null;
+  /** The day written out, used instead of a voice note (no transcription). */
+  text?: string;
   language: LanguageHint;
+  /** How the story is told: narration, dialogue or both. */
+  storyMode: StoryMode;
   /** The comic's art style; panels use each character's sheet in this style. */
   style: ArtStyleId;
 }
 
-/** Panels drawn at the same time. */
+/** Panels drawn at the same time (across all pages). */
 const PANEL_CONCURRENCY = 2;
+/** A typed day is cut to what /api/script accepts. */
+const MAX_TYPED = 20_000;
 
 /** A failure the progress screen can show as-is. */
 class StepError extends Error {
@@ -150,13 +161,13 @@ async function loadReference(ref: ImageRef | null, signal: AbortSignal): Promise
   }
 }
 
-/** The template the most recent comic on this device used, so today's is different. */
+/** The template of the last page of the most recent comic on this device, so today's first page is different. */
 async function previousTemplate(): Promise<string | null> {
   try {
     const days = (await listDays()).filter((day) => !day.sample && day.safety !== "crisis");
-    const chain = layoutChain(days);
+    const chain = pageLayoutChain(days);
     const last = [...days].sort((a, b) => a.date.localeCompare(b.date) || a.createdAt.localeCompare(b.createdAt)).at(-1);
-    return last ? (chain.get(last.id)?.template ?? null) : null;
+    return last ? (chain.get(last.id)?.at(-1)?.template ?? null) : null;
   } catch {
     return null;
   }
@@ -177,7 +188,7 @@ function initialState(): PipelineState {
     error: null,
     transcript: null,
     script: null,
-    layout: null,
+    pages: null,
     panels: [],
     date: localIsoDate(),
     dayId: null,
@@ -198,8 +209,12 @@ export class ComicPipeline {
   private readonly urls = new Set<string>();
   /** The voice note as 16 kHz mono WAV, kept so a retry doesn't convert again. */
   private wav: Blob | null = null;
+  /** True when the day was typed: there is nothing to transcribe. */
+  private readonly typed: boolean;
 
-  constructor(private readonly input: PipelineInput) {}
+  constructor(private readonly input: PipelineInput) {
+    this.typed = !input.audio && Boolean(input.text?.trim());
+  }
 
   subscribe = (listener: () => void): (() => void) => {
     this.listeners.add(listener);
@@ -303,6 +318,7 @@ export class ComicPipeline {
   /** Muse Voice Transcribe takes WAV only, so every voice note is converted here, in the browser. */
   private async voiceNoteWav(): Promise<Blob> {
     if (this.wav) return this.wav;
+    if (!this.input.audio) throw new StepError("listen", "There's no voice note to listen to. Record one or type your day.");
     try {
       this.wav = (await toWav(this.input.audio)).wav;
       return this.wav;
@@ -314,6 +330,13 @@ export class ComicPipeline {
 
   private async transcribe(signal: AbortSignal): Promise<Transcript> {
     this.setStep("listen", "active");
+    if (this.typed) {
+      // A typed day skips transcription: the text is the transcript, its languages counted here.
+      const text = this.input.text!.replace(/\r\n?/g, "\n").trim().slice(0, MAX_TYPED);
+      const transcript: Transcript = { text, languages: detectLanguages(text, this.input.language) };
+      this.set({ transcript, steps: { ...this.state.steps, listen: "done" } });
+      return transcript;
+    }
     const wav = await this.voiceNoteWav();
     if (signal.aborted) throw new DOMException("Cancelled", "AbortError");
     this.cast ??= await loadCast();
@@ -336,28 +359,41 @@ export class ComicPipeline {
     this.cast ??= await loadCast();
     // An emptied cast is left out, so the server falls back to the starter cast instead of refusing the request.
     const cast = this.cast.slice(0, 20).map(toBrief);
-    const body: ScriptRequest = { transcript: transcript.text, ...(cast.length > 0 ? { cast } : {}) };
+    const body: ScriptRequest = {
+      transcript: transcript.text,
+      ...(cast.length > 0 ? { cast } : {}),
+      storyMode: this.input.storyMode,
+    };
     const { script } = await request<ScriptResponse>("write", "/api/script", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
       signal,
     });
-    // Lay out the page before drawing: each panel is drawn for its slot's shape and lettering zone.
-    let layout: PageLayoutChoice | null = null;
+    // Lay out every page before drawing: each panel is drawn for its slot's shape and lettering zone.
+    let pages: ComicPage[] | null = null;
     let laidOut = script;
+    const pageOf = new Map<number, number>();
     if (script.safety !== "crisis" && script.panels.length > 0) {
-      const story = normalizeStory(script.panels);
-      layout = pickLayout(story, this.dayId, await previousTemplate());
-      const frames = panelFrames(layout, story, this.dayId);
-      laidOut = { ...script, panels: story.map((panel, i) => ({ ...panel, frame: frames[i] })) };
+      const result = layoutPages(script.panels, script.pages, this.dayId, await previousTemplate());
+      pages = result.pages;
+      const framed: ScriptPanel[] = [];
+      for (const slice of result.slices) {
+        const frames = panelFrames(slice.layout, localPanels(slice.panels), slice.seed);
+        slice.panels.forEach((panel, i) => {
+          framed.push({ ...panel, frame: frames[i] });
+          pageOf.set(panel.index, slice.number);
+        });
+      }
+      laidOut = { ...script, panels: framed, pages };
     }
     const panels: PanelProgress[] = laidOut.panels.map((panel) => ({
       index: panel.index,
+      page: pageOf.get(panel.index) ?? 0,
       status: "waiting",
       fixedNames: [],
     }));
-    this.set({ script: laidOut, layout, panels, steps: { ...this.state.steps, write: "done" } });
+    this.set({ script: laidOut, pages, panels, steps: { ...this.state.steps, write: "done" } });
     return laidOut;
   }
 
@@ -513,7 +549,9 @@ export class ComicPipeline {
         : {}),
       safety: script.safety,
       artStyle: this.input.style,
-      ...(this.state.layout ? { layout: this.state.layout } : {}),
+      storyMode: script.storyMode ?? this.input.storyMode,
+      ...(this.state.pages?.[0]?.layout ? { layout: this.state.pages[0].layout } : {}),
+      ...(this.state.pages && this.state.pages.length > 0 ? { pages: this.state.pages } : {}),
       createdAt: this.createdAt,
     };
 

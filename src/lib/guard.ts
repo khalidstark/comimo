@@ -18,7 +18,7 @@ import { createHash, randomBytes } from "node:crypto";
  * Env (all optional):
  *   COMIMO_COMICS_PER_HOUR   comics per visitor per hour (default 5; reference sheets get twice that)
  *   COMIMO_DAILY_COMIC_CAP   comics per day for everyone (default 200)
- *   COMIMO_DAILY_IMAGE_CAP   image and SAM calls per day for everyone (default 300), counted per call
+ *   COMIMO_DAILY_IMAGE_CAP   image and SAM calls per day for everyone (default 600), counted per call
  *   COMIMO_DAILY_UPLOAD_CAP  reference-sheet uploads per day for everyone (default 300); per visitor 4x comics an hour
  *   COMIMO_PAUSE_GENERATION  "1" pauses all real calls
  *   COMIMO_GUARD_SALT        salt for the visitor hash (default: random per process)
@@ -79,15 +79,16 @@ function limits() {
       script: comics,
       // A retry after a failed step shouldn't eat a whole comic.
       transcribe: comics * 2,
-      // Up to 6 panels a comic, plus retries.
-      panel: comics * 8,
+      // Up to 18 panels a comic (3 pages of 6), plus a few retries.
+      panel: comics * 22,
       // Reference sheets: a few new characters (or redraws) an hour.
       character: comics * 2,
     } satisfies Record<GuardAction, number>,
     // Reference-sheet uploads: a few per comic (one per character), more only on stale tokens.
     uploadsPerHour: comics * 4,
     dailyComics: envInt("COMIMO_DAILY_COMIC_CAP", 200),
-    dailyImages: envInt("COMIMO_DAILY_IMAGE_CAP", 300),
+    // Room for about 30 three-page comics a day (each panel is one image call, more with face fixes).
+    dailyImages: envInt("COMIMO_DAILY_IMAGE_CAP", 600),
     dailyUploads: envInt("COMIMO_DAILY_UPLOAD_CAP", 300),
   };
 }
