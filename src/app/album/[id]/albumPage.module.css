@@ -109,13 +109,6 @@
   color: var(--ink-soft);
 }
 
-.loading {
-  display: grid;
-  justify-items: start;
-  gap: var(--space-xs);
-  padding-block: var(--space-xl);
-}
-
 .gone {
   margin-block: var(--space-2xl);
   max-inline-size: 34rem;
