@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-10-30)
 
 **Core value:** Talking about your day for a minute gives you back a comic that feels like your life, with the same faces in every panel; the check-in card and monthly magazine matter equally.
-**Current focus:** Phase 3 complete; next Phase 3.2 — Accounts and Cloud
+**Current focus:** Phase 3.2 complete (accounts, cloud comics, photo albums); next 04-02 and Phase 5 — Ship
 
 ## Current Position
 
 Phase: 3.2 of 5 (Accounts and Cloud)
-Plan: 1 of 2 in current phase
+Plan: 2 of 2 in current phase
 Status: Phase complete
-Last activity: 2026-10-31 — Phase 3 complete; magazine (04-01) and accounts (03.2-01) merged; walkthrough video rendered for review
+Last activity: 2026-10-31 — Completed 03.2-02: comics, cast and images synced per account; photo albums with QR codes; account deletion
 
-Progress: ████████░░ 82% (14 of 17 plans)
+Progress: █████████░ 88% (15 of 17 plans)
 
 ## Performance Metrics
 
@@ -67,6 +67,9 @@ Recent decisions affecting current work:
 - 03-03: Phone pages are full-width rows (one panel or a pair), cover-cropped around the characters (crop.ts shared by pageView and lettering); panels with figures letter in free space off every head.
 - 03-03: Test servers are built from a scratch copy so the user's :3000 server keeps its .next.
 - 03-06: New people (named, or unnamed but taking part, e.g. "the cashier") are drawn under placeholders new1..new4 until the user answers the "New faces" step before drawing: Add to cast / Just this story (one-off, `oneoff:<placeholder>`, Day.oneOffs) / Never ask (one-off now and later). Skip all = one-offs, offered once after the comic.
+- 03.2-02: Comics, cast, synced settings and images live with the account (/api/me/*, Upstash + private Vercel Blob; .data locally); IndexedDB is a per-account offline cache synced each page load, newest stamp wins. Pre-account comics are offered "Move these comics to your account".
+- 03.2-02: Photo albums per day: up to 20 EXIF-free photos or an https link, 128-bit link id, public by link (noindex), QR on the comic's last page and in the magazine; Muse Spark captions only when the owner asks.
+- 03.2-02: Account deletion removes everything behind a deleting mark (resumable via next sign-in or /api/maintenance/deletions).
 - 03-06: A one-off's later panels use their first panel (signed via PanelResponse.imageToken, cut to their SAM box on the server) as the reference, and the face judge compares against it. One-offs are left out of the magazine cast.
 
 ### Deferred Issues
@@ -75,13 +78,14 @@ Recent decisions affecting current work:
 
 ### Blockers/Concerns
 
-- REMIND USER (they said yes, do later): create Vercel Blob store and accept Upstash Redis terms in the Vercel dashboard; needed for 03.2 in production and for 05-01 deploy.
+- REMIND USER (they said yes, do later): create a **Private** Vercel Blob store and accept Upstash Redis terms in the Vercel dashboard; set NEXT_PUBLIC_SITE_URL, COMIMO_GUARD_SALT and optionally COMIMO_MAINTENANCE_SECRET (+ cron). Needed for 03.2 in production and for 05-01 deploy.
+- Vercel caps request bodies at 4.5 MB: photos are shrunk in the browser, but a comic image over 4.5 MB can't sync on Vercel.
 
-- Credits arrived ($150) and the key works. Free credits: Meta may use submitted content, so test with invented days. 03-04 spent about $0.36, 03-03 about $0.80, 03-06 about $0.27 (total about $3.17).
+- Credits arrived ($150) and the key works. Free credits: Meta may use submitted content, so test with invented days. 03-04 spent about $0.36, 03-03 about $0.80, 03-06 about $0.27, 03.2-02 about $0.01 (captions) (total about $3.18).
 - Billing spend alert was set to $500; user asked to lower it to $140.
 
 ## Session Continuity
 
-Last session: 2026-10-31 13:30
-Stopped at: Completed 03-06-PLAN.md; Phase 3 complete; next is 03.2 (accounts and cloud)
+Last session: 2026-10-31 13:10
+Stopped at: Completed 03.2-02-PLAN.md; Phase 3.2 complete
 Resume file: None
