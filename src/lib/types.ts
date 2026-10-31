@@ -144,6 +144,45 @@ export interface PanelConsistency {
   beforeImage: ImageRef | null;
 }
 
+/**
+ * How the camera frames a panel. "splash" is the day's emotional peak: it gets
+ * the biggest slot on the page. Exactly one panel per comic is the splash.
+ */
+export const SHOTS = ["establishing", "wide", "medium", "closeup", "detail", "splash"] as const;
+export type Shot = (typeof SHOTS)[number];
+
+/** Where a panel sits in the day's story arc. */
+export const BEATS = ["setup", "build", "turn", "climax", "release"] as const;
+export type Beat = (typeof BEATS)[number];
+
+/**
+ * The part of a panel kept as plain background for the caption and bubbles,
+ * so lettering never covers a face. `size` is the fraction of the panel's
+ * height ("top") or width ("left", "right") it takes.
+ */
+export interface LetteringZone {
+  side: "top" | "left" | "right" | "none";
+  size: number;
+}
+
+export type Corner = "top-left" | "top-right" | "bottom-left" | "bottom-right";
+
+/** The frame a panel is drawn for: its slot's shape on the page and what must stay clear. */
+export interface PanelFrame {
+  /** Width over height of the drawn image (a size Muse Image supports). */
+  aspect: number;
+  zone: LetteringZone;
+  /** A smaller panel overlaps this corner of the panel, so nothing important goes there. */
+  covered?: Corner;
+}
+
+/** The page template a comic is laid out with, and which panel is its splash. */
+export interface PageLayoutChoice {
+  template: string;
+  /** Index of the panel in the template's biggest slot. */
+  focus: number;
+}
+
 export interface Panel {
   /** Zero-based order on the page. */
   index: number;
@@ -153,6 +192,14 @@ export interface Panel {
   dialogue: DialogueLine[];
   /** Characters drawn in this panel. */
   characterIds: string[];
+  /** Camera framing; missing on days made before page layouts. */
+  shot?: Shot;
+  /** Story beat; missing on days made before page layouts. */
+  beat?: Beat;
+  /** A second panel worth a bit more room (a punchline, a quiet moment). */
+  emphasis?: boolean;
+  /** The slot shape and lettering zone the panel was drawn for. */
+  frame?: PanelFrame;
   /** The drawn panel; null until drawn. */
   image: ImageRef | null;
   consistency: PanelConsistency;
@@ -186,6 +233,8 @@ export interface Day {
   safety: SafetyFlag;
   /** The art style the comic was drawn in; missing means "zine" (days made before styles). */
   artStyle?: ArtStyleId;
+  /** The page layout picked before drawing; days made before layouts get one picked when read. */
+  layout?: PageLayoutChoice;
   /** True for the invented sample days. */
   sample?: boolean;
   createdAt: string;
@@ -270,6 +319,7 @@ export type PanelShape = "wide" | "standard";
 
 /** POST /api/panel: draws a panel, then runs the consistency check. */
 export interface PanelRequest {
+  /** `panel.frame` sets the drawn aspect and the space kept clear for lettering. */
   panel: ScriptPanel;
   references?: WireReference[];
   shape?: PanelShape;
