@@ -380,7 +380,7 @@ function QuickForm({
       <label className={styles.field} htmlFor={fieldId("look")}>
         <span className={styles.label}>How they look</span>
         <span id={`${fieldId("look")}-hint`} className={styles.optional}>
-          {person.look ? "From your note. " : ""}Hair, clothes, something they always carry.
+          {crop ? "From the photo, so check it. " : person.look ? "From your note. " : ""}Hair, clothes, something they always carry.
         </span>
         <textarea
           id={fieldId("look")}
