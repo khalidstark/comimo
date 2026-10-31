@@ -2,7 +2,7 @@ import { guard, guardResponse } from "@/lib/guard";
 import { isMockMode } from "@/lib/models";
 import { describePerson, findPeople, pickPerson } from "@/lib/models/meta/photo";
 import { json, jsonError, modelErrorResponse, toWire } from "@/lib/models/wire";
-import { MAX_PHOTO_BYTES, PhotoInputError, cropPerson, readPhoto } from "@/lib/photoInput";
+import { MAX_PHOTO_BYTES, PhotoInputError, cropPerson, isPhotoType, readPhoto } from "@/lib/photoInput";
 import { BODY_LIMITS, readBoundedForm } from "@/lib/requestBody";
 import type { PhotoLookResponse } from "@/lib/types";
 
@@ -42,13 +42,15 @@ export async function POST(request: Request) {
   const file = form.get("photo");
   if (!(file instanceof File)) return refuse(400, "Add a photo.");
   if (file.size > MAX_PHOTO_BYTES) return refuse(413, "That photo is too big. Use one under 5 MB.");
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  if (!isPhotoType(bytes)) return refuse(400, "Use a JPEG, PNG or WebP photo.");
 
+  // From here sharp decodes the photo: that costs CPU, so the visitor's slot is never refunded again.
   let photo: Awaited<ReturnType<typeof readPhoto>>;
   try {
-    photo = await readPhoto(new Uint8Array(await file.arrayBuffer()));
+    photo = await readPhoto(bytes);
   } catch (error) {
-    if (error instanceof PhotoInputError) return refuse(400, error.message);
-    check.refundIfUnbilled();
+    if (error instanceof PhotoInputError) return jsonError(400, error.message);
     throw error;
   }
 
@@ -69,7 +71,7 @@ export async function POST(request: Request) {
     if (!look) return jsonError(422, "Comimo couldn't describe a person from that photo. Try another one, or write how they look.");
     return json<PhotoLookResponse>({ mode: "meta", look, crop: toWire(crop) }, "meta");
   } catch (error) {
-    check.refundIfUnbilled();
+    // No refund: the photo was already decoded.
     return modelErrorResponse(error);
   }
 }

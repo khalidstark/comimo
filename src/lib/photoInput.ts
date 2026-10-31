@@ -22,6 +22,12 @@ export class PhotoInputError extends Error {
   name = "PhotoInputError";
 }
 
+/** True when the bytes start like a JPEG, PNG or WebP. Cheap: nothing is decoded. */
+export function isPhotoType(bytes: Uint8Array): boolean {
+  const type = sniffImageType(bytes);
+  return type !== null && PHOTO_TYPES.has(type);
+}
+
 /** A JPEG, PNG or WebP (by its bytes, not its name) of at most 5 MB and 1536 px a side, re-encoded as JPEG without metadata. */
 export async function readPhoto(bytes: Uint8Array): Promise<ModelImage & { width: number; height: number }> {
   if (bytes.byteLength === 0) throw new PhotoInputError("That photo is empty.");
