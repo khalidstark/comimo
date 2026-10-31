@@ -26,16 +26,18 @@ const CORNERS: Corner[] = ["top-left", "top-right", "bottom-left", "bottom-right
 /** The slot a panel is drawn for; null when it is missing or out of range. */
 function parseFrame(value: unknown): PanelFrame | null {
   if (!isRecord(value) || !isRecord(value.zone)) return null;
-  const { aspect, covered } = value;
+  const { aspect, covered, coverage } = value;
   const { side, size } = value.zone;
   if (typeof aspect !== "number" || !Number.isFinite(aspect) || aspect < 0.4 || aspect > 4) return null;
   if (typeof side !== "string" || !ZONE_SIDES.includes(side as LetteringZone["side"])) return null;
   if (typeof size !== "number" || !Number.isFinite(size) || size < 0 || size > 0.6) return null;
   if (covered !== undefined && !CORNERS.includes(covered as Corner)) return null;
+  const fraction = (v: unknown) => typeof v === "number" && Number.isFinite(v) && v > 0 && v <= 0.8;
+  const cover = isRecord(coverage) && fraction(coverage.w) && fraction(coverage.h) ? { w: coverage.w as number, h: coverage.h as number } : undefined;
   return {
     aspect: snapAspect(aspect),
     zone: { side: side as LetteringZone["side"], size },
-    ...(covered ? { covered: covered as Corner } : {}),
+    ...(covered ? { covered: covered as Corner, ...(cover ? { coverage: cover } : {}) } : {}),
   };
 }
 
