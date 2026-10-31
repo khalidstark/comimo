@@ -50,6 +50,7 @@
   --it: var(--p-it);
   --ir: var(--p-ir);
   --ib: var(--p-ib);
+  --op: var(--p-op, 50% 50%);
   --show-phone: inline;
   --show-desktop: none;
   position: absolute;
@@ -87,6 +88,7 @@
     --it: var(--d-it);
     --ir: var(--d-ir);
     --ib: var(--d-ib);
+    --op: var(--d-op, 50% 50%);
     --show-phone: none;
     --show-desktop: inline;
   }
