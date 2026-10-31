@@ -4,6 +4,7 @@ import { art, type MoodKey } from "@/art/manifest";
 import { CastStage } from "@/components/home/CastStage";
 import { DemoDay } from "@/components/home/DemoDay";
 import { Magnetic } from "@/components/home/Magnetic";
+import { Walkthrough } from "@/components/home/Walkthrough";
 import { MagazineCover } from "@/components/MagazineCover";
 import { MoodCalendar } from "@/components/MoodCalendar";
 import { PAGE_TURN, PageTurn } from "@/components/PageTurn";
@@ -93,6 +94,8 @@ export default function Home() {
             </Link>
           </div>
         </section>
+
+        <Walkthrough />
 
         {/* ---------- A real day ---------- */}
         <section id="demo" className={`page section ${styles.demo}`} aria-labelledby="demo-title">
