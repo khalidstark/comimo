@@ -15,10 +15,6 @@
 - **Detail:** 01-01 removed the default Next.js favicon and nothing replaced it. Harmless, but it is the only console error on a clean run. Add an icon through the art pipeline (app/icon) when site art is made.
 - **Address in:** 04-02 (site art)
 
-### ISS-007: Deleted custom character shows as an id in old comics
-- **Found:** Phase 2, plan 02-03
-- **Detail:** Keep a name snapshot on each panel's dialogue/characters, or a tombstone record on delete.
-- **Address in:** Phase 4 polish
 
 ### ISS-008: Spending guard counters live in one server's memory
 - **Found:** Phase 3, plan 03-01
@@ -31,6 +27,9 @@
 - **Address in:** 03-03
 
 ## Closed
+
+### ISS-007: Deleted custom character shows as an id in old comics
+- **Closed:** 2026-10-31, fixed in 03-05. Every new panel keeps a snapshot of its characters' and speakers' names (`Panel.names`); the day reader uses the current cast name, then that snapshot, then the starter cast, and shows "Someone" rather than a raw id for days made before snapshots.
 
 ### ISS-009: Bubbles and captions cover faces on phones
 - **Closed:** 2026-10-31, fixed in 03-04. The page layout is picked before drawing, so every panel is drawn at its slot's aspect ratio (no side cropping: the phone page keeps each image's shape) and Muse Image is told exactly which part to leave as plain background for the lettering: a top band or a side column sized from that panel's caption and lines on the smallest page it is read on (at most 44%), with any inset corner folded into the band. Bubbles sit inside that zone (two to a row in wide panels), and wordy panels get their own row on phones. Checked on 7 real comics at 390 px and 1280 px: no lettering outside its panel; faces clear except where the art model ignored a band on the first drawings, which the 44% cap and bubble rows address.
