@@ -4,7 +4,7 @@ import { isBeat, isShot, normalizeStory } from "@/lib/layout/pickLayout";
 import { MOODS, type CastBrief, type ComicScript, type DialogueLine, type Mood, type ScriptPanel } from "@/lib/types";
 import { DEFAULT_STORY_MODE, type ComicPage, type StoryMode } from "@/lib/types";
 import { localPanels, pagesFromNumbers } from "@/lib/layout/comicPages";
-import { applyStoryMode } from "../storyMode";
+import { applyStoryMode, silenceForgottenSpeech } from "../storyMode";
 import type { ModelCallContext, ScriptOptions } from "../index";
 import { MetaApiError, metaJson } from "./client";
 import { SCRIPT_SYSTEM_PROMPT, castBlock, scriptSchema, storyModeBlock, transcriptMessage } from "./prompts";
@@ -139,7 +139,7 @@ export function toComicScript(content: string, cast: CastBrief[], mode: StoryMod
   const normalised = groups.flatMap((group) =>
     normalizeStory(localPanels(group.map((index) => all[index]))).map((panel, i) => ({ ...panel, index: group[i] })),
   );
-  const panels = applyStoryMode(normalised, groups, mode);
+  const panels = silenceForgottenSpeech(applyStoryMode(normalised, groups, mode));
   const pages: ComicPage[] = groups.map((group) => ({ panels: group }));
 
   // A sunny or rainbow day is never heavy, whatever the flag says: no check-in card on a good day.

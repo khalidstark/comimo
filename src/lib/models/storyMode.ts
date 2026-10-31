@@ -30,3 +30,26 @@ export function applyStoryMode(panels: ScriptPanel[], pages: number[][], mode: S
     return { ...withoutKey(panel, "caption"), dialogue };
   });
 }
+
+/**
+ * The note can say the speaker doesn't remember what someone said. A panel
+ * whose narration (or caption) says the words were forgotten stays silent:
+ * any dialogue there would be invented. English and Egyptian Arabic.
+ */
+const FORGOT_EN =
+  /\b(?:(?:do(?:n'?t| not)|did(?:n'?t| not)|can(?:'?t|not)|could(?:n'?t| not)|never|barely|hardly)\s+(?:\w+\s+)?(?:remember|recall)|forgot(?:ten)?|forget|lost to me|gone from me|slipped (?:my|away)|no idea what)\b/i;
+const WORDS_EN = /\b(said|say|saying|told|tell|telling|words?|asked|answered|replied|talked|spoke|speech|conversation|what (?:he|she|they|it) (?:was|were))\b/i;
+const FORGOT_AR = /(?:مش|مو|ما|مـ)\s*(?:فاكر|فاكرة|فاكره|متذكر|متذكرة)|ماافتكرش|ما\s*افتكرتش|مفتكرش|نسيت|ناسي|ناسية|راح من بالي/;
+const WORDS_AR = /قال|قالت|قالوا|كلام|كلمة|كلمات|حكى|حكت|اتكلم|اتكلمت|سأل|سألت|رد|ردت/;
+
+export function saysWordsWereForgotten(text: string | undefined): boolean {
+  if (!text) return false;
+  return (FORGOT_EN.test(text) && WORDS_EN.test(text)) || (FORGOT_AR.test(text) && WORDS_AR.test(text));
+}
+
+/** Drop the lines of any panel whose narration or caption says the words weren't remembered. */
+export function silenceForgottenSpeech(panels: ScriptPanel[]): ScriptPanel[] {
+  return panels.map((panel) =>
+    panel.dialogue.length > 0 && (saysWordsWereForgotten(panel.narration) || saysWordsWereForgotten(panel.caption)) ? { ...panel, dialogue: [] } : panel,
+  );
+}
