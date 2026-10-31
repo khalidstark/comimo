@@ -1,0 +1,101 @@
+/* "See how it works": the walkthrough film in an inked panel. */
+.section {
+  display: grid;
+  gap: var(--space-l);
+}
+
+.frame {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  border: var(--panel-border) solid var(--line);
+  border-radius: var(--radius-panel);
+  box-shadow: var(--shadow-panel);
+  background: var(--night);
+  overflow: hidden;
+}
+
+.video {
+  display: block;
+  inline-size: 100%;
+  block-size: 100%;
+  object-fit: cover;
+  cursor: pointer;
+}
+
+/* Captions in the site's reading face, on an ink band. */
+.video::cue {
+  font-family: var(--font-body-stack);
+  font-size: 0.95em;
+  background: rgb(20 25 56 / 0.82);
+  color: #f4f5fa;
+}
+
+.bigPlay {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  inline-size: clamp(4rem, 3rem + 4vw, 6rem);
+  block-size: clamp(4rem, 3rem + 4vw, 6rem);
+  display: grid;
+  place-items: center;
+  border: var(--panel-border) solid #1b2148;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 4px 4px 0 #1b2148;
+  cursor: pointer;
+}
+
+.triangle {
+  inline-size: 0;
+  block-size: 0;
+  margin-inline-start: 0.35em;
+  border-block: 0.75em solid transparent;
+  border-inline-start: 1.2em solid #1b2148;
+  font-size: clamp(1rem, 0.8rem + 0.8vw, 1.4rem);
+}
+
+:global(:root[dir="rtl"]) .triangle {
+  scale: -1 1;
+}
+
+/* Top corner, so the captions at the bottom stay clear. */
+.controls {
+  position: absolute;
+  inset-block-start: var(--space-xs);
+  inset-inline-end: var(--space-xs);
+  display: flex;
+  gap: var(--space-2xs);
+}
+
+.control {
+  padding: 0.35rem 0.85rem;
+  border: var(--panel-border-thin) solid #1b2148;
+  border-radius: var(--radius-pill);
+  background: #fafbfc;
+  color: #1b2148;
+  font-family: var(--font-display-stack);
+  font-size: var(--step--1);
+  font-weight: 700;
+  box-shadow: 2px 2px 0 #1b2148;
+  cursor: pointer;
+}
+
+.soundOff {
+  background: var(--highlight);
+}
+
+.control:focus-visible,
+.bigPlay:focus-visible {
+  outline: 3px solid var(--highlight);
+  outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .bigPlay {
+    transition: scale var(--dur-quick) var(--ease-pop);
+  }
+
+  .bigPlay:hover {
+    scale: 1.06;
+  }
+}
