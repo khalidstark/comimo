@@ -59,7 +59,9 @@ function OneOffLine({ face, sam }: { face: OneOffFace; sam: boolean }) {
       : "";
   return (
     <li className={styles.faceItem}>
-      <span className={styles.facePortrait} aria-hidden="true" />
+      <span className={`${styles.facePortrait} ${styles.oneOffMark}`} aria-hidden="true">
+        1×
+      </span>
       <span>
         <span className={styles.faceName} dir="auto">
           {face.name}
@@ -69,7 +71,8 @@ function OneOffLine({ face, sam }: { face: OneOffFace; sam: boolean }) {
           <a className="link" href={`#panel-${face.first}`}>
             panel {face.first}
           </a>
-          , which later panels copied{later}.
+          {sam ? ", which later panels copied" : ""}
+          {later}.
         </span>
       </span>
     </li>

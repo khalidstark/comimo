@@ -128,7 +128,7 @@ function captionFor(state: PipelineState, fixing: PanelProgress | undefined): st
     return crisis ? "Comimo didn't turn this note into a comic." : "Your comic is ready. Opening it…";
   const { steps } = state;
   if (steps.save === "active") return "Binding the pages…";
-  if (steps.meet === "active") return state.meeting ? "Before I draw: who's who?" : "Getting the new faces ready…";
+  if (steps.meet === "active") return state.meeting ? "One quick question first…" : "Getting the new faces ready…";
   if (steps.draw === "active") {
     const pages = state.pages?.length ?? 1;
     const drawingPanels = state.panels.filter((panel) => panel.status === "drawing");
