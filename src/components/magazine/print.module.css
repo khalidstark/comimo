@@ -1,0 +1,89 @@
+/* The issue laid flat on A4 sheets, for printing or saving as PDF. */
+
+.print {
+  display: grid;
+  gap: var(--space-l);
+  inline-size: 100%;
+  max-inline-size: 48rem;
+  margin-inline: auto;
+  padding: var(--space-m) var(--page-pad) var(--space-3xl);
+}
+
+.bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-s);
+}
+
+.barText {
+  flex: 1 1 12rem;
+  text-align: center;
+  font-family: var(--font-display-stack);
+  font-weight: 700;
+  color: var(--ink-soft);
+}
+
+.missing {
+  font-family: var(--font-display-stack);
+  font-size: var(--step-1);
+}
+
+.sheets {
+  display: grid;
+  gap: var(--space-l);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sheet {
+  container: flipbook / inline-size;
+  inline-size: 100%;
+  aspect-ratio: 210 / 297;
+  box-shadow: var(--lift);
+}
+
+@page {
+  size: A4;
+  margin: 0;
+}
+
+@media print {
+  :global(body) {
+    padding: 0 !important;
+    background: #ffffff !important;
+  }
+
+  :global(body) > :global(header),
+  :global(.skip-link),
+  .bar {
+    display: none !important;
+  }
+
+  .print {
+    display: block;
+    max-inline-size: none;
+    padding: 0;
+  }
+
+  .sheets {
+    display: block;
+  }
+
+  .sheet {
+    inline-size: 210mm;
+    block-size: 297mm;
+    aspect-ratio: auto;
+    box-shadow: none;
+    break-after: page;
+    break-inside: avoid;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  .sheet:last-child {
+    break-after: auto;
+  }
+}
