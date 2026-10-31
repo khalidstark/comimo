@@ -21,6 +21,8 @@ Talking about your day for a minute gives you back a comic that feels like your 
 - [ ] Cast: create characters once (name, look, personality), each with a Muse Image reference sheet; ships with an invented starter cast
 - [ ] Panels drawn with Muse Image using the reference sheets of the characters in each panel
 - [ ] SAM 3.1 checks every panel, finds characters whose look drifted from their reference sheet, and redraws them; the app shows the before and after
+- [ ] Storytelling modes per comic: Narrated (first-person captions like the user's reference PDF), Dialogue, or Both (default)
+- [ ] Cast created once and recognised by name or alias (Arabic or English); new people offered once after a comic
 - [ ] Comic pages laid out like a real manga/graphic novel (varied panel sizes from shot types, splash panel, slanted gutters, insets), never equal boxes
 - [ ] Comic page reader with speech bubbles that render Arabic right to left correctly
 - [ ] Check-in card after the comic when Muse Spark detects a heavy or stressful day: 2 or 3 gentle reflection questions, the answers saved with that day

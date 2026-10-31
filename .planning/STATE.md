@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-10-30)
 ## Current Position
 
 Phase: 3 of 5 (Meta Model Pipeline)
-Plan: 1 of 3 in current phase
+Plan: 2 of 5 in current phase
 Status: In progress
-Last activity: 2026-10-30 — Completed 03-01-PLAN.md (real transcribe and script, spending guard; ~$0.06 spent)
+Last activity: 2026-10-31 — Completed 03-02 (real sheets and panels, Painterly theme); planned 03-05 and inserted Phase 3.1 Design Refresh
 
-Progress: █████░░░░░ 55% (6 of 11 plans)
+Progress: █████░░░░░ 50% (7 of 14 plans)
 
 ## Performance Metrics
 
@@ -53,6 +53,8 @@ Recent decisions affecting current work:
 - 02-02: /day/[id] prerenders sample days and reads any other id from IndexedDB on the client (DayReader); comic components live in src/components/comic.
 - 02-02: Bubble direction follows the first strong letter; every language run is isolated in a <bdi> (ISS-001 closed).
 - 02-02: Next 16 hides pages with Activity instead of unmounting; modal dialogs must close in a layout effect cleanup.
+- 03-02: Two art themes (Zine, Painterly); sheets per character per style; ~$0.42 spent.
+- User requests (2026-10-31): storytelling modes, cast reused by name, design refresh (Muse art; Higgsfield/Google Flow not connected in this session).
 - Build on mock data until the Meta API credits appear on the Billing page; the card is saved, so any real call before then is charged to it.
 - 03-01: ComicModels.sources switches methods to Meta one at a time (transcribe and script real, panels mock). Run real calls with COMIMO_MOCK=0 on the command line; .env.local keeps COMIMO_MOCK=1.
 - 03-01: Every Meta request goes through metaFetch with onSend → meter.beforeCall(kind); image and SAM calls must be metered per call (daily cap); refunds only when nothing was sent.
