@@ -156,7 +156,7 @@ const PAIR_MIN_WIDTH = 4.0;
 const TRIO_MIN_WIDTH = 3.1;
 const ROW_MIN_HEIGHT = 3.6;
 /** A lone small panel on the phone page stays below this share of the splash's area. */
-const SINGLE_MAX_SHARE = 0.72;
+const SINGLE_MAX_SHARE = 0.55;
 
 function singleCost(aspect: number, focus: boolean): number {
   if (focus) return 0;
@@ -165,11 +165,11 @@ function singleCost(aspect: number, focus: boolean): number {
 
 const PHONE_UNIT_PX = PHONE_PAGE_PX / W;
 
-/** True when a panel's caption and bubbles fit in the top half of a phone panel this size (units). */
+/** True when a panel's caption and bubbles fit in the top 44% of a phone panel this size (units). */
 function lettersFit(text: Lettering | undefined, width: number, height: number): boolean {
   if (!text || (!text.caption && text.lines.length === 0)) return true;
   const px = width * PHONE_UNIT_PX;
-  return letteringHeight(text, px, px) <= 0.55 * height * PHONE_UNIT_PX;
+  return letteringHeight(text, px, px) <= 0.44 * height * PHONE_UNIT_PX;
 }
 
 /**
