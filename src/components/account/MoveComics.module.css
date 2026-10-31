@@ -1,0 +1,54 @@
+.card {
+  position: fixed;
+  z-index: 40;
+  inset-inline: var(--space-s);
+  inset-block-end: var(--space-s);
+  max-inline-size: 30rem;
+  margin-inline: auto;
+  padding: var(--space-m) var(--space-m) var(--space-s);
+  display: grid;
+  gap: var(--space-xs);
+  animation: rise var(--dur-quick, 180ms) var(--ease-ink, ease-out) both;
+}
+
+.kicker {
+  justify-self: start;
+  transform: rotate(-1.5deg);
+}
+
+.title {
+  margin: 0;
+  font-family: var(--font-display-stack);
+  font-size: var(--step-1);
+  line-height: 1.15;
+}
+
+.text {
+  margin: 0;
+  color: var(--ink-soft);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2xs);
+  margin-block-start: var(--space-2xs);
+}
+
+.progress {
+  inline-size: 100%;
+  accent-color: var(--accent);
+}
+
+@keyframes rise {
+  from {
+    transform: translateY(1rem);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card {
+    animation: none;
+  }
+}
