@@ -1,0 +1,117 @@
+/* ==========================================================================
+   Comic page geometry, shared by the reader and the "making your comic"
+   screen. pageView.ts gives every panel its box and clip shape twice, for a
+   phone page (--p-*) and a desktop page (--d-*); the container query below
+   picks one by the page's own width, so the page renders in its final shape
+   on the server and in a narrow column alike.
+   ========================================================================== */
+
+.wrap {
+  container: comic-page / inline-size;
+  /* Zine: printed white paper with navy ink lines */
+  --page-bg: #fbfaf6;
+  --panel-ink: #1b2148;
+  --panel-stroke: 2.5px;
+  --inset-ink: #1b2148;
+  --inset-stroke: 3.5px;
+  --inset-shadow: drop-shadow(4px 5px 0 rgb(27 33 72 / 0.85));
+}
+
+/* Painterly: near-black gutters like a graphic novel, no ink lines, insets set in like prints */
+.wrap[data-style="painterly"] {
+  --page-bg: #0b0b0d;
+  --panel-stroke: 0px;
+  --inset-ink: #efe8da;
+  --inset-stroke: 2.5px;
+  --inset-shadow: drop-shadow(0 10px 16px rgb(0 0 0 / 0.6));
+}
+
+.page {
+  position: relative;
+  aspect-ratio: var(--p-ratio);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  background: var(--page-bg);
+}
+
+.slot {
+  --x: var(--p-x);
+  --y: var(--p-y);
+  --w: var(--p-w);
+  --h: var(--p-h);
+  --clip: var(--p-clip);
+  --lx: var(--p-lx);
+  --ly: var(--p-ly);
+  --lw: var(--p-lw);
+  --lh: var(--p-lh);
+  --il: var(--p-il);
+  --it: var(--p-it);
+  --ir: var(--p-ir);
+  --ib: var(--p-ib);
+  --show-phone: inline;
+  --show-desktop: none;
+  position: absolute;
+  left: var(--x);
+  top: var(--y);
+  width: var(--w);
+  height: var(--h);
+  z-index: var(--z, 1);
+}
+
+.slot[data-inset] {
+  --panel-ink: var(--inset-ink);
+  --panel-stroke: var(--inset-stroke);
+  filter: var(--inset-shadow);
+}
+
+@container comic-page (min-width: 40rem) {
+  .page {
+    aspect-ratio: var(--d-ratio);
+  }
+
+  .slot {
+    --x: var(--d-x);
+    --y: var(--d-y);
+    --w: var(--d-w);
+    --h: var(--d-h);
+    --clip: var(--d-clip);
+    --lx: var(--d-lx);
+    --ly: var(--d-ly);
+    --lw: var(--d-lw);
+    --lh: var(--d-lh);
+    --il: var(--d-il);
+    --it: var(--d-it);
+    --ir: var(--d-ir);
+    --ib: var(--d-ib);
+    --show-phone: none;
+    --show-desktop: inline;
+  }
+}
+
+/* The panel's ink line, drawn over the art at a constant width whatever the panel's size */
+.outline {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  inline-size: 100%;
+  block-size: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.outline polygon {
+  fill: none;
+  stroke: var(--panel-ink);
+  stroke-width: var(--panel-stroke);
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.outlinePhone {
+  display: var(--show-phone);
+}
+
+.outlineDesktop {
+  display: var(--show-desktop);
+}
