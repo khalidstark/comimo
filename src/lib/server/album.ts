@@ -3,7 +3,7 @@ import { randomBytes } from "node:crypto";
 import { getBlobStore, type BlobStore, type StoredBlob } from "./blob";
 import { getKV, type KV } from "./kv";
 import { isRecordId, libraryKeys, type LibraryResult } from "./library";
-import { hit } from "./rateLimit";
+import { hit, windowOf } from "./rateLimit";
 import { processAlbumPhoto } from "./albumPhoto";
 
 /**
@@ -419,6 +419,8 @@ export async function deleteAllAlbums(account: string, kv: KV = getKV(), blobs: 
   }
   await kv.del(libraryKeys.albums(account));
   await kv.del(photoCountKey(account));
+  const hour = windowOf(3600).index;
+  await Promise.all([kv.del(`album:uploads:${account}:${hour}`), kv.del(`album:edits:${account}:${hour}`)]);
 }
 
 /** The album's photos as JPEG bytes for the caption model (owner only). */
