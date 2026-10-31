@@ -314,15 +314,11 @@ export interface UploadedReference {
   fileToken: string;
 }
 
-/** Wide panels open and close the page on wide screens (2:1); the rest are 3:2. */
-export type PanelShape = "wide" | "standard";
-
 /** POST /api/panel: draws a panel, then runs the consistency check. */
 export interface PanelRequest {
   /** `panel.frame` sets the drawn aspect and the space kept clear for lettering. */
   panel: ScriptPanel;
   references?: WireReference[];
-  shape?: PanelShape;
   /** Defaults to "zine". */
   style?: ArtStyleId;
 }

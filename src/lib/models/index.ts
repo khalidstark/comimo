@@ -5,7 +5,7 @@ import type {
   ComicScript,
   LanguageHint,
   ModelMode,
-  PanelShape,
+  PanelFrame,
   ScriptPanel,
   Transcript,
 } from "@/lib/types";
@@ -55,9 +55,9 @@ export interface SheetSubject {
   style: ArtStyleId;
 }
 
-/** How a panel is drawn: its shape on the page and the comic's art style. */
+/** How a panel is drawn: its slot's frame on the page and the comic's art style. */
 export interface PanelOptions {
-  shape: PanelShape;
+  frame: PanelFrame;
   style: ArtStyleId;
 }
 

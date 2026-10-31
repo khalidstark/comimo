@@ -1,9 +1,9 @@
 import "server-only";
 import { starterCastById } from "@/fixtures/cast";
 import { sampleDays } from "@/fixtures/days";
-import type { CastBrief, ComicScript, Day, ScriptPanel, Transcript } from "@/lib/types";
 import { normalizeStory } from "@/lib/layout/pickLayout";
-import type { AudioInput, CharacterReference, ComicModels, ConsistencyResult, ModelImage, SheetSubject } from "./index";
+import type { CastBrief, ComicScript, Day, PanelFrame, ScriptPanel, Transcript } from "@/lib/types";
+import type { AudioInput, CharacterReference, ComicModels, ConsistencyResult, ModelImage, PanelOptions, SheetSubject } from "./index";
 
 /**
  * Mock models: answers come from the sample-day fixtures and panels are
@@ -170,37 +170,66 @@ function wrap(text: string, width: number, maxLines: number): string[] {
 }
 
 /**
- * A mock panel card. The top-start corner stays empty because the app lays its
- * own chrome there (panel number badge, caption box); the scene sits in the
- * middle band and the label in the bottom-end corner, so a 2:1 crop keeps both.
+ * A mock panel card at the slot's aspect ratio. The lettering zone is shown
+ * as a pale hatched area (that is where the app letters the caption and
+ * bubbles); the scene, cast chips and label sit in the rest of the frame.
  */
-function panelSvg(panel: ScriptPanel, references: CharacterReference[]): string {
+function panelSvg(panel: ScriptPanel, references: CharacterReference[], frame: PanelFrame): string {
+  const W = 600;
+  const H = Math.round(W / frame.aspect);
+  const { side, size } = frame.zone;
+  const zone =
+    side === "top" ? { x: 0, y: 0, w: W, h: H * size } : side === "left" ? { x: 0, y: 0, w: W * size, h: H } : side === "right" ? { x: W * (1 - size), y: 0, w: W * size, h: H } : null;
+  const area = {
+    x: side === "left" ? W * size : 0,
+    y: side === "top" ? H * size : 0,
+    w: side === "left" || side === "right" ? W * (1 - size) : W,
+    h: side === "top" ? H * (1 - size) : H,
+  };
+  const font = Math.max(13, Math.min(22, Math.min(area.w, area.h) / 9));
   const names = panel.characterIds.map(
     (id) => references.find((ref) => ref.characterId === id)?.name ?? starterCastById[id]?.name ?? id,
   );
-  const sceneLines = wrap(panel.scene, 46, 4)
-    .map((line, i) => `<tspan x="40" dy="${i === 0 ? 0 : 30}">${escapeXml(line)}</tspan>`)
+  const shot = (panel.shot ?? "panel").toUpperCase();
+  const maxLines = Math.max(1, Math.floor((area.h - font * 4.5) / (font * 1.35)));
+  const sceneLines = wrap(panel.scene, Math.max(12, Math.floor((area.w - 60) / (font * 0.52))), Math.min(5, maxLines))
+    .map((line, i) => `<tspan x="${area.x + 28}" dy="${i === 0 ? 0 : Math.round(font * 1.35)}">${escapeXml(line)}</tspan>`)
     .join("");
+  const chipW = Math.min(106, (area.w - 56) / 3 - 8);
   const chips = names
     .slice(0, 3)
     .map((name, i) => {
-      const x = 40 + i * 116;
-      return `<g transform="translate(${x} 288)"><rect width="106" height="38" rx="19" fill="${SUN}" stroke="${INK}" stroke-width="3"/><text x="53" y="25" text-anchor="middle" font-size="16" font-weight="700" fill="${INK}">${escapeXml(name)}</text></g>`;
+      const x = area.x + 28 + i * (chipW + 8);
+      const y = area.y + area.h - font * 3.6;
+      return `<g transform="translate(${x} ${y})"><rect width="${chipW}" height="${font * 1.6}" rx="${font * 0.8}" fill="${SUN}" stroke="${INK}" stroke-width="3"/><text x="${chipW / 2}" y="${font * 1.1}" text-anchor="middle" font-size="${font * 0.72}" font-weight="700" fill="${INK}">${escapeXml(name)}</text></g>`;
     })
     .join("");
-
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="600" height="400" viewBox="0 0 600 400" font-family="system-ui, sans-serif">
-<rect x="6" y="6" width="588" height="388" fill="${PAPER}" stroke="${INK}" stroke-width="8"/>
-<text x="40" y="150" font-size="22" fill="${INK}">${sceneLines}</text>
+  const hatch = zone
+    ? `<rect x="${zone.x}" y="${zone.y}" width="${zone.w}" height="${zone.h}" fill="url(#hatch)"/>`
+    : "";
+  const covered = frame.covered
+    ? (() => {
+        const cw = W * 0.36;
+        const ch = H * 0.36;
+        const cx = frame.covered.endsWith("left") ? 0 : W - cw;
+        const cy = frame.covered.startsWith("top") ? 0 : H - ch;
+        return `<rect x="${cx}" y="${cy}" width="${cw}" height="${ch}" fill="${PINK}" fill-opacity="0.12"/>`;
+      })()
+    : "";
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" font-family="system-ui, sans-serif">
+<defs><pattern id="hatch" width="12" height="12" patternUnits="userSpaceOnUse" patternTransform="rotate(-45)"><rect width="12" height="12" fill="#f7f8fa"/><line x1="0" y1="0" x2="0" y2="12" stroke="${INK}" stroke-opacity="0.08" stroke-width="3"/></pattern></defs>
+<rect width="${W}" height="${H}" fill="${PAPER}"/>
+${hatch}${covered}
+<text x="${area.x + 28}" y="${area.y + font * 2}" font-size="${font}" fill="${INK}">${sceneLines}</text>
 ${chips}
-<rect x="404" y="290" width="164" height="34" fill="${INK}"/>
-<text x="486" y="313" text-anchor="middle" font-size="16" font-weight="700" fill="${PAPER}">MOCK PANEL ${panel.index + 1}</text>
+<rect x="${W - 210}" y="${H - font * 2.4}" width="190" height="${font * 1.7}" fill="${INK}"/>
+<text x="${W - 115}" y="${H - font * 1.15}" text-anchor="middle" font-size="${font * 0.7}" font-weight="700" fill="${PAPER}">MOCK ${panel.index + 1} · ${escapeXml(shot)}</text>
 </svg>`;
 }
 
-async function drawPanel(panel: ScriptPanel, references: CharacterReference[]): Promise<ModelImage> {
+async function drawPanel(panel: ScriptPanel, references: CharacterReference[], { frame }: PanelOptions): Promise<ModelImage> {
   await wait(DELAY_MS.draw);
-  return { mimeType: SVG_TYPE, data: new TextEncoder().encode(panelSvg(panel, references)) };
+  return { mimeType: SVG_TYPE, data: new TextEncoder().encode(panelSvg(panel, references, frame)) };
 }
 
 /* ---------- Reference sheets ---------- */
@@ -232,7 +261,8 @@ async function uploadReference(): Promise<string | null> {
 function stampFixed(image: ModelImage, name: string): ModelImage {
   if (image.mimeType !== SVG_TYPE) return image;
   const svg = new TextDecoder().decode(image.data);
-  const stamp = `<g transform="translate(414 62) rotate(6)"><rect width="150" height="44" fill="${PINK}" stroke="${INK}" stroke-width="3"/><text x="75" y="29" text-anchor="middle" font-size="18" font-weight="700" fill="${PAPER}">FIXED: ${escapeXml(name)}</text></g>`;
+  const [, w = "600", h = "400"] = /viewBox="0 0 (\d+) (\d+)"/.exec(svg) ?? [];
+  const stamp = `<g transform="translate(${Number(w) - 186} ${Math.round(Number(h) * 0.55)}) rotate(6)"><rect width="150" height="44" fill="${PINK}" stroke="${INK}" stroke-width="3"/><text x="75" y="29" text-anchor="middle" font-size="18" font-weight="700" fill="${PAPER}">FIXED: ${escapeXml(name)}</text></g>`;
   return { mimeType: SVG_TYPE, data: new TextEncoder().encode(svg.replace("</svg>", `${stamp}\n</svg>`)) };
 }
 

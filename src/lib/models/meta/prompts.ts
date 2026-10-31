@@ -1,6 +1,6 @@
 import "server-only";
 import { ART_STYLES, type ArtStyleId } from "@/lib/artStyles";
-import { BEATS, MOODS, SHOTS, type CastBrief } from "@/lib/types";
+import { BEATS, MOODS, SHOTS, type CastBrief, type PanelFrame, type Shot } from "@/lib/types";
 
 /**
  * Prompt and JSON schema for the comic script (Muse Spark, structured output).
@@ -130,13 +130,67 @@ export interface PanelCharacter {
   image: number | null;
 }
 
+/** How the camera frames each shot. */
+const FRAMING: Record<Shot, string> = {
+  establishing:
+    "Framing: an establishing shot. Pull far back to show the whole place, its light and mood; the characters are small to medium in the scene.",
+  wide: "Framing: a wide shot. Full figures, head to feet, with their surroundings around them.",
+  medium: "Framing: a medium shot. The characters from the waist up, faces and hands clearly readable.",
+  closeup:
+    "Framing: a close-up. One face (or two faces close together) fills most of the frame; the feeling on the face is the subject.",
+  detail:
+    "Framing: a detail shot. A close view of the hands, object or small action that matters in this moment; faces are optional and may be cut by the frame.",
+  splash:
+    "Framing: the splash panel, the emotional peak of the day. A dramatic, cinematic composition with depth and strong light, the most striking image of the page.",
+};
+
+function frameShape(aspect: number): string {
+  if (aspect >= 2.6) return `a very wide panoramic strip (about ${aspect.toFixed(1)} to 1)`;
+  if (aspect >= 1.6) return "a wide landscape frame";
+  if (aspect >= 1.15) return "a landscape frame";
+  if (aspect > 0.87) return "an almost square frame";
+  if (aspect >= 0.62) return "a tall portrait frame";
+  return "a very tall, narrow vertical frame";
+}
+
+const CORNER_WORDS: Record<NonNullable<PanelFrame["covered"]>, string> = {
+  "top-left": "top-left",
+  "top-right": "top-right",
+  "bottom-left": "bottom-left",
+  "bottom-right": "bottom-right",
+};
+
+/** Where the lettering goes, told as composition: that part stays plain background. */
+function zoneLines(frame: PanelFrame, emptyBand: string): string[] {
+  const { zone } = frame;
+  const pct = Math.round(zone.size * 100);
+  const lines: string[] = [];
+  if (zone.side === "none") {
+    lines.push("Use the whole frame for the picture, with every head fully inside it.");
+  } else if (zone.side === "top") {
+    lines.push(
+      `Leave the top ${pct}% of the panel as plain, empty background (${emptyBand}) with no heads, faces or important details in it, painted as part of the same continuous scene (not a separate strip or border): captions and speech bubbles will cover that area later. Every head and face sits fully below that band.`,
+    );
+  } else {
+    lines.push(
+      `Leave the ${zone.side} ${pct}% of the panel's width as plain, empty background (${emptyBand}) from top to bottom, painted as part of the same continuous scene (not a separate strip or border): captions and speech bubbles will cover that side later. Place every character and face in the other ${100 - pct}% of the width.`,
+    );
+  }
+  if (frame.covered) {
+    lines.push(
+      `A smaller panel will be laid over the ${CORNER_WORDS[frame.covered]} corner (about a third of the width and height): keep faces and the main action out of that corner.`,
+    );
+  }
+  return lines;
+}
+
 /**
  * One panel. `characters` is in characterIds order, which is also the order
  * left to right in the picture: the bubble tails in the app depend on it.
  */
-export function panelPrompt(scene: string, characters: PanelCharacter[], wide: boolean, style: ArtStyleId): string {
+export function panelPrompt(scene: string, characters: PanelCharacter[], shot: Shot, frame: PanelFrame, style: ArtStyleId): string {
   const art = ART_STYLES[style];
-  const lines: string[] = ["One panel of a diary comic, drawn as a single scene."];
+  const lines: string[] = [`One panel of a diary comic, drawn as a single scene in ${frameShape(frame.aspect)}.`];
 
   if (characters.length > 0) {
     if (characters.some((c) => c.image !== null)) {
@@ -156,14 +210,9 @@ export function panelPrompt(scene: string, characters: PanelCharacter[], wide: b
   }
 
   lines.push(`Scene: ${scene}`);
-  lines.push(
-    wide
-      ? "Composition: a wide shot. Keep every character inside the middle three quarters of the width."
-      : "Composition: a medium shot with the characters clearly readable.",
-  );
-  lines.push(
-    `Leave the top third of the panel as plain, empty background (${art.emptyBand}) with no heads, faces or important details in it, painted as part of the same continuous scene (not a separate strip or border): captions and speech bubbles will cover that area later. Place the characters in the lower two thirds, heads fully inside the frame and below that empty band. No panel border.`,
-  );
+  lines.push(FRAMING[shot]);
+  lines.push(...zoneLines(frame, art.emptyBand));
+  lines.push("Compose for this exact frame shape, edge to edge, with no panel border.");
   lines.push(art.prompt);
   lines.push(NO_TEXT);
   return lines.join("\n");

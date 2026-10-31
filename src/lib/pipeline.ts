@@ -2,7 +2,9 @@ import { artAt } from "@/art/manifest";
 import type { ArtStyleId } from "./artStyles";
 import { AudioConvertError, toWav } from "./audio/toWav";
 import { loadCast, referenceFileTokenFor, referenceSheetFor, withReferenceFile } from "./cast";
-import { getDay, getImage, newId, putImage, saveCharacter, saveDay } from "./store";
+import { panelFrames } from "./layout/frames";
+import { layoutChain, normalizeStory, pickLayout } from "./layout/pickLayout";
+import { getDay, getImage, listDays, newId, putImage, saveCharacter, saveDay } from "./store";
 import { blobToWire, wireToBlob } from "./wireImage";
 import type {
   ApiError,
@@ -12,10 +14,10 @@ import type {
   Day,
   ImageRef,
   LanguageHint,
+  PageLayoutChoice,
   Panel,
   PanelRequest,
   PanelResponse,
-  PanelShape,
   ScriptPanel,
   ScriptRequest,
   ScriptResponse,
@@ -60,7 +62,10 @@ export interface PipelineState {
   steps: Record<PipelineStep, StepStatus>;
   error: { step: PipelineStep; message: string } | null;
   transcript: Transcript | null;
+  /** The script, its panels carrying the frame each is drawn for. */
   script: ComicScript | null;
+  /** The page layout, picked right after the script so the page builds in its final shape. */
+  layout: PageLayoutChoice | null;
   panels: PanelProgress[];
   /** Local date of the day being made (YYYY-MM-DD). */
   date: string;
@@ -145,12 +150,16 @@ async function loadReference(ref: ImageRef | null, signal: AbortSignal): Promise
   }
 }
 
-/**
- * Panels that open and close the page are wide on wide screens (2:1, see
- * comic.module.css): the first, and the last when the count is even.
- */
-function panelShape(index: number, count: number): PanelShape {
-  return index === 0 || (index === count - 1 && count % 2 === 0) ? "wide" : "standard";
+/** The template the most recent comic on this device used, so today's is different. */
+async function previousTemplate(): Promise<string | null> {
+  try {
+    const days = (await listDays()).filter((day) => !day.sample && day.safety !== "crisis");
+    const chain = layoutChain(days);
+    const last = [...days].sort((a, b) => a.date.localeCompare(b.date) || a.createdAt.localeCompare(b.createdAt)).at(-1);
+    return last ? (chain.get(last.id)?.template ?? null) : null;
+  } catch {
+    return null;
+  }
 }
 
 /* ---------- Cast ---------- */
@@ -168,6 +177,7 @@ function initialState(): PipelineState {
     error: null,
     transcript: null,
     script: null,
+    layout: null,
     panels: [],
     date: localIsoDate(),
     dayId: null,
@@ -332,13 +342,22 @@ export class ComicPipeline {
       body: JSON.stringify(body),
       signal,
     });
-    const panels: PanelProgress[] = script.panels.map((panel) => ({
+    // Lay out the page before drawing: each panel is drawn for its slot's shape and lettering zone.
+    let layout: PageLayoutChoice | null = null;
+    let laidOut = script;
+    if (script.safety !== "crisis" && script.panels.length > 0) {
+      const story = normalizeStory(script.panels);
+      layout = pickLayout(story, this.dayId, await previousTemplate());
+      const frames = panelFrames(layout, story, this.dayId);
+      laidOut = { ...script, panels: story.map((panel, i) => ({ ...panel, frame: frames[i] })) };
+    }
+    const panels: PanelProgress[] = laidOut.panels.map((panel) => ({
       index: panel.index,
       status: "waiting",
       fixedNames: [],
     }));
-    this.set({ script, panels, steps: { ...this.state.steps, write: "done" } });
-    return script;
+    this.set({ script: laidOut, layout, panels, steps: { ...this.state.steps, write: "done" } });
+    return laidOut;
   }
 
   /** A character's sheet as an inline image, loaded once per run. */
@@ -417,12 +436,10 @@ export class ComicPipeline {
   private async drawPanel(panel: ComicScript["panels"][number], signal: AbortSignal) {
     this.setPanel(panel.index, { status: "drawing", error: undefined });
 
-    const shape = panelShape(panel.index, this.state.script?.panels.length ?? 1);
     const send = async (inline: boolean) => {
       const body: PanelRequest = {
         panel,
         references: await this.referencesFor(panel, signal, inline),
-        shape,
         style: this.input.style,
       };
       return request<PanelResponse>("draw", "/api/panel", {
@@ -495,6 +512,7 @@ export class ComicPipeline {
         : {}),
       safety: script.safety,
       artStyle: this.input.style,
+      ...(this.state.layout ? { layout: this.state.layout } : {}),
       createdAt: this.createdAt,
     };
 
