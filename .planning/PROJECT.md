@@ -23,7 +23,7 @@ Talking about your day for a minute gives you back a comic that feels like your 
 - [ ] SAM 3.1 checks every panel, finds characters whose look drifted from their reference sheet, and redraws them; the app shows the before and after
 - [ ] Walkthrough motion video of the whole flow with our own cast and story, ending with a month merging into one comic book (home page, after sign-up, and the demo)
 - [ ] Unknown names are resolved before drawing: add to cast or keep as a one-off character
-- [ ] Quick accounts: email + password sign up/in, no verification (user's choice); guest try-out for judges
+- [ ] Quick accounts: email + password sign up/in, no verification (user's choice); no guest try-out, the walkthrough video replaces it
 - [ ] Comics, cast and images synced per account (Upstash Redis + Vercel Blob); local dev fallbacks
 - [ ] Photo album per comic: upload real photos (or paste an album link); QR code on the last page opens the album
 - [ ] Long, detailed days become multi-page comics (1 to 3 pages, 4 to 6 panels each, one splash per page, page turns)
