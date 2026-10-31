@@ -93,9 +93,19 @@ export function ComicPanel({ panel, slot, total }: ComicPanelProps) {
               <BidiText text={panel.caption} />
             </p>
           ) : null}
-          {panel.bubbles.map((bubble, i) => (
-            <Bubble key={i} speaker={bubble.speaker} text={bubble.text} dir={bubble.dir} tail={bubble.tail} order={i} />
-          ))}
+          {panel.bubbles.length > 0 ? (
+            <div
+              className={styles.bubbles}
+              // The first speaker stands on the right: their bubble goes right and higher, so it is still read first.
+              data-swapped={
+                (panel.bubbles.length === 2 && panel.bubbles[0].tail === "right" && panel.bubbles[1].tail === "left") || undefined
+              }
+            >
+              {panel.bubbles.map((bubble, i) => (
+                <Bubble key={i} speaker={bubble.speaker} text={bubble.text} dir={bubble.dir} tail={bubble.tail} order={i} />
+              ))}
+            </div>
+          ) : null}
         </div>
 
         <SlotOutline slot={slot} />
