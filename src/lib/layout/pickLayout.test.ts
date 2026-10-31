@@ -253,3 +253,45 @@ describe("phone pages", () => {
     }
   });
 });
+
+describe("phone pages fill the width", () => {
+  it("sets every row as one panel across the page or a pair that fills it, at 0.55 to 1.3 of its width tall", () => {
+    for (const template of TEMPLATES) {
+      for (const variant of template.variants) {
+        const phone = phoneGeometry(variant, story(template.count, variant.focus), template.id);
+        for (const panel of phone.panels) {
+          const partners = phone.panels.filter((other) => {
+            if (other.index === panel.index) return false;
+            const shared = Math.min(other.box.y + other.box.h, panel.box.y + panel.box.h) - Math.max(other.box.y, panel.box.y);
+            return shared > 0.5 * Math.min(other.box.h, panel.box.h);
+          });
+          expect(partners.length, `${template.id} panel ${panel.index}`).toBeLessThanOrEqual(1);
+          const rowWidth = panel.box.w + (partners[0]?.box.w ?? 0);
+          expect(rowWidth, `${template.id} panel ${panel.index} row width`).toBeGreaterThan(12 - 2 * 0.14 - 0.6);
+          const art = panel.inner.h * (1 - (panel.band ?? 0));
+          expect(art / panel.box.w).toBeGreaterThan(0.4);
+          expect(art / panel.box.w).toBeLessThan(1.45);
+        }
+      }
+    }
+  });
+});
+
+describe("cover crop", () => {
+  it("keeps every character in view, or at least every head", async () => {
+    const { coverCrop } = await import("./crop");
+    const figures = {
+      aspect: 3,
+      items: [
+        { characterId: "nour", kind: "person" as const, box: { x: 0.05, y: 0.2, w: 0.2, h: 0.8 }, head: { x: 0.1, y: 0.2, w: 0.08, h: 0.2 } },
+        { characterId: "karim", kind: "person" as const, box: { x: 0.3, y: 0.1, w: 0.15, h: 0.9 }, head: { x: 0.33, y: 0.1, w: 0.07, h: 0.2 } },
+      ],
+    };
+    const crop = coverCrop(3, 1.2, figures);
+    expect(crop.w).toBeCloseTo(0.4);
+    expect(crop.x).toBeLessThanOrEqual(0.05);
+    expect(crop.x + crop.w).toBeGreaterThanOrEqual(0.449);
+    // Without figures, a left lettering zone stays in view.
+    expect(coverCrop(3, 1.2, null, { side: "left", size: 0.3 }).x).toBe(0);
+  });
+});

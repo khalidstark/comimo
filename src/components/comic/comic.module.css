@@ -66,6 +66,8 @@
   inline-size: 100%;
   block-size: 100%;
   object-fit: cover;
+  /* Phone pages crop panels to fill the width; the crop keeps the characters in view (crop.ts) */
+  object-position: var(--op, 50% 50%);
 }
 
 /* A panel that was never drawn: the scene, pencilled */
