@@ -658,11 +658,9 @@
 
 /* ---------- Multi-page comics: one page on the easel at a time ---------- */
 .pageTag {
-  position: absolute;
-  z-index: 4;
-  inset-block-start: 0;
-  inset-inline-end: 0;
-  margin: 0;
+  display: block;
+  inline-size: fit-content;
+  margin: 0 0 0 auto;
   padding: 0.2rem 0.6rem 0.25rem;
   background: #1b2148;
   color: #fff;

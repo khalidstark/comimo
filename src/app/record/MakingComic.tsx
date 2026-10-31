@@ -143,7 +143,13 @@ export function MakingComic({ audio, text, language, style, storyMode, onClose }
 
   const { script, transcript, status } = state;
   const crisis = script?.safety === "crisis";
-  const fixing = state.panels.find((panel) => panel.status === "done" && panel.beforeUrl && !settled.has(panel.index));
+  // The page on the easel: the first with a panel still to draw or a face fix still to show, else the last.
+  const pageCount = Math.max(1, script?.pages?.length ?? 1);
+  const pending = state.panels.find((panel) => panel.status !== "done" || (panel.beforeUrl && !settled.has(panel.index)));
+  const pageNumber = Math.min(pageCount - 1, pending?.page ?? pageCount - 1);
+  const fixing = state.panels.find(
+    (panel) => panel.page === pageNumber && panel.status === "done" && panel.beforeUrl && !settled.has(panel.index),
+  );
   const finished = status === "done" && state.dayId !== null && !fixing;
   const failedStep = state.error?.step;
 
@@ -196,15 +202,13 @@ export function MakingComic({ audio, text, language, style, storyMode, onClose }
   }, []);
 
   // Each page builds in its final shape: the layouts are picked right after the script.
+  // (state.pages and script.pages hold the same panels; state.pages also carries the layouts.)
   const slices = useMemo(
     () => (script && script.panels.length > 0 ? splitPages(script.panels, state.pages ?? undefined, pipeline.dayId) : []),
     [script, state.pages, pipeline],
   );
   // The page on the easel: the first one with a panel still to draw, else the last.
-  const pageCount = Math.max(1, slices.length);
-  const firstOpen = state.panels.find((panel) => panel.status !== "done");
-  const pageNumber = slices.length === 0 ? 0 : (firstOpen?.page ?? slices.length - 1);
-  const slice = slices[pageNumber];
+  const slice = slices[pageNumber] ?? slices[0];
   const page = useMemo(
     () =>
       slice
