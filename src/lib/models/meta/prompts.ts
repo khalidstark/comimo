@@ -2,6 +2,7 @@ import "server-only";
 import { ART_STYLES, type ArtStyleId } from "@/lib/artStyles";
 import { BEATS, MOODS, SHOTS, type CastBrief, type PanelFrame, type Shot } from "@/lib/types";
 import { MAX_PAGES, PANELS_PER_PAGE, type StoryMode } from "@/lib/types";
+import { NEW_PERSON_IDS } from "@/lib/newPeople";
 
 /**
  * Prompt and JSON schema for the comic script (Muse Spark, structured output).
@@ -31,7 +32,7 @@ Pages
 
 Characters
 - Use only the characters in CAST, by id. The speaker is the cast member whose role is "self".
-- If the note mentions someone who is not in CAST, leave them out of characterIds and dialogue; a scene or caption may mention them generically ("a coworker", "the bus driver"). Never name or draw real public figures.
+- Someone who takes part in the day but is not in CAST is a new person (see Names): list them in newPeople and use their new id like a cast id. Never invent people who weren't there, and never name or draw real public figures.
 - At most 3 characters per panel. List characterIds left to right as they stand in the picture.
 - Every speaker in a panel's dialogue must be in that panel's characterIds.
 
@@ -162,6 +163,12 @@ export interface PanelCharacter {
   look: string;
   /** 1-based position in the request's images, or null when the character has no sheet yet. */
   image: number | null;
+  /**
+   * A one-off character (03-06): no sheet. With `image`, that image is how they
+   * looked in an earlier panel of this comic ("cut" when cut down to them,
+   * "panel" when it is the whole earlier panel); without, they are drawn freely.
+   */
+  oneOff?: "cut" | "panel" | "new";
 }
 
 /** A memory panel: painted as a warm, faded recollection, in the same style and with the same faces. */
@@ -225,6 +232,17 @@ function zoneLines(frame: PanelFrame, emptyBand: string): string[] {
   return lines;
 }
 
+/** One "Characters:" line: name, which reference image is theirs, and their look. */
+function characterLine(c: PanelCharacter): string {
+  if (c.oneOff) {
+    const look = c.look.trim() || "the note says nothing about how they look, so design an ordinary, believable person who fits the scene";
+    if (c.image === null) return `${c.name} (appears only in this story, no sheet; draw them as a clear, distinct character, not a blurred background figure): ${look}`;
+    const where = c.oneOff === "panel" ? `, where ${c.name} is one of the people in it` : "";
+    return `${c.name} (reference image ${c.image}, an earlier panel${where}): ${look}`;
+  }
+  return `${c.name}${c.image !== null ? ` (reference image ${c.image}, their character sheet)` : ""}: ${c.look}`;
+}
+
 /**
  * One panel. `characters` is in characterIds order, which is also the order
  * left to right in the picture: the bubble tails in the app depend on it.
@@ -242,15 +260,18 @@ export function panelPrompt(
   const lines: string[] = [`One panel of a diary comic, drawn as a single scene in ${frameShape(frame.aspect)}.`];
 
   if (characters.length > 0) {
-    if (characters.some((c) => c.image !== null)) {
+    if (characters.some((c) => c.image !== null && !c.oneOff)) {
       lines.push(
-        "Each reference image is a character sheet showing one character from the front and from three-quarters. Draw each character exactly as on their sheet: same face, hair, glasses, clothes, colours and body shape. Each character appears only once in the panel, in a natural pose for the scene; do not copy the sheet's layout.",
+        "Each character sheet reference image shows one character from the front and from three-quarters. Draw each character exactly as on their sheet: same face, hair, glasses, clothes, colours and body shape. Each character appears only once in the panel, in a natural pose for the scene; do not copy the sheet's layout.",
+      );
+    }
+    if (characters.some((c) => c.image !== null && c.oneOff)) {
+      lines.push(
+        "A reference image marked \"earlier panel\" shows how that character was drawn earlier in this same comic: draw them as the same person (same face, skin tone, hair, build, clothes and colours) in a new pose for this scene. Do not copy that image's background, framing or anyone else in it.",
       );
     }
     lines.push("Characters:");
-    for (const c of characters) {
-      lines.push(`- ${c.name}${c.image !== null ? ` (reference image ${c.image})` : ""}: ${c.look}`);
-    }
+    for (const c of characters) lines.push(`- ${characterLine(c)}`);
     if (characters.length > 1) {
       lines.push(`Left to right in the picture: ${characters.map((c) => c.name).join(", then ")}.`);
     }
@@ -279,8 +300,8 @@ export function panelPrompt(
 export const CAST_NAMES_PROMPT = `Names
 - CAST NAMES lists every cast member's id with every name and nickname the speaker uses for them, in Arabic and English. A mention of any of those names, in either script, in any spelling, with or without a title or "my" ("Teta", "تيتا", "teta Samia", "my Teta"), is that cast member: use their id in characterIds and as the speaker id of their lines.
 - A role word alone ("my grandma", "my best friend", "the cat") is a cast member only when exactly one cast member clearly fits it.
-- newPeople: people the speaker calls by a first name or nickname who are NOT in CAST NAMES and who take part in the day (they talk, act, or the speaker spends time with them). Leave out unnamed people ("a coworker"), people only mentioned in passing, public figures, celebrities and brands. For each one: name, the form the speaker would write (Arabic script if they said it in Arabic, Latin letters if in English); mentionedAs, every form of the name the note used (up to 4); role, "friend", "family", "teacher", "pet" (animals) or "other"; look, a short English description using only what the note actually says about how they look or dress, or "" when it says nothing. Never guess a look. An empty list when there is no one.
-- New people are not in CAST, so they are never in characterIds and never speak in dialogue. A panel may show them as an unnamed background figure doing what they did ("a friend sits across the table"); keep their name out of scene. A caption may tell what they said or did.`;
+- newPeople: people who are NOT in CAST NAMES and who take part in the day: they talk to the speaker, act in a moment the comic shows, or the speaker spends time with them. That includes people called by a first name or nickname ("Omar") and people the note never names but who play a real part in a moment ("the cashier" who talks to the speaker, "a stranger" who helps). Leave out crowds, people only mentioned in passing, public figures, celebrities and brands. At most 4, in the order they first appear. For each one: id, "new1" for the first, then "new2", "new3", "new4"; name, how the speaker calls them, in the form they would write it (Arabic script if they said it in Arabic, Latin letters if in English), or for someone unnamed a short description in the note's language ("the cashier", "الكاشير"); named, true when the note gives a name, false otherwise; mentionedAs, every form of the name the note used (up to 4; for someone unnamed, the words the note used for them); role, "friend", "family", "teacher", "pet" (animals) or "other"; look, a short English description using only what the note actually says about how they look or dress, or "" when it says nothing. Never guess a look. An empty list when there is no one.
+- A new person's id works like a cast id: put it in characterIds of every panel they appear in and use it as the speakerId of their lines (only what the note says or clearly implies they said). In scene, refer to them by their name, or by their description when unnamed ("the cashier").`;
 
 /** Every cast member's names, so a mention in either language maps to the right id. */
 export function castNamesBlock(cast: CastBrief[]): string {
@@ -301,9 +322,11 @@ export function withNewPeopleSchema<T extends { properties: object; required: st
         items: {
           type: "object",
           additionalProperties: false,
-          required: ["name", "mentionedAs", "role", "look"],
+          required: ["id", "name", "named", "mentionedAs", "role", "look"],
           properties: {
+            id: { type: "string", enum: [...NEW_PERSON_IDS] },
             name: { type: "string" },
+            named: { type: "boolean" },
             mentionedAs: { type: "array", items: { type: "string" }, maxItems: 4 },
             role: { type: "string", enum: ["friend", "family", "teacher", "pet", "other"] },
             look: { type: "string" },
@@ -334,7 +357,9 @@ export function photoSheetPrompt(input: SheetPromptInput): string {
 
 export const JUDGE_PROMPT = `You check a comic for character consistency. For each character you get two images: their reference sheet (how they must always look) and a cut-out of them from one panel, found by a segmentation model (the background around them may be painted white).
 
-Decide whether the cut-out is the same character as the sheet. Compare only what identifies them and should never change: face shape, hair (colour, length, texture, style), glasses, facial hair, headscarf, the outfit and its colours, and markings and colours for animals.
+Some characters appear in this comic only and have no sheet: their reference is how they looked in an earlier panel of the same comic. Judge them the same way, against that earlier look.
+
+Decide whether the cut-out is the same character as the reference. Compare only what identifies them and should never change: face shape, hair (colour, length, texture, style), glasses, facial hair, headscarf, the outfit and its colours, and markings and colours for animals.
 
 Ignore everything that is allowed to change from panel to panel: pose, angle, expression, size, crop, what they hold, the lighting and colour grading of the scene (night light, warm lamp light, a faded sepia memory), small rendering differences, and parts of them cut off by the crop. A cut-out that shows the wrong person, or no one, is not the same character.
 
@@ -375,14 +400,16 @@ export interface RedrawTarget {
   differences: string[];
   /** 1-based image number of their sheet in the request. */
   image: number;
+  /** A one-off (03-06): the image is how they looked in an earlier panel, not a sheet. */
+  oneOff?: boolean;
 }
 
 /** An instruction edit of a finished panel (image 1): redraw only the drifted characters to match their sheets. */
 export function redrawPrompt(targets: RedrawTarget[], style: ArtStyleId): string {
-  const lines = ["Image 1 is a finished comic panel. Fix only the characters listed below so they match their character sheets; change nothing else."];
+  const lines = ["Image 1 is a finished comic panel. Fix only the characters listed below so they match their references; change nothing else."];
   for (const target of targets) {
     lines.push(
-      `- ${target.name}, ${target.where} in image 1, must look exactly like the character sheet in image ${target.image}. Fix: ${target.differences.join("; ")}.`,
+      `- ${target.name}, ${target.where} in image 1, must look exactly like ${target.oneOff ? `${target.name} in image ${target.image} (an earlier panel of this comic)` : `the character sheet in image ${target.image}`}. Fix: ${target.differences.join("; ")}.`,
     );
   }
   lines.push(

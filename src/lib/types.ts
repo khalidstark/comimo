@@ -331,8 +331,14 @@ export interface Day {
    * Missing on single-page days made before multi-page comics: all panels are one page laid out with `layout`.
    */
   pages?: ComicPage[];
-  /** Named people in the note who aren't in the cast yet; offered once after the comic. */
+  /**
+   * People in the note who aren't in the cast and whom the user skipped before
+   * drawing (03-06), offered once after the comic. Days made in 03-05 list
+   * everyone new here (they were drawn as background figures then).
+   */
   newPeople?: NewPerson[];
+  /** Characters drawn just for this story (03-06), by their `oneoff:` id. */
+  oneOffs?: OneOff[];
   /** True for the invented sample days. */
   sample?: boolean;
   createdAt: string;
@@ -369,8 +375,14 @@ export interface ComicScript {
   /** Gentle reflection questions; empty unless `heavy`. */
   checkInQuestions: string[];
   safety: SafetyFlag;
-  /** Named people in the note who aren't in the cast; drawn only as unnamed background figures. */
+  /**
+   * People in the note who aren't in the cast. Straight from the script model,
+   * panels use their placeholder `id` (new1 to new4); the browser asks about
+   * them before drawing and swaps each placeholder for a cast or one-off id.
+   */
   newPeople?: NewPerson[];
+  /** Characters drawn just for this story, once the new people are settled. */
+  oneOffs?: OneOff[];
 }
 
 /** An image in a JSON response, base64 encoded. */
@@ -415,6 +427,13 @@ export interface WireReference {
   /** Required with `image` unless it is a shipped starter sheet: proves this server drew it. */
   sheetToken?: string;
   fileToken?: string;
+  /**
+   * A one-off character (03-06): no sheet. `image`, when sent, is the panel
+   * they first appeared in (with that panel's `imageToken` as `sheetToken`),
+   * and `box` is where they are in it, so the server cuts them out.
+   */
+  oneOff?: boolean;
+  box?: UnitBox;
 }
 
 /** A reference sheet the server uploaded while drawing; cache it on the character. */
@@ -448,6 +467,11 @@ export interface PanelResponse {
   };
   /** Everyone SAM found in the final image; missing in practice mode. */
   figures?: PanelFigures;
+  /**
+   * Proves this server drew the final image, so it can come back as a one-off
+   * character's reference for later panels. Only on panels with a one-off.
+   */
+  imageToken?: string;
 }
 
 /** POST /api/character: draw a character's reference sheet. */
@@ -484,15 +508,33 @@ export interface ApiError {
 /* New people, sprites and photos                                      */
 /* ------------------------------------------------------------------ */
 
-/** Someone the note names who isn't in the cast, as the script model heard them. */
+/** Someone in the note who isn't in the cast, as the script model heard them. */
 export interface NewPerson {
-  /** How they are best called, e.g. "Omar". */
+  /** The placeholder the script's panels use for them (new1 to new4); missing on days made before 03-06. */
+  id?: string;
+  /** How they are best called, e.g. "Omar", or "the cashier" when the note gives no name. */
   name: string;
+  /** False when the note never names them ("the cashier"). */
+  named?: boolean;
   /** Every way the note said their name ("Omar", "عمر"). */
   mentionedAs: string[];
   role: CharacterRole;
   /** Look details the note gave, in English; "" when it said nothing. */
   look: string;
+}
+
+/**
+ * A character drawn for one story only (03-06): a new person the user chose
+ * not to add to the cast. Drawn freely from the note's description in their
+ * first panel; later panels get that first appearance as their reference.
+ */
+export interface OneOff {
+  /** "oneoff:" and the script's placeholder, e.g. "oneoff:new2". */
+  id: string;
+  name: string;
+  /** What the note says about how they look; "" when it says nothing. */
+  look: string;
+  role: CharacterRole;
 }
 
 /** POST /api/sprite: animate a character from one of their server-drawn reference sheets. */

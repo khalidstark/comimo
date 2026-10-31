@@ -6,6 +6,7 @@ import { normalizeStory } from "@/lib/layout/pickLayout";
 import { DEFAULT_STORY_MODE, type CastBrief, type ComicPage, type ComicScript, type Day, type PanelFrame, type ScriptPanel, type Transcript } from "@/lib/types";
 import type { AudioInput, CharacterReference, ComicModels, ConsistencyResult, ModelImage, PanelOptions, ScriptOptions, SheetSubject } from "./index";
 import { applyStoryMode } from "./storyMode";
+import { NEW_PERSON_IDS, isNewPersonId, remapPanel, resolveNewPeople } from "@/lib/newPeople";
 
 /**
  * Mock models: answers come from the sample-day fixtures and panels are
@@ -132,6 +133,35 @@ function mockPage(day: Day, transcript: string, toCast: (id: string) => string, 
   return normalizeStory(localPanels(story));
 }
 
+/**
+ * Practice-mode new faces (03-06): a few invented people the mock "hears" in a
+ * note, so the ask-before-drawing step can be tried without credits. Each one
+ * is put in two panels, so a one-off has a first appearance and a later one.
+ */
+const MOCK_NEW_PEOPLE = [
+  { name: "Omar", mentionedAs: ["Omar", "عمر"], named: true, role: "friend", look: "" },
+  { name: "the cashier", mentionedAs: ["cashier", "الكاشير", "الكاشيرة"], named: false, role: "other", look: "" },
+  { name: "Salma", mentionedAs: ["Salma", "سلمى"], named: true, role: "friend", look: "" },
+] as const;
+
+function withMockNewPeople(panels: ScriptPanel[], transcript: string, cast: CastBrief[]): Pick<ComicScript, "panels" | "newPeople"> {
+  const lower = transcript.toLowerCase();
+  const heard = MOCK_NEW_PEOPLE.filter((person) => person.mentionedAs.some((form) => lower.includes(form.toLowerCase())));
+  if (heard.length === 0) return { panels };
+  const raw = heard.map((person, i) => ({ ...person, mentionedAs: [...person.mentionedAs], id: NEW_PERSON_IDS[i] }));
+  const placed = panels.map((panel) => ({ ...panel, characterIds: [...panel.characterIds] }));
+  raw.forEach((person, i) => {
+    for (const at of [1 + i, placed.length - 1 - i]) {
+      const panel = placed[Math.min(placed.length - 1, Math.max(0, at))];
+      if (panel.characterIds.length >= 3) panel.characterIds.pop();
+      if (!panel.characterIds.includes(person.id)) panel.characterIds.push(person.id);
+    }
+  });
+  const { people, ids } = resolveNewPeople(raw, cast);
+  const to = (id: string) => (isNewPersonId(id) ? (ids.get(id) ?? null) : id);
+  return { panels: placed.map((panel) => remapPanel(panel, to)), ...(people.length > 0 ? { newPeople: people } : {}) };
+}
+
 async function writeScript(transcript: string, cast: CastBrief[], _context?: unknown, options: ScriptOptions = {}): Promise<ComicScript> {
   await wait(DELAY_MS.script);
   const mode = options.storyMode ?? DEFAULT_STORY_MODE;
@@ -155,9 +185,10 @@ async function writeScript(transcript: string, cast: CastBrief[], _context?: unk
   }
   const pages: ComicPage[] = groups.map((group) => ({ panels: group }));
 
+  const people = withMockNewPeople(applyStoryMode(panels, groups, mode), transcript, cast);
   return {
     title: day.title,
-    panels: applyStoryMode(panels, groups, mode),
+    ...people,
     pages,
     storyMode: mode,
     mood: day.mood,
