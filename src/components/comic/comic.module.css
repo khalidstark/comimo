@@ -39,6 +39,8 @@
   inset: 0;
   overflow: hidden;
   clip-path: var(--clip);
+  /* A phone caption band above the art shows the page itself, like a graphic novel's caption strip */
+  background: var(--page-bg);
 }
 
 .frame:focus-visible {
@@ -49,7 +51,7 @@
 /* ---------- Art ---------- */
 .art {
   position: absolute;
-  inset: 0;
+  inset: var(--band, 0%) 0 0 0;
   z-index: 0;
   perspective: 1400px;
   /* Printed dots behind the art, seen only while a panel turns over */

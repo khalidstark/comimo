@@ -48,6 +48,7 @@ function boxVars(prefix: string, panel: PlacedPanel, geometry: PageGeometry, zon
     [`--${prefix}-ly`]: pct(letters.y),
     [`--${prefix}-lw`]: pct(letters.w),
     [`--${prefix}-lh`]: pct(letters.h),
+    [`--${prefix}-band`]: pct(panel.band ?? 0),
     [`--${prefix}-il`]: pct((inner.x - box.x) / box.w),
     [`--${prefix}-it`]: pct((inner.y - box.y) / box.h),
     [`--${prefix}-ir`]: pct((box.x + box.w - inner.x - inner.w) / box.w),
