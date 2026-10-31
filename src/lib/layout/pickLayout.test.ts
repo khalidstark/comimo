@@ -233,3 +233,23 @@ describe("phone caption bands", () => {
     }
   });
 });
+
+describe("phone pages", () => {
+  it("never lay one panel over another: insets get a place of their own", () => {
+    for (const template of TEMPLATES) {
+      for (const variant of template.variants) {
+        const phone = phoneGeometry(variant, story(template.count, variant.focus), template.id);
+        expect(phone.panels).toHaveLength(template.count);
+        for (const a of phone.panels) {
+          expect(a.inset, `${template.id} panel ${a.index}`).toBe(false);
+          for (const b of phone.panels) {
+            if (a.index >= b.index) continue;
+            const overlapW = Math.min(a.inner.x + a.inner.w, b.inner.x + b.inner.w) - Math.max(a.inner.x, b.inner.x);
+            const overlapH = Math.min(a.inner.y + a.inner.h, b.inner.y + b.inner.h) - Math.max(a.inner.y, b.inner.y);
+            expect(overlapW > 0.05 && overlapH > 0.05, `${template.id}: ${a.index} over ${b.index}`).toBe(false);
+          }
+        }
+      }
+    }
+  });
+});
