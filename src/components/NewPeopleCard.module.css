@@ -1,0 +1,151 @@
+/* "Meet Omar?": a sticky note after the comic, warm and quick to dismiss */
+.stack {
+  display: grid;
+  gap: var(--space-m);
+  margin-block-start: var(--space-2xl);
+  max-inline-size: 44rem;
+}
+
+.card {
+  display: grid;
+  gap: var(--space-xs);
+  padding: var(--space-m);
+  background: var(--surface);
+  border: var(--panel-border-thin) solid var(--line);
+  border-radius: var(--radius-card-soft);
+  box-shadow: 4px 4px 0 color-mix(in srgb, var(--highlight) 80%, transparent);
+}
+
+@media (min-width: 48rem) {
+  .card {
+    padding: var(--space-l);
+  }
+}
+
+.title {
+  font-family: var(--font-lettering-stack);
+  font-size: var(--step-2);
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.title:focus {
+  outline: none;
+}
+
+.lede {
+  color: var(--ink);
+}
+
+.note,
+.optional {
+  color: var(--ink-soft);
+  font-size: var(--step--1);
+  font-weight: 500;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-xs) var(--space-s);
+  margin-block-start: var(--space-2xs);
+}
+
+.textButton {
+  min-block-size: 2.75rem;
+  padding: 0 var(--space-2xs);
+  border: 0;
+  background: none;
+  color: var(--ink-soft);
+  font-family: var(--font-display-stack);
+  font-weight: 700;
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 0.2em;
+  cursor: pointer;
+}
+
+/* Quick form */
+.form {
+  display: grid;
+  gap: var(--space-s);
+}
+
+.row {
+  display: grid;
+  gap: var(--space-s);
+}
+
+@media (min-width: 36rem) {
+  .row {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.field {
+  display: grid;
+  gap: var(--space-3xs);
+  align-content: start;
+}
+
+.label {
+  font-weight: 700;
+}
+
+.field input,
+.field select,
+.field textarea {
+  inline-size: 100%;
+  min-block-size: 3rem;
+  padding: var(--space-2xs) var(--space-xs);
+  border: var(--panel-border-thin) solid var(--line);
+  border-radius: 10px;
+  background: var(--paper);
+}
+
+.field textarea {
+  resize: vertical;
+}
+
+.error {
+  color: var(--accent-text);
+  font-size: var(--step--1);
+  font-weight: 600;
+}
+
+/* After adding: their sticker next to the news */
+.result {
+  display: grid;
+  grid-template-columns: 7rem 1fr;
+  gap: var(--space-m);
+  align-items: center;
+}
+
+.portrait {
+  display: grid;
+  place-items: center;
+  inline-size: 7rem;
+  aspect-ratio: 300 / 360;
+  padding: var(--space-3xs);
+  background: #ffffff;
+}
+
+.drawingTag {
+  font-family: var(--font-lettering-stack);
+  color: #1b2148;
+  font-weight: 600;
+}
+
+.resultText {
+  display: grid;
+  gap: var(--space-2xs);
+  justify-items: start;
+}
+
+.still {
+  inline-size: 100%;
+  block-size: 100%;
+  object-fit: cover;
+  object-position: 22% 50%;
+}
