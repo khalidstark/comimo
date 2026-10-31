@@ -21,6 +21,9 @@ Talking about your day for a minute gives you back a comic that feels like your 
 - [ ] Cast: create characters once (name, look, personality), each with a Muse Image reference sheet; ships with an invented starter cast
 - [ ] Panels drawn with Muse Image using the reference sheets of the characters in each panel
 - [ ] SAM 3.1 checks every panel, finds characters whose look drifted from their reference sheet, and redraws them; the app shows the before and after
+- [ ] Quick accounts: email + password sign up/in, no verification (user's choice); guest try-out for judges
+- [ ] Comics, cast and images synced per account (Upstash Redis + Vercel Blob); local dev fallbacks
+- [ ] Photo album per comic: upload real photos (or paste an album link); QR code on the last page opens the album
 - [ ] Long, detailed days become multi-page comics (1 to 3 pages, 4 to 6 panels each, one splash per page, page turns)
 - [ ] Storytelling modes per comic: Narrated (first-person captions like the user's reference PDF), Dialogue, or Both (default)
 - [ ] Cast created once and recognised by name or alias (Arabic or English); new people offered once after a comic
@@ -38,7 +41,6 @@ Talking about your day for a minute gives you back a comic that feels like your 
 
 ### Out of Scope
 
-- Accounts and sign-in — not needed for the hackathon; data stays on the device
 - Mental health score, diagnosis or advice — the hackathon bans medical/mental-health advice projects, and a number can mislead people
 - Daily reminders — user excluded for v1
 - Sharing to social media — user excluded for v1
@@ -70,7 +72,8 @@ Talking about your day for a minute gives you back a comic that feels like your 
 |----------|-----------|---------|
 | Check-in questions instead of a mental health score | Hackathon bans mental-health advice; still scores on Impact | — Pending |
 | Check-in is a card after the comic | User's choice; keeps the comic itself light | — Pending |
-| No accounts; store comics on the device (IndexedDB) | Faster to build, simpler demo, diary stays private | — Pending |
+| No accounts; store comics on the device (IndexedDB) | Faster to build, simpler demo, diary stays private | ⚠️ Revisited 2026-10-31: user wants accounts |
+| Quick accounts without email verification, data in Upstash + Vercel Blob | User request to let people create their own; verification skipped by user choice | — Pending |
 | Muse Image generates the site's own art | Avoids asset-rights problems, raises the Meta AI score, one consistent look | — Pending |
 | Fresh code; old zip as reference only | Rules require new work | — Pending |
 | One main art theme first | User's choice; more themes only if time allows | — Pending |

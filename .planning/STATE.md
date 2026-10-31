@@ -70,6 +70,8 @@ Recent decisions affecting current work:
 
 ### Blockers/Concerns
 
+- REMIND USER (they said yes, do later): create Vercel Blob store and accept Upstash Redis terms in the Vercel dashboard; needed for 03.2 in production and for 05-01 deploy.
+
 - Credits arrived ($150) and the key works. Free credits: Meta may use submitted content, so test with invented days. 03-04 spent about $0.36.
 - Billing spend alert was set to $500; user asked to lower it to $140.
 

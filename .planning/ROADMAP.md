@@ -18,6 +18,7 @@ None
 - [x] **Phase 2: Comic Experience** - Record, progress, comic reader with RTL bubbles, check-in card, day weather and cast, all on mock data
 - [ ] **Phase 3: Meta Model Pipeline** - Real Voice Transcribe, Spark, Image and SAM 3.1 calls with the consistency fix loop and a spending guard
 - [ ] **Phase 3.1: Design Refresh (INSERTED)** - Real Muse art on the home page, simpler path, more interaction
+- [ ] **Phase 3.2: Accounts and Cloud (INSERTED)** - Quick email/password accounts, comics synced per account, photo albums with QR codes
 - [ ] **Phase 4: Magazine and Art** - Monthly flip-through comic book, Muse-generated site art and sprites, sample days and demo content
 - [ ] **Phase 5: Ship** - Vercel deploy with rate limits, README, voice-note scripts, demo video prep and submission
 
@@ -67,6 +68,16 @@ Plans:
 Plans:
 - [x] 03.1-01: Real site art and mascot sprites with Muse Image; home and nav refresh; user design check
 
+### Phase 3.2: Accounts and Cloud (INSERTED)
+**Goal**: Each person has their own Comimo across devices; real photo albums linked by QR (user request)
+**Depends on**: Phase 3
+**Research**: Likely (Upstash Redis REST client, Vercel Blob SDK, Next 16 auth patterns)
+**Plans**: 2 plans
+
+Plans:
+- [ ] 03.2-01: Quick accounts (email + password, no verification), sessions, per-account shared limits, guest try-out
+- [ ] 03.2-02: Cloud comics and cast per account, photo album with QR code on the last page
+
 ### Phase 4: Magazine and Art
 **Goal**: The monthly comic book, the real Muse-generated art across the site, and demo content that makes the site impressive even without recording
 **Depends on**: Phase 3
@@ -97,5 +108,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 | 2. Comic Experience | 3/3 | Complete | 2026-10-30 |
 | 3. Meta Model Pipeline | 4/5 | In progress | - |
 | 3.1. Design Refresh (INSERTED) | 1/1 | Complete (merged; user review pending) | 2026-10-31 |
+| 3.2. Accounts and Cloud (INSERTED) | 0/2 | Not started | - |
 | 4. Magazine and Art | 0/2 | Not started | - |
 | 5. Ship | 0/1 | Not started | - |
