@@ -4,7 +4,7 @@ import { drawSize } from "@/lib/layout/page";
 import type { ScriptPanel } from "@/lib/types";
 import type { CharacterReference, ModelCallContext, ModelImage, PanelOptions, SheetSubject } from "../index";
 import { MetaApiError, metaJson } from "./client";
-import { panelPrompt, sheetPrompt, type PanelCharacter } from "./prompts";
+import { panelPrompt, photoSheetPrompt, sheetPrompt, type PanelCharacter } from "./prompts";
 
 /**
  * Muse Image: reference sheets (POST /v1/images/generations) and panels drawn
@@ -37,7 +37,7 @@ interface ImagesBody {
 }
 
 /** The fields every Muse Image call shares. Search and code tools are off: art comes from the prompt and our references only. */
-function baseRequest(context?: ModelCallContext) {
+export function baseRequest(context?: ModelCallContext) {
   return {
     model: MODEL,
     n: 1,
@@ -54,7 +54,7 @@ function firstImage(body: ImagesBody): ModelImage {
   return { mimeType: `image/${format === "jpeg" ? "jpeg" : format}`, data: new Uint8Array(Buffer.from(b64, "base64")) };
 }
 
-async function requestImage(path: "/images/generations" | "/images/edits", body: object, context?: ModelCallContext): Promise<ModelImage> {
+export async function requestImage(path: "/images/generations" | "/images/edits", body: object, context?: ModelCallContext): Promise<ModelImage> {
   const started = Date.now();
   const response = await metaJson<ImagesBody>(path, {
     method: "POST",
@@ -73,6 +73,20 @@ async function requestImage(path: "/images/generations" | "/images/edits", body:
 export async function drawReferenceSheet(subject: SheetSubject, context?: ModelCallContext): Promise<ModelImage> {
   const prompt = sheetPrompt({ name: subject.name, look: subject.look, animal: subject.role === "pet", style: subject.style });
   return requestImage("/images/generations", { ...baseRequest(context), size: SHEET_SIZE, prompt }, context);
+}
+
+/**
+ * The sheet drawn with the person cut from a photo as reference image 1. The
+ * photo goes inline in this one request: never uploaded, never kept.
+ */
+export async function drawReferenceSheetFromPhoto(subject: SheetSubject, photo: ModelImage, context?: ModelCallContext): Promise<ModelImage> {
+  const prompt = photoSheetPrompt({ name: subject.name, look: subject.look, animal: subject.role === "pet", style: subject.style });
+  return requestImage("/images/edits", { ...baseRequest(context), size: SHEET_SIZE, prompt, images: [{ image_url: dataUrl(photo) }] }, context);
+}
+
+/** True when Muse Image refused a request on content policy (400 content_policy_violation). */
+export function isContentPolicyError(error: unknown): boolean {
+  return error instanceof MetaApiError && error.code === "content_policy_violation";
 }
 
 /* ---------- Files API ---------- */
@@ -124,7 +138,7 @@ export function uploadReference(image: ModelImage, context?: ModelCallContext): 
 
 /* ---------- Panels ---------- */
 
-function dataUrl(image: ModelImage): string {
+export function dataUrl(image: ModelImage): string {
   return `data:${image.mimeType};base64,${Buffer.from(image.data).toString("base64")}`;
 }
 
@@ -172,7 +186,7 @@ export async function drawPanel(
 }
 
 /** The real type from the file's first bytes: PNG, JPEG or WebP, else null. */
-function sniffImageType(data: Uint8Array): string | null {
+export function sniffImageType(data: Uint8Array): string | null {
   const ascii = (from: number, to: number) => String.fromCharCode(...data.subarray(from, to));
   if (data.length >= 8 && data[0] === 0x89 && ascii(1, 4) === "PNG") return "image/png";
   if (data.length >= 3 && data[0] === 0xff && data[1] === 0xd8 && data[2] === 0xff) return "image/jpeg";

@@ -266,3 +266,60 @@ export function panelPrompt(
   lines.push(NO_TEXT);
   return lines.join("\n");
 }
+
+/* ------------------------------------------------------------------ */
+/* Cast by name (03-05): aliases, and new people the note names         */
+/* ------------------------------------------------------------------ */
+
+/** How spoken names map to cast ids, and who counts as a new person. Sent after the cast. */
+export const CAST_NAMES_PROMPT = `Names
+- CAST NAMES lists every cast member's id with every name and nickname the speaker uses for them, in Arabic and English. A mention of any of those names, in either script, in any spelling, with or without a title or "my" ("Teta", "تيتا", "teta Samia", "my Teta"), is that cast member: use their id in characterIds and as the speaker id of their lines.
+- A role word alone ("my grandma", "my best friend", "the cat") is a cast member only when exactly one cast member clearly fits it.
+- newPeople: people the speaker calls by a first name or nickname who are NOT in CAST NAMES and who take part in the day (they talk, act, or the speaker spends time with them). Leave out unnamed people ("a coworker"), people only mentioned in passing, public figures, celebrities and brands. For each one: name, the form the speaker would write (Arabic script if they said it in Arabic, Latin letters if in English); mentionedAs, every form of the name the note used (up to 4); role, "friend", "family", "teacher", "pet" (animals) or "other"; look, a short English description using only what the note actually says about how they look or dress, or "" when it says nothing. Never guess a look. An empty list when there is no one.
+- New people are not in CAST, so they are never in characterIds and never speak in dialogue. A panel may show them as an unnamed background figure doing what they did ("a friend sits across the table"); keep their name out of scene. A caption may tell what they said or did.`;
+
+/** Every cast member's names, so a mention in either language maps to the right id. */
+export function castNamesBlock(cast: CastBrief[]): string {
+  const members = cast.map(({ id, name, aliases }) => ({ id, names: [name, ...(aliases ?? [])] }));
+  return `CAST NAMES\n${JSON.stringify(members, null, 2)}`;
+}
+
+/** The comic script schema with the `newPeople` list added (closed and fully required, like the rest). */
+export function withNewPeopleSchema<T extends { properties: object; required: string[] }>(schema: T): T {
+  return {
+    ...schema,
+    required: [...schema.required, "newPeople"],
+    properties: {
+      ...schema.properties,
+      newPeople: {
+        type: "array",
+        maxItems: 4,
+        items: {
+          type: "object",
+          additionalProperties: false,
+          required: ["name", "mentionedAs", "role", "look"],
+          properties: {
+            name: { type: "string" },
+            mentionedAs: { type: "array", items: { type: "string" }, maxItems: 4 },
+            role: { type: "string", enum: ["friend", "family", "teacher", "pet", "other"] },
+            look: { type: "string" },
+          },
+        },
+      },
+    },
+  };
+}
+
+/**
+ * A reference sheet drawn from a photo of the real person (03-05): the cut-out
+ * is reference image 1, and the character is drawn in the art style, not as a photo.
+ */
+export function photoSheetPrompt(input: SheetPromptInput): string {
+  const lines = sheetPrompt(input).split("\n");
+  lines.splice(
+    1,
+    0,
+    "Reference image 1 is a photo of the person this character is based on. Turn them into an original comic character in the art style below: keep what makes them recognisable (hair, face shape, glasses, facial hair, clothes and their colours) but draw them in the style, not as a photo. Ignore the photo's background, lighting, pose and crop.",
+  );
+  return lines.join("\n");
+}

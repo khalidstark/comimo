@@ -1,0 +1,106 @@
+/* "Start from a photo": an uncut panel inside the character form */
+.photo {
+  display: grid;
+  gap: var(--space-xs);
+  margin: 0;
+  padding: var(--space-s);
+  border: var(--panel-border-thin) dashed color-mix(in srgb, var(--ink) 45%, transparent);
+  border-radius: var(--radius-panel);
+  min-inline-size: 0;
+}
+
+.legend {
+  padding-inline: var(--space-3xs);
+  font-weight: 700;
+}
+
+.optional,
+.hint {
+  color: var(--ink-soft);
+  font-size: var(--step--1);
+  font-weight: 500;
+}
+
+.label {
+  font-weight: 700;
+}
+
+.file {
+  display: grid;
+  gap: var(--space-3xs);
+}
+
+.file input {
+  max-inline-size: 100%;
+  min-block-size: 2.75rem;
+  font: inherit;
+}
+
+.consent {
+  display: flex;
+  gap: var(--space-2xs);
+  align-items: start;
+  font-size: var(--step--1);
+  font-weight: 600;
+}
+
+.consent input {
+  flex: none;
+  inline-size: 1.25rem;
+  block-size: 1.25rem;
+  margin-block-start: 0.1em;
+  accent-color: var(--accent);
+}
+
+.found {
+  display: grid;
+  grid-template-columns: 6rem 1fr;
+  gap: var(--space-s);
+  align-items: start;
+  margin: 0;
+}
+
+.crop {
+  inline-size: 6rem;
+  aspect-ratio: 3 / 4;
+  object-fit: cover;
+  border: var(--panel-border-thin) solid var(--line);
+  border-radius: 10px;
+}
+
+.caption {
+  display: grid;
+  gap: var(--space-2xs);
+  justify-items: start;
+  color: var(--ink-soft);
+  font-size: var(--step--1);
+}
+
+.textButton {
+  min-block-size: 2.75rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent-text);
+  font-family: var(--font-display-stack);
+  font-weight: 700;
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 0.2em;
+  cursor: pointer;
+}
+
+.status {
+  color: var(--ink-soft);
+  font-size: var(--step--1);
+}
+
+.status:empty {
+  display: none;
+}
+
+.error {
+  color: var(--accent-text);
+  font-size: var(--step--1);
+  font-weight: 600;
+}

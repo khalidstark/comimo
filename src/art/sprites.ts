@@ -9,7 +9,7 @@ import { art, type SpriteSheetKey } from "./manifest";
  */
 export const SHEET_COLUMNS = 6;
 
-const ANIMATIONS: { idle: SpriteAnimation } & Record<Exclude<SpriteAnimationName, "idle">, SpriteAnimation> = {
+export const ANIMATIONS: { idle: SpriteAnimation } & Record<Exclude<SpriteAnimationName, "idle">, SpriteAnimation> = {
   idle: { row: 0, frames: 6, fps: 5, loop: true },
   blink: { row: 1, frames: 6, fps: 18, loop: false },
   talk: { row: 2, frames: 6, fps: 10, loop: true },

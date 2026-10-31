@@ -335,3 +335,23 @@
   color: var(--ink-soft);
   font-size: var(--step--1);
 }
+
+/* Other names under the role chip */
+.aliases {
+  color: var(--ink-soft);
+  font-size: var(--step--1);
+}
+
+/* A drawn character without a sprite yet: their still portrait, or the front view of a sheet */
+.still,
+.stillSheet {
+  inline-size: 100%;
+  block-size: 100%;
+  object-fit: contain;
+}
+
+.stillSheet {
+  /* Sheets show the front view in their left half */
+  object-fit: cover;
+  object-position: 22% 50%;
+}

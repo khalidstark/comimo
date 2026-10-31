@@ -1,7 +1,7 @@
 import { artAt } from "@/art/manifest";
 import type { ArtStyleId } from "./artStyles";
 import { AudioConvertError, toWav } from "./audio/toWav";
-import { loadCast, referenceFileTokenFor, referenceSheetFor, withReferenceFile } from "./cast";
+import { animateCharacter, drawReferenceSheet, loadCast, referenceFileTokenFor, referenceSheetFor, withReferenceFile } from "./cast";
 import { layoutPages, localPanels, pageLayoutChain } from "./layout/comicPages";
 import { panelFrames } from "./layout/frames";
 import { detectLanguages } from "./languages";
@@ -175,8 +175,18 @@ async function previousTemplate(): Promise<string | null> {
 
 /* ---------- Cast ---------- */
 
-function toBrief({ id, name, role, look, personality }: Character): CastBrief {
-  return { id, name, role, look, personality };
+function toBrief({ id, name, aliases, role, look, personality }: Character): CastBrief {
+  return { id, name, role, look, personality, ...(aliases?.length ? { aliases } : {}) };
+}
+
+/** The names a panel's characters and speakers had when it was made (ISS-007). */
+function nameSnapshot(panel: ScriptPanel, cast: Character[]): Record<string, string> {
+  const names: Record<string, string> = {};
+  for (const id of new Set([...panel.characterIds, ...panel.dialogue.map((line) => line.speakerId)])) {
+    const member = cast.find((character) => character.id === id);
+    if (member) names[id] = member.name;
+  }
+  return names;
 }
 
 /* ---------- Pipeline ---------- */
@@ -344,7 +354,9 @@ export class ComicPipeline {
     form.append("audio", wav, "voice-note.wav");
     form.append("language", this.input.language);
     // Cast names help the transcriber spell them the way the script needs them.
-    form.append("keywords", JSON.stringify(this.cast.map((member) => member.name).slice(0, 20)));
+    // Names first, then the other names they go by, within the transcriber's 20.
+    const names = [...this.cast.map((member) => member.name), ...this.cast.flatMap((member) => member.aliases ?? [])];
+    form.append("keywords", JSON.stringify([...new Set(names)].slice(0, 20)));
     const { transcript } = await request<TranscribeResponse>("listen", "/api/transcribe", {
       method: "POST",
       body: form,
@@ -441,8 +453,34 @@ export class ComicPipeline {
     return references;
   }
 
+  /**
+   * Cast by name (03-05): a character in this comic without a sheet in its
+   * style gets one drawn once, before any panel, and kept (each sheet is a
+   * guarded, metered call). Their animated sprite follows in the background.
+   * A sheet that fails isn't fatal: the panels draw from the written look.
+   */
+  private async ensureSheets(script: ComicScript, signal: AbortSignal) {
+    const ids = new Set(script.panels.flatMap((panel) => panel.characterIds));
+    const missing = (this.cast ?? []).filter(
+      (member) => ids.has(member.id) && !referenceSheetFor(member, this.input.style) && member.look.trim().length >= 12,
+    );
+    await Promise.all(
+      missing.map(async (member) => {
+        try {
+          const drawn = await drawReferenceSheet(member, this.input.style, signal);
+          this.cast = (this.cast ?? []).map((m) => (m.id === drawn.id ? drawn : m));
+          this.references.delete(drawn.id);
+          void animateCharacter(drawn);
+        } catch (error) {
+          if (signal.aborted || isAbort(error)) throw error;
+        }
+      }),
+    );
+  }
+
   private async drawPanels(script: ComicScript, signal: AbortSignal) {
     this.cast ??= await loadCast();
+    await this.ensureSheets(script, signal);
     const queue = script.panels.filter((panel) => this.state.panels.find((p) => p.index === panel.index)?.status !== "done");
     for (const panel of queue) this.setPanel(panel.index, { status: "waiting", error: undefined });
     this.set({ steps: { ...this.state.steps, draw: "active", check: "active" } });
@@ -554,6 +592,11 @@ export class ComicPipeline {
       ...(this.state.pages && this.state.pages.length > 0 ? { pages: this.state.pages } : {}),
       createdAt: this.createdAt,
     };
+
+    // Cast by name (03-05): keep each panel's names as they are today (ISS-007), and the new people to offer once.
+    const cast = this.cast ?? [];
+    day.panels = day.panels.map((panel) => ({ ...panel, names: nameSnapshot(panel, cast) }));
+    if (!crisis && script.newPeople?.length) day.newPeople = script.newPeople;
 
     // Read it back: only route to the day once it is really on the device.
     const saved = (await saveDay(day)) && (await getDay(day.id));

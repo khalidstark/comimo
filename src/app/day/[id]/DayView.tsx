@@ -7,6 +7,7 @@ import { pageView } from "@/components/comic/pageView";
 import type { FixedFace, PanelView } from "@/components/comic/view";
 import { CheckInCard } from "@/components/CheckInCard";
 import { EmptyState } from "@/components/EmptyState";
+import { NewPeopleCard } from "@/components/NewPeopleCard";
 import { PAGE_TURN } from "@/components/PageTurn";
 import { artStyleOf } from "@/lib/artStyles";
 import { formatDay } from "@/lib/format";
@@ -84,6 +85,8 @@ export function DayView({ day, panels, faces, layouts, previous, next }: DayView
       {!crisis && faces ? <FacesNote faces={faces} /> : null}
 
       {day.heavy && !crisis ? <CheckInCard day={day} /> : null}
+
+      {!crisis && !day.sample && day.newPeople?.length ? <NewPeopleCard day={day} /> : null}
 
       <nav className={styles.pager} aria-label="Other days">
         {previous ? (
