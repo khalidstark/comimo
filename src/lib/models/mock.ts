@@ -1,9 +1,11 @@
 import "server-only";
 import { starterCastById } from "@/fixtures/cast";
-import { sampleDays } from "@/fixtures/days";
+import { sampleDays, sampleNarration } from "@/fixtures/days";
+import { localPanels } from "@/lib/layout/comicPages";
 import { normalizeStory } from "@/lib/layout/pickLayout";
-import type { CastBrief, ComicScript, Day, PanelFrame, ScriptPanel, Transcript } from "@/lib/types";
-import type { AudioInput, CharacterReference, ComicModels, ConsistencyResult, ModelImage, PanelOptions, SheetSubject } from "./index";
+import { DEFAULT_STORY_MODE, type CastBrief, type ComicPage, type ComicScript, type Day, type PanelFrame, type ScriptPanel, type Transcript } from "@/lib/types";
+import type { AudioInput, CharacterReference, ComicModels, ConsistencyResult, ModelImage, PanelOptions, ScriptOptions, SheetSubject } from "./index";
+import { applyStoryMode } from "./storyMode";
 
 /**
  * Mock models: answers come from the sample-day fixtures and panels are
@@ -84,32 +86,32 @@ function castMapper(cast: CastBrief[]): (id: string) => string {
   };
 }
 
-async function writeScript(transcript: string, cast: CastBrief[]): Promise<ComicScript> {
-  await wait(DELAY_MS.script);
+/** Long notes (or "[mock:pages]") get a second page, so multi-page comics can be built without credits. */
+const PAGES_HINT = "[mock:pages]";
+const LONG_NOTE = 700;
 
-  if (includesAny(transcript, CRISIS_HINTS)) {
-    return { title: "", panels: [], mood: "rainy", heavy: true, checkInQuestions: [], safety: "crisis" };
-  }
-
-  const day = pickDay(transcript);
-  const toCast = castMapper(cast);
+/** One mock page from a sample day: its panels (with narration) plus 0 to 2 quiet beats, by hash. */
+function mockPage(day: Day, transcript: string, toCast: (id: string) => string, cast: CastBrief[]): ScriptPanel[] {
+  const narration = sampleNarration[day.id] ?? [];
   const story: ScriptPanel[] = day.panels.map(({ index, scene, caption, dialogue, characterIds, shot, beat }) => ({
     index,
     scene,
     caption,
+    ...(narration[index] ? { narration: narration[index] } : {}),
     dialogue: dialogue.map((line) => ({ ...line, speakerId: toCast(line.speakerId) })),
     characterIds: characterIds.map(toCast),
     shot,
     beat,
   }));
   // The samples have 4 panels; add quiet beats so mock comics also come in 5 and 6 panels.
-  const extra = hash(transcript) % 3;
+  const extra = hash(transcript + day.id) % 3;
   const who = story[1].characterIds[0];
   const name = cast.find((member) => member.id === who)?.name ?? (who ? starterCastById[who]?.name : undefined) ?? "the speaker";
   const beats: ScriptPanel[] = [
     {
       index: 0,
       scene: `Close on ${name}'s face, a small reaction to what just happened.`,
+      narration: "For a second I just let it sink in.",
       dialogue: [],
       characterIds: story[1].characterIds.slice(0, 1),
       shot: "closeup",
@@ -119,6 +121,7 @@ async function writeScript(transcript: string, cast: CastBrief[]): Promise<Comic
       index: 0,
       scene: "A small detail of the scene: hands, a cup, a phone screen, the light through the window.",
       caption: "Meanwhile…",
+      narration: "Somewhere in the middle of it all, the small things kept happening anyway.",
       dialogue: [],
       characterIds: [],
       shot: "detail",
@@ -126,11 +129,37 @@ async function writeScript(transcript: string, cast: CastBrief[]): Promise<Comic
     },
   ];
   story.splice(2, 0, ...beats.slice(0, extra));
-  const panels = normalizeStory(story.map((panel, index) => ({ ...panel, index })));
+  return normalizeStory(localPanels(story));
+}
+
+async function writeScript(transcript: string, cast: CastBrief[], _context?: unknown, options: ScriptOptions = {}): Promise<ComicScript> {
+  await wait(DELAY_MS.script);
+  const mode = options.storyMode ?? DEFAULT_STORY_MODE;
+
+  if (includesAny(transcript, CRISIS_HINTS)) {
+    return { title: "", panels: [], mood: "rainy", heavy: true, checkInQuestions: [], safety: "crisis" };
+  }
+
+  const day = pickDay(transcript);
+  const toCast = castMapper(cast);
+  const days = [day];
+  if (transcript.includes(PAGES_HINT) || transcript.length > LONG_NOTE) {
+    days.push(sampleDays[(sampleDays.indexOf(day) + 1) % sampleDays.length]);
+  }
+  const groups: number[][] = [];
+  const panels: ScriptPanel[] = [];
+  for (const source of days) {
+    const page = mockPage(source, transcript, toCast, cast);
+    groups.push(page.map((_, i) => panels.length + i));
+    panels.push(...page.map((panel, i) => ({ ...panel, index: panels.length + i })));
+  }
+  const pages: ComicPage[] = groups.map((group) => ({ panels: group }));
 
   return {
     title: day.title,
-    panels,
+    panels: applyStoryMode(panels, groups, mode),
+    pages,
+    storyMode: mode,
     mood: day.mood,
     heavy: day.heavy,
     checkInQuestions: day.heavy ? (day.checkIn?.questions ?? []) : [],

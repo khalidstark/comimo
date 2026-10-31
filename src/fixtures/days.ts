@@ -330,3 +330,41 @@ export const sampleCheckInQuestions = DEADLINE_QUESTIONS;
 export function getSampleDay(id: string): Day | undefined {
   return sampleDays.find((day) => day.id === id);
 }
+
+/**
+ * First-person narration for each sample day's panels, in the speaker's own
+ * language mix, the way the storyteller writes it for Narrated and Both
+ * comics. The mock script model uses these; the sample pages keep their bubbles.
+ */
+export const sampleNarration: Record<string, string[]> = {
+  "sample-teta": [
+    "تيتا قررت إن الكيكة اللي فاتت كانت «تجربة». The second cake arrived like a verdict.",
+    "I looked at her, then at the empty plate from last week, and decided not to argue with a legend.",
+    "Under the table, Mishmish kept his own quiet watch, waiting for the world to drop a crumb.",
+    "Later, alone on the roof with the last slice, the city lit up below me one window at a time.",
+  ],
+  "sample-deadline": [
+    "Three tabs, two deadlines, and a clock that seemed to run faster every time I looked at it.",
+    "تيتا فتحت الباب بهدوء، and I realised I hadn't eaten a thing since morning.",
+    "At 9:40 I was still on slide four, the tea beside me long gone cold.",
+    "بعتّهم الساعة 11:52. Then I just sat there in the blue light of the screen, completely empty.",
+  ],
+  "sample-rooftop": [
+    "Karim عدّى عليا بعد الشغل, and the roof caught the last gold of the day just for us.",
+    "Tea in thin glasses, the city humming below, and for once nobody was in a hurry.",
+    "We promised each other every Thursday. We both knew we wouldn't keep it.",
+    "But when he turned at the stairs and asked about next week, I said yes before he finished.",
+  ],
+  "sample-sunday": [
+    "The rain started before I woke up, and by noon our plans had quietly drowned with it.",
+    "حاولت أذاكر, but Mishmish had claimed my notebook and would not be moved.",
+    "تيتا عملت شوربة عدس, and she mouthed every line of the old film a second before the actors did.",
+    "Not a bad day. Just a grey one, wrapped in a blanket, with a warm cat on my lap.",
+  ],
+  sample: [
+    "The morning was grey and the bus was late, which, honestly, was nothing new.",
+    "Twenty minutes later the road was still empty, and so was my patience.",
+    "Then a small dusty car rolled up, and Karim leaned out like he'd planned the whole thing.",
+    "By evening the bus stop was a tiny dot from the rooftop, and the shawarma tasted like a win.",
+  ],
+};
