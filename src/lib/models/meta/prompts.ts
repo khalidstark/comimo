@@ -236,6 +236,7 @@ export function panelPrompt(
   frame: PanelFrame,
   style: ArtStyleId,
   flashback = false,
+  fixes: string[] = [],
 ): string {
   const art = ART_STYLES[style];
   const lines: string[] = [`One panel of a diary comic, drawn as a single scene in ${frameShape(frame.aspect)}.`];
@@ -257,6 +258,9 @@ export function panelPrompt(
     lines.push("None of the recurring characters are in this panel; any people in it are small background figures.");
   }
 
+  if (fixes.length > 0) {
+    lines.push(`An earlier drawing of this panel got some characters wrong. Match their sheets exactly this time: ${fixes.join(" ")}`);
+  }
   lines.push(`Scene: ${scene}`);
   lines.push(FRAMING[shot]);
   if (flashback) lines.push(FLASHBACK);
@@ -321,5 +325,70 @@ export function photoSheetPrompt(input: SheetPromptInput): string {
     0,
     "Reference image 1 is a photo of the person this character is based on. Turn them into an original comic character in the art style below: keep what makes them recognisable (hair, face shape, glasses, facial hair, clothes and their colours) but draw them in the style, not as a photo. Ignore the photo's background, lighting, pose and crop.",
   );
+  return lines.join("\n");
+}
+
+/* ------------------------------------------------------------------ */
+/* Face check (03-03): Muse Spark judge and the Muse Image redraw      */
+/* ------------------------------------------------------------------ */
+
+export const JUDGE_PROMPT = `You check a comic for character consistency. For each character you get two images: their reference sheet (how they must always look) and a cut-out of them from one panel, found by a segmentation model (the background around them may be painted white).
+
+Decide whether the cut-out is the same character as the sheet. Compare only what identifies them and should never change: face shape, hair (colour, length, texture, style), glasses, facial hair, headscarf, the outfit and its colours, and markings and colours for animals.
+
+Ignore everything that is allowed to change from panel to panel: pose, angle, expression, size, crop, what they hold, the lighting and colour grading of the scene (night light, warm lamp light, a faded sepia memory), small rendering differences, and parts of them cut off by the crop. A cut-out that shows the wrong person, or no one, is not the same character.
+
+For each character: sameCharacter true or false; differences, the concrete things that are wrong (each under 12 words, like "grey hoodie instead of the olive bomber jacket" or "straight hair instead of curly"), empty when the same; confidence from 0 to 1 in your verdict. Report a difference only when you can clearly see it.`;
+
+/** The judge's answer for `count` characters, in the order they were given. */
+export function judgeSchema(count: number) {
+  return {
+    type: "object",
+    additionalProperties: false,
+    required: ["characters"],
+    properties: {
+      characters: {
+        type: "array",
+        minItems: count,
+        maxItems: count,
+        items: {
+          type: "object",
+          additionalProperties: false,
+          required: ["name", "sameCharacter", "differences", "confidence"],
+          properties: {
+            name: { type: "string" },
+            sameCharacter: { type: "boolean" },
+            differences: { type: "array", items: { type: "string" }, maxItems: 5 },
+            confidence: { type: "number" },
+          },
+        },
+      },
+    },
+  };
+}
+
+export interface RedrawTarget {
+  name: string;
+  /** Where they stand, e.g. "on the left". */
+  where: string;
+  /** What the judge saw wrong ("grey hoodie instead of the olive bomber jacket"). */
+  differences: string[];
+  /** 1-based image number of their sheet in the request. */
+  image: number;
+}
+
+/** An instruction edit of a finished panel (image 1): redraw only the drifted characters to match their sheets. */
+export function redrawPrompt(targets: RedrawTarget[], style: ArtStyleId): string {
+  const lines = ["Image 1 is a finished comic panel. Fix only the characters listed below so they match their character sheets; change nothing else."];
+  for (const target of targets) {
+    lines.push(
+      `- ${target.name}, ${target.where} in image 1, must look exactly like the character sheet in image ${target.image}. Fix: ${target.differences.join("; ")}.`,
+    );
+  }
+  lines.push(
+    "Keep each fixed character's pose, position, size, expression and action in the scene. Keep everything else in image 1 exactly as it is: the other characters, the background, the light, the colours, the composition, the framing and every empty area.",
+  );
+  lines.push(ART_STYLES[style].prompt);
+  lines.push(NO_TEXT);
   return lines.join("\n");
 }

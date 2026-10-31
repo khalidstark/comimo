@@ -8,7 +8,7 @@ import { fromWire, isRecord, isText, json, jsonError, modelErrorResponse, toWire
 import { BODY_LIMITS, readBoundedJson } from "@/lib/requestBody";
 import { isBeat, isShot } from "@/lib/layout/pickLayout";
 import { snapAspect } from "@/lib/layout/page";
-import type { ApiError, Corner, DialogueLine, LetteringZone, PanelFrame, PanelResponse, ScriptPanel, TextDir, UploadedReference } from "@/lib/types";
+import type { ApiError, CharacterRole, Corner, DialogueLine, LetteringZone, PanelFrame, PanelResponse, ScriptPanel, TextDir, UploadedReference } from "@/lib/types";
 
 /** Muse Image can take a minute or two with reasoning_strength "high", plus one retry. */
 export const maxDuration = 300;
@@ -16,6 +16,7 @@ export const maxDuration = 300;
 const MAX_CHARACTERS = 8;
 const MAX_LINES = 8;
 const DIRS: TextDir[] = ["rtl", "ltr", "auto"];
+const ROLES: CharacterRole[] = ["self", "friend", "family", "teacher", "pet", "other"];
 
 function isIdList(value: unknown): value is string[] {
   return Array.isArray(value) && value.length <= MAX_CHARACTERS && value.every((id) => isText(id, 100));
@@ -84,8 +85,9 @@ function parseReferences(value: unknown): CharacterReference[] | "stale" | "untr
   const references: CharacterReference[] = [];
   for (const item of value) {
     if (!isRecord(item)) return null;
-    const { characterId, name, look, image, sheetToken, fileToken } = item;
+    const { characterId, name, look, image, sheetToken, fileToken, role } = item;
     if (!isText(characterId, 100) || !isText(name, 100) || typeof look !== "string" || look.length > 2000) return null;
+    if (role !== undefined && !ROLES.includes(role as CharacterRole)) return null;
     const wire = image === undefined ? null : fromWire(image);
     if (image !== undefined && !wire) return null;
     // Only real PNG/JPEG/WebP sheets go to Meta (mock SVG sheets are dropped), and only
@@ -95,7 +97,7 @@ function parseReferences(value: unknown): CharacterReference[] | "stale" | "untr
     const fileId = fileToken === undefined ? null : verifyFileToken(fileToken);
     // A token this server can't use (another key, tampered) without the image: ask for the image instead.
     if (fileToken !== undefined && !fileId && !decoded) return "stale";
-    references.push({ characterId, name, look, image: decoded, ...(fileId ? { fileId } : {}) });
+    references.push({ characterId, name, look, image: decoded, ...(fileId ? { fileId } : {}), ...(role ? { role: role as CharacterRole } : {}) });
   }
   return references;
 }
@@ -104,8 +106,22 @@ function parseReferences(value: unknown): CharacterReference[] | "stale" | "untr
 function starterReferences(characterIds: string[]): CharacterReference[] {
   return characterIds.flatMap((id) => {
     const character = starterCastById[id];
-    return character ? [{ characterId: id, name: character.name, look: character.look, image: null }] : [];
+    return character ? [{ characterId: id, name: character.name, look: character.look, image: null, role: character.role }] : [];
   });
+}
+
+/**
+ * Test only (never set in production): COMIMO_TEST_DRIFT_PANEL=3 draws panel 3
+ * of every comic from the written looks alone, without reference sheets, so
+ * the face check has real drift to find and fix. The check itself still gets the sheets.
+ */
+function testDrift(panel: ScriptPanel): boolean {
+  const value = process.env.COMIMO_TEST_DRIFT_PANEL;
+  return value !== undefined && value !== "" && Number(value) === panel.index && process.env.VERCEL !== "1";
+}
+
+function withoutSheets(references: CharacterReference[]): CharacterReference[] {
+  return references.map((ref) => ({ characterId: ref.characterId, name: ref.name, look: ref.look, image: null, ...(ref.role ? { role: ref.role } : {}) }));
 }
 
 /** An uploaded sheet can't be used any more; the browser resends the sheets themselves. */
@@ -180,13 +196,14 @@ export async function POST(request: Request) {
 
     let drawn;
     try {
-      drawn = await models.drawPanel(panel, inPanel, { frame: panelFrame, style }, context);
+      drawn = await models.drawPanel(panel, testDrift(panel) ? withoutSheets(inPanel) : inPanel, { frame: panelFrame, style }, context);
     } catch (error) {
       if (!isMissingFileError(error)) throw error;
       // Uploaded sheets expire after 30 days; the browser resends the images and gets fresh tokens.
       return staleReference();
     }
-    const { driftedCharacterIds, fixedImage } = await models.checkConsistency(drawn, inPanel, context);
+    const checked = await models.checkConsistency(drawn, inPanel, { panel, frame: panelFrame, style }, context);
+    const { driftedCharacterIds, fixedCharacterIds, fixedImage, method, sam, figures } = checked;
     return json<PanelResponse>(
       {
         mode: source,
@@ -194,9 +211,12 @@ export async function POST(request: Request) {
         uploaded,
         consistency: {
           driftedCharacterIds,
-          fixedCharacterIds: fixedImage ? driftedCharacterIds : [],
+          fixedCharacterIds: fixedImage ? fixedCharacterIds : [],
           before: fixedImage ? toWire(drawn) : null,
+          method,
+          ...(sam ? { sam } : {}),
         },
+        ...(figures ? { figures } : {}),
       },
       source,
     );
