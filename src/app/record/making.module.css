@@ -400,8 +400,8 @@
 
 .drawingTag {
   position: absolute;
-  inset-block-end: 0.5rem;
-  inset-inline-end: 0.5rem;
+  bottom: calc(var(--ib) + 0.5rem);
+  right: calc(var(--ir) + 0.5rem);
   z-index: 2;
   rotate: 2deg;
 }
