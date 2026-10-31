@@ -16,6 +16,20 @@ afterEach(async () => {
 });
 
 describe("FileKV", () => {
+  it("keeps hash fields apart and survives a second store on the same folder", async () => {
+    const kv = new FileKV(dir);
+    expect(await kv.hgetall("h")).toEqual({});
+    expect(await kv.hget("h", "a")).toBeNull();
+    await Promise.all([kv.hset("h", "a", "1"), kv.hset("h", "b", "2"), kv.hset("h", "c", "3")]);
+    await kv.hdel("h", "c");
+    expect(await new FileKV(dir).hgetall("h")).toEqual({ a: "1", b: "2" });
+    expect(await kv.hget("h", "b")).toBe("2");
+    expect(await kv.hget("h", "toString")).toBeNull();
+    await kv.hdel("h", "a", "b");
+    expect(await kv.hgetall("h")).toEqual({});
+    await expect(kv.hset("h", "__proto__", "x")).rejects.toThrow();
+  });
+
   it("stores, reads and deletes values", async () => {
     const kv = new FileKV(dir);
     expect(await kv.get("a")).toBeNull();
