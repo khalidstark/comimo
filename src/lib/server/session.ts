@@ -53,8 +53,20 @@ function accountSessionsKey(accountId: string): string {
   return `sessions:${accountId}`;
 }
 
-/** Start a session for an account; returns the id for the cookie. */
+/** The account record's key (see auth.ts); a session counts only while it exists. */
+const accountRecordKey = (accountId: string) => `account:${accountId}`;
+
+export class NoSuchAccountError extends Error {
+  name = "NoSuchAccountError";
+}
+
+/**
+ * Start a session for an account; returns the id for the cookie. Refuses an
+ * account whose record is gone (deleted, or being deleted), so a sign-in
+ * racing an account deletion can't bring a session back.
+ */
 export async function createSession(account: SessionAccount, kv: KV = getKV()): Promise<string> {
+  if (!(await kv.get(accountRecordKey(account.id)))) throw new NoSuchAccountError("No such account");
   const sessionId = randomBytes(32).toString("base64url");
   const record: SessionRecord = { accountId: account.id, name: account.name, createdAt: new Date().toISOString() };
   await kv.set(sessionKey(sessionId), JSON.stringify(record), { ttlSec: SESSION_TTL_SEC });
@@ -68,17 +80,25 @@ export async function createSession(account: SessionAccount, kv: KV = getKV()): 
   return sessionId;
 }
 
-/** The account behind a session id, or `null` for a missing, malformed, expired or signed-out session. */
+/**
+ * The account behind a session id, or `null` for a missing, malformed,
+ * expired or signed-out session, and for any session whose account record is
+ * gone: deleting the account revokes every session at once, even one the
+ * per-account session list missed.
+ */
 export async function readSession(sessionId: string | null | undefined, kv: KV = getKV()): Promise<SessionAccount | null> {
   if (!sessionId || !SESSION_ID.test(sessionId)) return null;
   const raw = await kv.get(sessionKey(sessionId));
   if (!raw) return null;
+  let record: SessionRecord;
   try {
-    const record = JSON.parse(raw) as SessionRecord;
-    return typeof record.accountId === "string" ? { id: record.accountId, name: record.name } : null;
+    record = JSON.parse(raw) as SessionRecord;
   } catch {
     return null;
   }
+  if (typeof record.accountId !== "string") return null;
+  if (!(await kv.get(accountRecordKey(record.accountId)))) return null;
+  return { id: record.accountId, name: record.name };
 }
 
 export async function destroySession(sessionId: string | null | undefined, kv: KV = getKV()): Promise<void> {

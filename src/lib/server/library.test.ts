@@ -19,12 +19,16 @@ let cookieA: string;
 let cookieB: string;
 
 const ORIGIN = "http://localhost:3190";
+const ACCOUNT_IDS = ["11111111-1111-4111-8111-111111111111", "22222222-2222-4222-8222-222222222222"];
 const PNG = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3, 4]);
 
 beforeAll(async () => {
   dir = await mkdtemp(join(tmpdir(), "comimo-lib-"));
   process.env.COMIMO_DATA_DIR = dir;
   const { createSession, sessionCookieName } = await import("./session");
+  const { getKV } = await import("./kv");
+  // Sessions count only while their account record exists.
+  for (const id of ACCOUNT_IDS) await getKV().set(`account:${id}`, JSON.stringify({ id }));
   cookieA = `${sessionCookieName()}=${await createSession({ id: "11111111-1111-4111-8111-111111111111", name: "A" })}`;
   cookieB = `${sessionCookieName()}=${await createSession({ id: "22222222-2222-4222-8222-222222222222", name: "B" })}`;
   routes = {
