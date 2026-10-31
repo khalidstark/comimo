@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Nav } from "@/components/Nav";
+import { MoveComics } from "@/components/account/MoveComics";
 import { fontVariables } from "@/lib/fonts";
 import "./globals.css";
 
@@ -9,7 +10,7 @@ export const metadata: Metadata = {
     template: "%s | Comimo",
   },
   description:
-    "Talk about your day in Arabic, English or both, and get back a short comic starring your own cast. Your days stay on your device.",
+    "Talk about your day in Arabic, English or both, and get back a short comic starring your own cast. Your comic book follows your account to every device.",
 };
 
 export const viewport: Viewport = {
@@ -41,6 +42,7 @@ export default function RootLayout({
         </a>
         <Nav />
         {children}
+        <MoveComics />
       </body>
     </html>
   );
