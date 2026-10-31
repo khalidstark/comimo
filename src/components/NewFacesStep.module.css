@@ -1,0 +1,265 @@
+/* "New faces in this story": a casting call pinned to the progress page.
+   Zine tokens only: ink border, sunflower tag, pink stamp, dashed mugshots.
+   Motion is a stamp and a short wipe; reduced motion makes them instant. */
+
+.step {
+  display: grid;
+  gap: var(--space-s);
+  padding: var(--space-s);
+  background: var(--paper);
+  border: var(--panel-border-thin) solid var(--line);
+  border-radius: var(--radius-panel);
+  animation: call-in 520ms var(--ease-ink) both;
+}
+
+@media (min-width: 48rem) {
+  .step {
+    padding: var(--space-m);
+  }
+}
+
+@keyframes call-in {
+  from {
+    clip-path: inset(0 0 100% 0);
+  }
+  to {
+    clip-path: inset(0 0 -2% 0);
+  }
+}
+
+.head {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-3xs);
+}
+
+/* A yellow tag taped to the top of the call */
+.tag {
+  padding: 0.15em 0.6em;
+  background: var(--highlight);
+  color: #1b2148;
+  border: var(--panel-border-thin) solid var(--line);
+  font-family: var(--font-display-stack);
+  font-size: var(--step--1);
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  rotate: -2deg;
+}
+
+.title {
+  font-family: var(--font-lettering-stack);
+  font-size: var(--step-2);
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.title:focus {
+  outline: none;
+}
+
+.lede {
+  max-inline-size: 46ch;
+}
+
+.people {
+  display: grid;
+  gap: var(--space-s);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.person {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--space-s);
+  align-items: start;
+  padding: var(--space-s);
+  background: var(--surface);
+  border: var(--panel-border-thin) solid var(--line);
+  border-radius: var(--radius-sticker);
+  box-shadow: 4px 4px 0 color-mix(in srgb, var(--highlight) 80%, transparent);
+}
+
+.person:nth-child(even) .mug {
+  rotate: 3deg;
+}
+
+/* A dashed mugshot waiting to be filled in */
+.mug {
+  display: grid;
+  place-items: center;
+  inline-size: 3.6rem;
+  aspect-ratio: 5 / 6;
+  border: 2px dashed var(--line);
+  border-radius: 12px;
+  background: repeating-linear-gradient(-45deg, transparent 0 7px, color-mix(in srgb, var(--ink) 7%, transparent) 7px 8px), var(--paper);
+  font-family: var(--font-lettering-stack);
+  font-size: var(--step-3);
+  font-weight: 700;
+  line-height: 1;
+  color: var(--ink-soft);
+  rotate: -3deg;
+}
+
+.person[data-choice="cast"] .mug {
+  border-style: solid;
+  background: var(--highlight);
+  color: #1b2148;
+}
+
+.body {
+  display: grid;
+  gap: var(--space-2xs);
+  min-inline-size: 0;
+}
+
+.name {
+  font-family: var(--font-lettering-stack);
+  font-size: var(--step-1);
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.said {
+  color: var(--ink-soft);
+  font-size: var(--step--1);
+  font-weight: 500;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2xs) var(--space-xs);
+}
+
+.actions :global(.btn) {
+  min-block-size: 2.75rem;
+  padding-inline: 1em;
+  font-size: var(--step--1);
+}
+
+.textButton {
+  min-block-size: 2.75rem;
+  padding: 0 var(--space-3xs);
+  border: 0;
+  background: none;
+  color: var(--ink-soft);
+  font-family: var(--font-display-stack);
+  font-size: var(--step--1);
+  font-weight: 700;
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 0.2em;
+  cursor: pointer;
+}
+
+.textButton:disabled,
+.actions :global(.btn):disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.settled {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2xs) var(--space-s);
+}
+
+/* The decision lands as a rubber stamp */
+.stamp {
+  padding: 0.2em 0.7em;
+  border: 2px solid var(--accent);
+  border-radius: 6px;
+  color: var(--accent-text, var(--accent));
+  font-family: var(--font-display-stack);
+  font-size: var(--step--1);
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  rotate: -2deg;
+  animation: stamp 360ms var(--ease-pop) both;
+}
+
+.person[data-choice="cast"] .stamp {
+  background: var(--accent);
+  color: #ffffff;
+}
+
+@keyframes stamp {
+  from {
+    scale: 1.6;
+    opacity: 0;
+  }
+  to {
+    scale: 1;
+    opacity: 1;
+  }
+}
+
+.drawing {
+  font-family: var(--font-lettering-stack);
+  font-weight: 600;
+}
+
+.drawing span {
+  display: inline-block;
+  animation: dots 1s steps(4, jump-none) infinite;
+}
+
+@keyframes dots {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+.note {
+  font-size: var(--step--1);
+}
+
+.error {
+  color: var(--accent-text, var(--accent));
+  font-size: var(--step--1);
+  font-weight: 600;
+}
+
+.form {
+  padding-block-start: var(--space-2xs);
+}
+
+.foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-xs) var(--space-s);
+}
+
+.foot :global(.btn):disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.hint {
+  flex-basis: 100%;
+  color: var(--ink-soft);
+  font-size: var(--step--1);
+  font-weight: 500;
+}
+
+@media (max-width: 30rem) {
+  .person {
+    gap: var(--space-xs);
+    padding: var(--space-xs);
+  }
+
+  .mug {
+    inline-size: 2.6rem;
+    font-size: var(--step-2);
+  }
+}
