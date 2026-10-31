@@ -273,37 +273,46 @@
   line-height: 1.45;
 }
 
-/* ---------- Panels ---------- */
+/* ---------- Panels ----------
+   The frames sit in the comic's own page layout (page.module.css), so the
+   page builds in its final shape. */
 .frames {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--gutter);
-  margin: 0;
-  padding: 0;
-  list-style: none;
+  border: var(--panel-border-thin) solid var(--line);
 }
 
 .frame {
-  position: relative;
-  aspect-ratio: 3 / 2;
-  background: var(--paper);
-  border: var(--panel-border-thin) solid var(--line);
-  border-radius: var(--radius-panel);
-  overflow: hidden;
-  perspective: 900px;
   transition:
     transform var(--dur-panel) var(--ease-ink),
-    box-shadow var(--dur-panel) var(--ease-ink);
+    filter var(--dur-panel) var(--ease-ink);
 }
 
-/* An odd last panel spans the page, like a closing wide shot */
-.frame:last-child:nth-child(odd) {
-  grid-column: 1 / -1;
-  aspect-ratio: 3 / 1.25;
+/* The frame cut to its slot's shape */
+.cut {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  clip-path: var(--clip);
+  background: var(--paper);
+  perspective: 900px;
 }
 
-/* Pencilled: dashed border, the scene written in blue-pencil lettering */
-.frame[data-status="waiting"] {
+.frames[data-style="painterly"] .cut {
+  background: #1d1d21;
+  color: #e9e4da;
+}
+
+/* Half of the line falls outside the clip, so it is drawn twice as thick */
+.outline polygon {
+  stroke-width: calc(var(--panel-stroke) * 1.6);
+}
+
+.frames[data-style="painterly"] .outline polygon {
+  stroke: #3a3a40;
+  stroke-width: 2px;
+}
+
+/* Pencilled: dashed line, the scene written in blue-pencil lettering */
+.frame[data-status="waiting"] .cut {
   background:
     repeating-linear-gradient(
       -45deg,
@@ -311,14 +320,23 @@
       color-mix(in srgb, var(--ink) 6%, transparent) 9px 10px
     ),
     var(--paper);
-  border-style: dashed;
-  border-color: color-mix(in srgb, var(--ink) 45%, transparent);
+}
+
+.frames[data-style="painterly"] .frame[data-status="waiting"] .cut {
+  background:
+    repeating-linear-gradient(-45deg, transparent 0 9px, rgb(255 255 255 / 0.05) 9px 10px),
+    #17171a;
+}
+
+.frame[data-status="waiting"] .outline polygon {
+  stroke-dasharray: 6 5;
+  opacity: 0.55;
 }
 
 .frameNo {
   position: absolute;
-  inset-block-start: 0;
-  inset-inline-start: 0;
+  top: var(--it);
+  left: var(--il);
   z-index: 3;
   display: grid;
   place-items: center;
@@ -357,9 +375,9 @@
 
 /* Drawing: the camera pushes in on this panel, action lines spin behind */
 .frame[data-status="drawing"] {
-  z-index: 2;
+  z-index: 4;
   transform: scale(1.035) rotate(-0.6deg);
-  box-shadow: 4px 4px 0 var(--accent);
+  filter: drop-shadow(4px 4px 0 var(--accent));
 }
 
 .speed {
@@ -498,9 +516,9 @@
   font-size: var(--step--1);
 }
 
-.frame[data-status="error"] {
-  border-style: dashed;
-  border-color: var(--accent);
+.frame[data-status="error"] .outline polygon {
+  stroke: var(--accent);
+  stroke-dasharray: 6 5;
 }
 
 /* Finished: a sunflower burst slapped on the bottom corner of the page */

@@ -188,7 +188,8 @@ export class ComicPipeline {
   private state: PipelineState = initialState();
   private readonly listeners = new Set<() => void>();
   private controller: AbortController | null = null;
-  private readonly dayId = newId();
+  /** The new day's id; also seeds its page layout. */
+  readonly dayId = newId();
   private readonly createdAt = new Date().toISOString();
   private cast: Character[] | null = null;
   private readonly references = new Map<string, Promise<WireImage | undefined>>();

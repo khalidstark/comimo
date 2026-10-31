@@ -186,7 +186,7 @@ function panelSvg(panel: ScriptPanel, references: CharacterReference[], frame: P
     w: side === "left" || side === "right" ? W * (1 - size) : W,
     h: side === "top" ? H * (1 - size) : H,
   };
-  const font = Math.max(13, Math.min(22, Math.min(area.w, area.h) / 9));
+  const font = Math.max(12, Math.min(18, Math.min(area.w, area.h) / 10));
   const names = panel.characterIds.map(
     (id) => references.find((ref) => ref.characterId === id)?.name ?? starterCastById[id]?.name ?? id,
   );
