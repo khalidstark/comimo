@@ -2,16 +2,18 @@
 /**
  * Bundles the walkthrough once, then renders what is asked for:
  *
- *   node scripts/render-all.mjs --out <dir> [--stills] [--video] [--web <dir>]
+ *   node scripts/render-all.mjs --out <dir> [--stills] [--video] [--scenes] [--web]
  *
  *   --stills  key frames of every scene, wide and tall, into <out>/stills
  *   --video   the full walkthrough as H.264 MP4, 1920x1080 and 1080x1920,
  *             plus the English captions as WebVTT next to them
  *   --scenes  each scene on its own (wide) for the demo cut, into <out>/scenes
+ *   --web     a 720p copy, poster and captions for the home page (public/video)
  *
  * Rendering downloads Chrome Headless Shell on first use.
  */
-import { mkdirSync, writeFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import { mkdirSync, renameSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { bundle } from "@remotion/bundler";
 import { renderMedia, renderStill, selectComposition } from "@remotion/renderer";
@@ -35,6 +37,13 @@ const STILLS = {
   CheckIn: [70, 190],
   Finale: [120, 250, 330, 440],
 };
+
+/** Brings the mix to -16 LUFS (web/social loudness) without touching the picture. */
+function loudnorm(file) {
+  const tmp = file.replace(/\.mp4$/, ".norm.mp4");
+  execFileSync("ffmpeg", ["-loglevel", "error", "-y", "-i", file, "-c:v", "copy", "-af", "loudnorm=I=-16:TP=-1.5:LRA=11", "-ar", "48000", "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart", tmp], { stdio: "inherit" });
+  renameSync(tmp, file);
+}
 
 console.log("Bundling…");
 const serveUrl = await bundle({ entryPoint: path.join(VIDEO, "src/index.ts"), publicDir: path.join(VIDEO, "public") });
@@ -104,6 +113,7 @@ if (has("video")) {
         if (pct !== last) console.log(`${name}: ${pct}%`), (last = pct);
       },
     });
+    loudnorm(output);
     console.log(`Wrote ${output}`);
   }
   writeFileSync(path.join(OUT, "comimo-walkthrough.en.vtt"), vtt());
@@ -117,8 +127,25 @@ if (has("scenes")) {
     const composition = await selectComposition({ serveUrl, id, inputProps: { id: scene.id } });
     const output = path.join(dir, `${id}.mp4`);
     await renderMedia({ serveUrl, composition, codec: "h264", crf: 18, pixelFormat: "yuv420p", concurrency: 6, outputLocation: output, inputProps: { id: scene.id } });
+    loudnorm(output);
     console.log(`Wrote ${output}`);
   }
 }
 
 if (value("vtt")) writeFileSync(path.resolve(value("vtt")), vtt());
+
+/**
+ * --web: the small copy the home page plays (public/video): 720p H.264 with
+ * fast start, a poster frame and the captions. Needs ffmpeg and a prior --video.
+ */
+if (has("web")) {
+  const web = path.join(VIDEO, "../public/video");
+  mkdirSync(web, { recursive: true });
+  const master = path.join(OUT, "comimo-walkthrough-1920x1080.mp4");
+  const run = (...ffmpegArgs) => execFileSync("ffmpeg", ["-loglevel", "error", "-y", ...ffmpegArgs], { stdio: "inherit" });
+  run("-i", master, "-vf", "scale=1280:720:flags=lanczos", "-c:v", "libx264", "-preset", "slow", "-crf", "27", "-profile:v", "high", "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "96k", "-movflags", "+faststart", path.join(web, "comimo-walkthrough.mp4"));
+  // Poster: the hook's headline, fully in.
+  run("-ss", "3.2", "-i", master, "-frames:v", "1", "-vf", "scale=1280:720:flags=lanczos", "-q:v", "4", path.join(web, "comimo-walkthrough-poster.jpg"));
+  writeFileSync(path.join(web, "comimo-walkthrough.en.vtt"), vtt());
+  console.log(`Wrote the web copy to ${web}`);
+}
