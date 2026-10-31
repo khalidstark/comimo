@@ -68,7 +68,10 @@ export function DayReader({ id }: { id: string }) {
       const [cast, days] = await Promise.all([listCast(), stored ? listDays() : Promise.resolve([])]);
       const castById = new Map<string, Character>(cast.map((member) => [member.id, member]));
       const member = (characterId: string) => castById.get(characterId) ?? starterCastById[characterId];
-      const nameOf = (characterId: string) => member(characterId)?.name ?? characterId;
+      // Names kept on the panels when the day was made cover characters removed since (ISS-007).
+      const snapshot = new Map(day.panels.flatMap((panel) => Object.entries(panel.names ?? {})));
+      const nameOf = (characterId: string) =>
+        castById.get(characterId)?.name ?? snapshot.get(characterId) ?? starterCastById[characterId]?.name ?? "Someone";
 
       // Resolve every image first, then build the views synchronously.
       const images = new Map<string, PanelArt | null>();
