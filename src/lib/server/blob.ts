@@ -1,4 +1,5 @@
 import "server-only";
+import { randomBytes } from "node:crypto";
 import { mkdir, readFile, readdir, rename, rm, stat, writeFile } from "node:fs/promises";
 import { dirname, join, resolve, sep } from "node:path";
 
@@ -84,9 +85,12 @@ export class FileBlobStore implements BlobStore {
     const file = this.fileOf(path);
     const type = checkType(contentType);
     await mkdir(dirname(file), { recursive: true, mode: 0o700 });
-    const temp = `${file}.${process.pid}.tmp`;
+    // A unique temp name per write, so two writes to one path can't trip over each other's file.
+    const temp = `${file}.${process.pid}.${randomBytes(6).toString("hex")}.tmp`;
+    const sideTemp = `${temp}.meta`;
     await writeFile(temp, data, { mode: 0o600 });
-    await writeFile(`${file}.meta.json`, JSON.stringify({ type } satisfies Sidecar), { mode: 0o600 });
+    await writeFile(sideTemp, JSON.stringify({ type } satisfies Sidecar), { mode: 0o600 });
+    await rename(sideTemp, `${file}.meta.json`);
     await rename(temp, file);
   }
 
@@ -141,7 +145,7 @@ export class FileBlobStore implements BlobStore {
       for (const name of entries) {
         const full = join(dir, name);
         if ((await stat(full)).isDirectory()) await walk(full, `${rel}${name}/`);
-        else if (!name.endsWith(".meta.json") && !name.endsWith(".tmp")) found.push(`${rel}${name}`);
+        else if (!name.endsWith(".meta.json") && !name.endsWith(".tmp") && !name.endsWith(".tmp.meta")) found.push(`${rel}${name}`);
       }
     };
     await walk(folder, prefix);

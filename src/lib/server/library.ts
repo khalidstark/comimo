@@ -1,7 +1,7 @@
 import "server-only";
 import { sniffImageType } from "@/lib/models/meta/image";
 import { getBlobStore, type BlobStore, type StoredBlob } from "./blob";
-import { getKV, type KV } from "./kv";
+import { getKV, sizeOf, type KV } from "./kv";
 import { hit } from "./rateLimit";
 
 /**
@@ -169,6 +169,8 @@ function entries(raw: Record<string, string>): Record<string, IndexEntry> {
 
 /** What the account has, without the records themselves: enough for a device to know what to fetch and send. */
 export async function libraryIndex(account: string, kv: KV = getKV()): Promise<LibraryIndex> {
+  // At most once an hour per account (every device syncs through here), recount the stored image bytes.
+  if (await kv.set(`lib:${account}:imgrecount`, "1", { ttlSec: 3600, onlyIfNew: true })) await recountImageBytes(account, kv);
   const [days, cast, meta, images, albums] = await Promise.all([
     kv.hgetall(keys.index(account, "days")),
     kv.hgetall(keys.index(account, "cast")),
@@ -352,24 +354,32 @@ export async function putImage(
     });
   }
 
-  const previous = parseImage(await kv.hget(keys.images(account), imageId));
-  if (!previous && Object.keys(await kv.hgetall(keys.images(account))).length >= limits.images) {
-    return fail(507, "Your comic book has no room for more pictures.");
+  // Reserve the bytes before writing anything: the entry and the running total
+  // move together in one atomic step, so parallel uploads (even to the same id)
+  // can't double-count, drift or slip past the quota.
+  const entryKeyArgs = [keys.images(account), keys.imageBytes(account)] as const;
+  const previous = await kv.hget(keys.images(account), imageId);
+  const entry = JSON.stringify({ t: type, s: bytes.byteLength } satisfies ImageEntry);
+  const caps = { maxTotal: limits.imageBytes, maxCount: limits.images };
+  let reserved = await kv.sizedPut(...entryKeyArgs, imageId, entry, bytes.byteLength, caps);
+  if (!reserved.ok && reserved.reason === "total") {
+    // The total may have drifted (a crash between steps): recount from the entries and try once more.
+    await kv.sizedRecount(...entryKeyArgs);
+    reserved = await kv.sizedPut(...entryKeyArgs, imageId, entry, bytes.byteLength, caps);
   }
-  const delta = bytes.byteLength - (previous?.s ?? 0);
-  const total = await kv.incr(keys.imageBytes(account), { by: delta });
-  if (delta > 0 && total > limits.imageBytes) {
-    await kv.incr(keys.imageBytes(account), { by: -delta });
+  if (!reserved.ok) {
+    await Promise.all([hourly.undo(), daily.undo()]);
     return fail(507, "Your comic book has no room for more pictures.");
   }
 
   try {
     await blobs.put(imagePath(account, imageId), bytes, type);
   } catch (error) {
-    await kv.incr(keys.imageBytes(account), { by: -delta });
+    // Put the accounting back as it was: the old entry (whose bytes are still stored), or none.
+    if (previous) await kv.sizedPut(...entryKeyArgs, imageId, previous, sizeOf(previous), { maxTotal: Number.MAX_SAFE_INTEGER, maxCount: Number.MAX_SAFE_INTEGER });
+    else await kv.sizedDel(...entryKeyArgs, [imageId]);
     throw error;
   }
-  await kv.hset(keys.images(account), imageId, JSON.stringify({ t: type, s: bytes.byteLength } satisfies ImageEntry));
   return { ok: true, value: { size: bytes.byteLength } };
 }
 
@@ -382,15 +392,16 @@ export async function getImage(account: string, imageId: string, kv: KV = getKV(
 }
 
 async function deleteImages(account: string, imageIds: string[], kv: KV, blobs: BlobStore): Promise<void> {
-  const known: { id: string; size: number }[] = [];
-  for (const id of imageIds) {
-    const entry = parseImage(await kv.hget(keys.images(account), id));
-    if (entry) known.push({ id, size: entry.s });
-  }
-  if (!known.length) return;
-  await blobs.del(known.map(({ id }) => imagePath(account, id)));
-  await kv.hdel(keys.images(account), ...known.map(({ id }) => id));
-  await kv.incr(keys.imageBytes(account), { by: -known.reduce((sum, { size }) => sum + size, 0) });
+  const ids = imageIds.filter(isRecordId);
+  if (!ids.length) return;
+  // Entries and total first (atomically), then the bytes.
+  await kv.sizedDel(keys.images(account), keys.imageBytes(account), ids);
+  await blobs.del(ids.map((id) => imagePath(account, id)));
+}
+
+/** Recount the account's stored image bytes from its entries (repairs drift). */
+export function recountImageBytes(account: string, kv: KV = getKV()): Promise<number> {
+  return kv.sizedRecount(keys.images(account), keys.imageBytes(account));
 }
 
 /* ---------- Deleting everything ---------- */
