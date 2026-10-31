@@ -158,7 +158,7 @@ export function pickReferences(panel: ScriptPanel, references: CharacterReferenc
 export async function drawPanel(
   panel: ScriptPanel,
   references: CharacterReference[],
-  { frame, style }: PanelOptions,
+  { frame, style, fixes }: PanelOptions,
   context?: ModelCallContext,
 ): Promise<ModelImage> {
   const byId = new Map(references.map((ref) => [ref.characterId, ref]));
@@ -177,7 +177,7 @@ export async function drawPanel(
     characters.push({ name: ref.name, look: ref.look, image });
   }
 
-  const prompt = panelPrompt(panel.scene, characters, panel.shot ?? "medium", frame, style, panel.flashback === true);
+  const prompt = panelPrompt(panel.scene, characters, panel.shot ?? "medium", frame, style, panel.flashback === true, fixes);
   const body = { ...baseRequest(context), size: drawSize(frame.aspect), prompt };
   // Edits need at least one image; a panel with no drawn characters is plain text-to-image.
   return images.length > 0
