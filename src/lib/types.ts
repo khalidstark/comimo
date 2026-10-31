@@ -76,6 +76,8 @@ export interface SpriteSheet {
 export interface Character {
   id: string;
   name: string;
+  /** Other names and spellings they go by, in Arabic or English (e.g. "Teta", "تيتا"). */
+  aliases?: string[];
   role: CharacterRole;
   /** How the role reads in the UI, e.g. "Best friend". */
   roleLabel: string;
@@ -120,7 +122,7 @@ export interface ReferenceFile {
 }
 
 /** The part of a character the script model needs. */
-export type CastBrief = Pick<Character, "id" | "name" | "role" | "look" | "personality">;
+export type CastBrief = Pick<Character, "id" | "name" | "role" | "look" | "personality" | "aliases">;
 
 /* ------------------------------------------------------------------ */
 /* Days and panels                                                     */
@@ -194,6 +196,8 @@ export interface Panel {
   dialogue: DialogueLine[];
   /** Characters drawn in this panel. */
   characterIds: string[];
+  /** Names of this panel's characters and speakers when it was made, so a later rename or delete can't turn them into ids. */
+  names?: Record<string, string>;
   /** Camera framing; missing on days made before page layouts. */
   shot?: Shot;
   /** Story beat; missing on days made before page layouts. */
@@ -237,6 +241,8 @@ export interface Day {
   artStyle?: ArtStyleId;
   /** The page layout picked before drawing; days made before layouts get one picked when read. */
   layout?: PageLayoutChoice;
+  /** Named people in the note who aren't in the cast yet; offered once after the comic. */
+  newPeople?: NewPerson[];
   /** True for the invented sample days. */
   sample?: boolean;
   createdAt: string;
@@ -268,6 +274,8 @@ export interface ComicScript {
   /** Gentle reflection questions; empty unless `heavy`. */
   checkInQuestions: string[];
   safety: SafetyFlag;
+  /** Named people in the note who aren't in the cast; drawn only as unnamed background figures. */
+  newPeople?: NewPerson[];
 }
 
 /** An image in a JSON response, base64 encoded. */
@@ -346,6 +354,10 @@ export interface CharacterSheetRequest {
   look: string;
   /** Defaults to "zine". */
   style?: ArtStyleId;
+  /** The person cut from their photo (from /api/character/photo): used for this one drawing only, never kept or reused. */
+  photo?: WireImage;
+  /** Must be true with `photo`: the user has this person's permission. */
+  consent?: boolean;
 }
 export interface CharacterSheetResponse {
   mode: ModelMode;
@@ -354,10 +366,57 @@ export interface CharacterSheetResponse {
   sheetToken: string | null;
   /** The sheet uploaded to the Files API; null when the upload failed or in mock mode. */
   fileToken: string | null;
+  /** True when Muse Image wouldn't draw from the photo and the sheet was drawn from the written look instead. */
+  photoRefused?: boolean;
 }
 
 export interface ApiError {
   error: string;
   /** Machine-readable reason, e.g. "stale-reference" when an uploaded sheet is gone. */
   code?: string;
+}
+
+/* ------------------------------------------------------------------ */
+/* New people, sprites and photos                                      */
+/* ------------------------------------------------------------------ */
+
+/** Someone the note names who isn't in the cast, as the script model heard them. */
+export interface NewPerson {
+  /** How they are best called, e.g. "Omar". */
+  name: string;
+  /** Every way the note said their name ("Omar", "عمر"). */
+  mentionedAs: string[];
+  role: CharacterRole;
+  /** Look details the note gave, in English; "" when it said nothing. */
+  look: string;
+}
+
+/** POST /api/sprite: animate a character from one of their server-drawn reference sheets. */
+export interface SpriteRequest {
+  characterId: string;
+  name: string;
+  role: CharacterRole;
+  look: string;
+  /** The reference sheet, with the token proving this server drew it. */
+  sheet: WireImage;
+  sheetToken?: string;
+}
+export interface SpriteResponse {
+  mode: ModelMode;
+  /** The 6 x 4 sheet (idle, blink, talk, wave), transparent WebP. */
+  image: WireImage;
+  /** The idle frame on its own, for small portraits. */
+  portrait: WireImage;
+  frameWidth: number;
+  frameHeight: number;
+  columns: number;
+}
+
+/** POST /api/character/photo (multipart: `photo`, `consent`): a look description from a reference photo. */
+export interface PhotoLookResponse {
+  mode: ModelMode;
+  /** Editable description of how the person looks. */
+  look: string;
+  /** The person cut from the photo, for drawing their sheet once; never stored. */
+  crop: WireImage;
 }

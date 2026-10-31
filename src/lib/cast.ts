@@ -1,5 +1,6 @@
 import { artAt } from "@/art/manifest";
 import { starterCast, starterCastById } from "@/fixtures/cast";
+import { ALIAS_LIMITS, namesOf, normalizeName, parseAliases } from "./names";
 import { getMeta, listCast, newId, putImage, saveCharacter, setMeta } from "./store";
 import type { ArtStyleId } from "./artStyles";
 import type {
@@ -29,6 +30,16 @@ function byShippedOrder(a: Character, b: Character): number {
 const SEEDED_KEY = "starterCastSeeded";
 
 /**
+ * Starter characters stored before aliases existed have none; they get the
+ * shipped ones ("Teta", "تيتا") until the user edits them.
+ */
+function withStarterAliases(character: Character): Character {
+  if (character.aliases !== undefined || !character.starter) return character;
+  const shipped = starterCastById[character.id]?.aliases;
+  return shipped ? { ...character, aliases: shipped } : character;
+}
+
+/**
  * The user's cast from the store. The invented starter cast is written once,
  * on the first run; after that the store is the truth, so a cast the user
  * emptied stays empty.
@@ -38,7 +49,7 @@ export async function loadCast(): Promise<Character[]> {
   if (seeded || cast.length > 0) {
     // Devices seeded before the flag existed get it now.
     if (!seeded) await setMeta(SEEDED_KEY, true);
-    return [...cast].sort(byShippedOrder);
+    return cast.map(withStarterAliases).sort(byShippedOrder);
   }
   const saved = await Promise.all(starterCast.map((character) => saveCharacter(character)));
   if (saved.every(Boolean)) await setMeta(SEEDED_KEY, true);
@@ -157,6 +168,8 @@ export function defaultRoleLabel(role: CharacterRole): string {
 
 export interface CharacterDraft {
   name: string;
+  /** Other names, comma separated as typed ("Teta, تيتا"). */
+  aliases: string;
   role: CharacterRole;
   roleLabel: string;
   look: string;
@@ -167,7 +180,7 @@ export interface CharacterDraft {
 export type DraftField = keyof CharacterDraft;
 export type DraftErrors = Partial<Record<DraftField, string>>;
 
-export const LIMITS = { name: 32, roleLabel: 24, look: 400, personality: 300, line: 90 } as const;
+export const LIMITS = { name: 32, aliases: 200, roleLabel: 24, look: 400, personality: 300, line: 90 } as const;
 const MIN_LOOK = 12;
 
 /** Letters from any script, marks, digits, spaces and a little punctuation names use (O'Neil, Al-Sayed, Jr.). */
@@ -179,6 +192,7 @@ const tidy = (text: string) => text.replace(/\s+/g, " ").trim();
 export function draftFrom(character?: Character): CharacterDraft {
   return {
     name: character?.name ?? "",
+    aliases: (character?.aliases ?? []).join(", "),
     role: character?.role ?? "friend",
     roleLabel: character?.roleLabel ?? "",
     look: character?.look ?? "",
@@ -196,8 +210,25 @@ export function validateDraft(draft: CharacterDraft, others: Character[]): Draft
   else if (name.length > LIMITS.name) errors.name = `Keep the name under ${LIMITS.name} characters.`;
   else if (!HAS_LETTER.test(name)) errors.name = "A name needs at least one letter.";
   else if (!NAME_CHARS.test(name)) errors.name = "Use letters, spaces, apostrophes, dots or hyphens.";
-  else if (others.some((member) => member.name.toLocaleLowerCase() === name.toLocaleLowerCase())) {
-    errors.name = `${name} is already in your cast.`;
+  else {
+    const clash = others.find((member) => namesOf(member).includes(normalizeName(name)));
+    if (clash) errors.name = clash.name === name ? `${name} is already in your cast.` : `${clash.name} already goes by ${name}.`;
+  }
+
+  const aliases = parseAliases(draft.aliases, name);
+  if (draft.aliases.length > LIMITS.aliases) errors.aliases = `Keep other names under ${LIMITS.aliases} characters.`;
+  else if (aliases.length > ALIAS_LIMITS.count) errors.aliases = `Up to ${ALIAS_LIMITS.count} other names.`;
+  else if (aliases.some((alias) => alias.length > ALIAS_LIMITS.length)) errors.aliases = `Keep each name under ${ALIAS_LIMITS.length} characters.`;
+  else if (aliases.some((alias) => !HAS_LETTER.test(alias) || !NAME_CHARS.test(alias))) {
+    errors.aliases = "Use letters, spaces, apostrophes, dots or hyphens, with commas between names.";
+  } else {
+    for (const alias of aliases) {
+      const clash = others.find((member) => namesOf(member).includes(normalizeName(alias)));
+      if (clash) {
+        errors.aliases = `${clash.name} already goes by ${alias}.`;
+        break;
+      }
+    }
   }
 
   if (!ROLE_OPTIONS.some((option) => option.value === draft.role)) errors.role = "Pick who they are to you.";
@@ -239,6 +270,7 @@ export function characterFromDraft(draft: CharacterDraft, existing?: Character):
   const next: Character = {
     ...base,
     name: tidy(draft.name),
+    aliases: parseAliases(draft.aliases, draft.name),
     role: draft.role,
     roleLabel,
     look: tidy(draft.look),

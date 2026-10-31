@@ -220,6 +220,17 @@ function CastCard({ member, tilt, confirming, onEdit, onAskRemove, onKeep, onRem
         <p className="chip" dir="auto">
           {member.roleLabel}
         </p>
+        {member.aliases && member.aliases.length > 0 ? (
+          <p className={styles.aliases}>
+            Also called{" "}
+            {member.aliases.map((alias, i) => (
+              <span key={alias}>
+                {i > 0 ? ", " : ""}
+                <bdi>{alias}</bdi>
+              </span>
+            ))}
+          </p>
+        ) : null}
         {member.line ? (
           <p ref={bubbleRef} className={`bubble ${styles.line}`} dir={firstStrongDir(member.line) ?? "auto"}>
             <BidiText text={member.line} />
@@ -378,7 +389,7 @@ interface CharacterFormProps {
   onCancel: () => void;
 }
 
-const FIELD_ORDER: DraftField[] = ["name", "role", "roleLabel", "look", "personality", "line"];
+const FIELD_ORDER: DraftField[] = ["name", "aliases", "role", "roleLabel", "look", "personality", "line"];
 
 function CharacterForm({ character, others, onSave, onCancel }: CharacterFormProps) {
   const id = useId();
@@ -447,6 +458,27 @@ function CharacterForm({ character, others, onSave, onCancel }: CharacterFormPro
             aria-describedby={describedBy("name")}
           />
           {error("name")}
+        </label>
+
+        <label className={styles.field} htmlFor={fieldId("aliases")}>
+          <span className={styles.label}>
+            Other names <span className={styles.optional}>(optional)</span>
+          </span>
+          <span id={`${fieldId("aliases")}-hint`} className={styles.hint}>
+            Nicknames and spellings you use in your voice notes, in Arabic or English, with commas between them.
+          </span>
+          <input
+            id={fieldId("aliases")}
+            value={draft.aliases}
+            onChange={(event) => set("aliases", event.target.value)}
+            placeholder="Teta, تيتا"
+            dir="auto"
+            autoComplete="off"
+            maxLength={LIMITS.aliases + 20}
+            aria-invalid={errors.aliases ? true : undefined}
+            aria-describedby={describedBy("aliases", true)}
+          />
+          {error("aliases")}
         </label>
 
         <div className={styles.fieldRow}>
