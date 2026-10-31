@@ -263,3 +263,17 @@ export function withNewPeopleSchema<T extends { properties: object; required: st
     },
   };
 }
+
+/**
+ * A reference sheet drawn from a photo of the real person (03-05): the cut-out
+ * is reference image 1, and the character is drawn in the art style, not as a photo.
+ */
+export function photoSheetPrompt(input: SheetPromptInput): string {
+  const lines = sheetPrompt(input).split("\n");
+  lines.splice(
+    1,
+    0,
+    "Reference image 1 is a photo of the person this character is based on. Turn them into an original comic character in the art style below: keep what makes them recognisable (hair, face shape, glasses, facial hair, clothes and their colours) but draw them in the style, not as a photo. Ignore the photo's background, lighting, pose and crop.",
+  );
+  return lines.join("\n");
+}
