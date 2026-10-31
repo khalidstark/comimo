@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { artAt } from "@/art/manifest";
-import { fixedFaces, toPanelViews, type FixedFace, type PanelArt, type PanelView } from "@/components/comic/view";
+import { facesSummary, fixedFaces, toPanelViews, type FacesSummary, type PanelArt, type PanelView } from "@/components/comic/view";
 import { starterCastById } from "@/fixtures/cast";
 import { getSampleDay, sampleDays } from "@/fixtures/days";
 import { pageLayoutChain } from "@/lib/layout/comicPages";
@@ -18,7 +18,7 @@ type Loaded =
       status: "ready";
       day: Day;
       panels: PanelView[];
-      faces: FixedFace[] | null;
+      faces: FacesSummary | null;
       layouts: (PageLayoutChoice | null)[];
       previous?: DayLink;
       next?: DayLink;
@@ -91,10 +91,7 @@ export function DayReader({ id }: { id: string }) {
       if (cancelled) return;
 
       const panels = toPanelViews(day.panels, nameOf, (panel, which) => images.get(`${panel.index}:${which}`) ?? null);
-      const checked = day.panels.some((panel) => panel.consistency.checked);
-      const faces = checked
-        ? fixedFaces(day.panels, nameOf, (characterId) => portraits.get(characterId) ?? null)
-        : null;
+      const faces = day.sample ? null : facesSummary(day.panels, fixedFaces(day.panels, nameOf, (characterId) => portraits.get(characterId) ?? null));
 
       // Days made before page layouts get one picked now, different from the day before.
       const pool = stored && !day.sample ? days.filter((d) => !d.sample && d.safety !== "crisis") : sampleDays;

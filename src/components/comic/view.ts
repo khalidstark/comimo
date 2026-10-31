@@ -1,5 +1,5 @@
 import type { ArtAsset } from "@/art/manifest";
-import type { Panel, TextDir } from "@/lib/types";
+import type { Panel, PanelFigures, TextDir } from "@/lib/types";
 
 /**
  * What the comic components draw: a Day's panels with names looked up and
@@ -41,6 +41,12 @@ export interface PanelView {
   before: PanelArt | null;
   /** Names of the characters whose faces were fixed in this panel. */
   fixedNames: string[];
+  /** What checked the panel: SAM 3.1, practice mode, or nothing recorded (days before 03-03). */
+  checkedBy: "sam" | "mock" | null;
+  /** People and animals SAM found, for placing the lettering; null on older days. */
+  figures: PanelFigures | null;
+  /** Width over height of the drawn image, when known. */
+  aspect: number | null;
 }
 
 /** One character SAM redrew somewhere in the day. */
@@ -92,6 +98,9 @@ export function toPanelViews(
         image: panel.image ? resolve(panel, "image") : null,
         before,
         fixedNames: before ? panel.consistency.fixedCharacterIds.map(nameOf) : [],
+        checkedBy: panel.consistency.method ?? null,
+        figures: panel.figures ?? null,
+        aspect: panel.figures?.aspect ?? panel.frame?.aspect ?? null,
       };
     });
 }
@@ -112,4 +121,50 @@ export function fixedFaces(
     }
   }
   return [...faces.values()];
+}
+
+/**
+ * What the "How Comimo kept faces the same" note may truthfully say about a day:
+ * - "sam": SAM 3.1 really looked (counts are what it found on the final panels);
+ * - "practice": made in practice mode (the fixes are pretend), or made before
+ *   03-03 with fixes, which only practice mode could make;
+ * - null: made before 03-03 with nothing to show, so the note is left out.
+ */
+export type FacesSummary =
+  | {
+      kind: "sam";
+      /** Panels SAM looked at. */
+      panels: number;
+      /** Cast faces SAM looked for and found. */
+      sought: number;
+      found: number;
+      /** Faces Muse Spark compared with their sheet. */
+      judged: number;
+      /** False when the comparison was switched off (COMIMO_SAM_CHECK=0). */
+      compared: boolean;
+      /** Faces that drifted but no redraw got closer. */
+      unfixed: number;
+      fixed: FixedFace[];
+    }
+  | { kind: "practice"; fixed: FixedFace[] };
+
+export function facesSummary(panels: Panel[], fixed: FixedFace[]): FacesSummary | null {
+  const sam = panels.filter((panel) => panel.consistency.method === "sam" && panel.consistency.sam);
+  if (sam.length > 0) {
+    const reports = sam.map((panel) => panel.consistency.sam!);
+    const fixedCount = sam.reduce((sum, panel) => sum + (panel.consistency.beforeImage ? panel.consistency.fixedCharacterIds.length : 0), 0);
+    const drifted = sam.reduce((sum, panel) => sum + panel.consistency.driftedCharacterIds.length, 0);
+    return {
+      kind: "sam",
+      panels: sam.length,
+      sought: reports.reduce((sum, r) => sum + r.sought.length, 0),
+      found: reports.reduce((sum, r) => sum + r.found.length, 0),
+      judged: reports.reduce((sum, r) => sum + r.judged.length, 0),
+      compared: reports.some((r) => r.checked),
+      unfixed: Math.max(0, drifted - fixedCount),
+      fixed,
+    };
+  }
+  if (panels.some((panel) => panel.consistency.method === "mock") || fixed.length > 0) return { kind: "practice", fixed };
+  return null;
 }

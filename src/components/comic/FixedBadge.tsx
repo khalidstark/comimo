@@ -7,6 +7,8 @@ interface FixedBadgeProps {
   names: string[];
   /** True while the panel shows the before image. */
   showingBefore: boolean;
+  /** Only a panel SAM 3.1 really checked says so; practice-mode fixes say "practice". */
+  bySam: boolean;
   onToggle: () => void;
 }
 
@@ -16,10 +18,10 @@ function joinNames(names: string[]): string {
 }
 
 /**
- * The pink "Face fixed by SAM 3.1" stamp on a panel. It is a toggle button:
+ * The pink "Face fixed by SAM 3.1" stamp on a panel ("Face fixed, practice" in practice mode). It is a toggle button:
  * pressing it flips the panel to the image before the fix and back.
  */
-export function FixedBadge({ names, showingBefore, onToggle }: FixedBadgeProps) {
+export function FixedBadge({ names, showingBefore, bySam, onToggle }: FixedBadgeProps) {
   return (
     <button
       type="button"
@@ -28,7 +30,7 @@ export function FixedBadge({ names, showingBefore, onToggle }: FixedBadgeProps) 
       data-before={showingBefore || undefined}
       onClick={onToggle}
     >
-      <span className={styles.stampTitle}>Face fixed</span> <span className={styles.stampBy}>by SAM 3.1</span>
+      <span className={styles.stampTitle}>Face fixed</span> <span className={styles.stampBy}>{bySam ? "by SAM 3.1" : "practice"}</span>
       <span className="visually-hidden">: show {joinNames(names)} before the fix</span>
       <span className={styles.stampHint} aria-hidden="true">
         {showingBefore ? "Back to after" : "See before"}
