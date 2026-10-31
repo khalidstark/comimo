@@ -1,0 +1,277 @@
+/* The owner's album controls: a printed card under the comic. */
+
+.editor {
+  margin-block: var(--space-xl);
+  padding: var(--space-m);
+  display: grid;
+  gap: var(--space-s);
+}
+
+.editorHead {
+  display: grid;
+  gap: var(--space-2xs);
+  justify-items: start;
+}
+
+.kicker {
+  transform: rotate(-1.5deg);
+}
+
+.editorTitle {
+  margin: 0;
+  font-family: var(--font-display-stack);
+  font-size: var(--step-2);
+  line-height: 1.1;
+}
+
+.lede {
+  margin: 0;
+  max-inline-size: 60ch;
+}
+
+.muted {
+  margin: 0;
+  color: var(--ink-soft);
+}
+
+.notice {
+  margin: 0;
+  padding: var(--space-xs) var(--space-s);
+  border-inline-start: 4px solid var(--highlight);
+  background: color-mix(in srgb, var(--highlight) 14%, transparent);
+  font-size: var(--step--1);
+  max-inline-size: 70ch;
+}
+
+.editGrid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(9.5rem, 1fr));
+  gap: var(--space-s);
+}
+
+.editItem {
+  position: relative;
+  display: grid;
+  gap: var(--space-3xs);
+  padding: var(--space-2xs);
+  background: #fff;
+  border: var(--panel-border-thin) solid #1b2148;
+  box-shadow: 3px 3px 0 #1b2148;
+}
+
+.editItem:nth-child(odd) {
+  transform: rotate(-0.6deg);
+}
+
+.editItem:nth-child(even) {
+  transform: rotate(0.7deg);
+}
+
+.thumb {
+  inline-size: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  display: block;
+  background: var(--paper-deep);
+}
+
+.captionField textarea {
+  inline-size: 100%;
+  resize: vertical;
+  font: inherit;
+  font-family: var(--font-lettering-stack);
+  font-size: var(--step--1);
+  color: #1b2148;
+  background: transparent;
+  border: 1px dashed rgb(27 33 72 / 0.35);
+  padding: 0.3em 0.4em;
+}
+
+.captionField textarea:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.removePhoto {
+  position: absolute;
+  inset-block-start: -0.6rem;
+  inset-inline-end: -0.6rem;
+  inline-size: 2rem;
+  block-size: 2rem;
+  border-radius: 50%;
+  border: var(--panel-border-thin) solid #1b2148;
+  background: var(--accent);
+  color: #1b2148;
+  font-size: 1.2rem;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2xs);
+}
+
+.fileButton {
+  position: relative;
+  overflow: hidden;
+}
+
+.fileButton:focus-within {
+  outline: 3px solid var(--accent-text);
+  outline-offset: 2px;
+}
+
+.fileInput {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.linkForm {
+  display: grid;
+  gap: var(--space-2xs);
+}
+
+.linkLabel {
+  font-weight: 600;
+}
+
+.linkRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2xs);
+}
+
+.linkRow input {
+  flex: 1 1 16rem;
+  min-block-size: 3rem;
+  padding: 0 0.8em;
+  font: inherit;
+  color: var(--ink);
+  background: var(--surface);
+  border: var(--panel-border-thin) solid var(--line);
+  border-radius: 8px;
+}
+
+.status {
+  margin: 0;
+  color: var(--ink-soft);
+}
+
+.error {
+  margin: 0;
+  color: var(--accent-text);
+  font-weight: 600;
+}
+
+.editorFoot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-s);
+  padding-block-start: var(--space-xs);
+  border-block-start: 2px dashed rgb(27 33 72 / 0.25);
+}
+
+.textButton {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  font-weight: 600;
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 0.2em;
+  cursor: pointer;
+}
+
+.danger {
+  color: var(--accent-text);
+}
+
+.confirm {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2xs);
+  font-weight: 600;
+}
+
+/* ---------- The printed QR code at the end of a comic ---------- */
+
+.qr {
+  display: flex;
+  align-items: center;
+  gap: var(--space-s);
+  margin-block-start: var(--space-s);
+  padding: var(--space-xs) var(--space-s);
+  background: #fff;
+  color: #1b2148;
+  border: var(--panel-border-thin) solid #1b2148;
+  box-shadow: 3px 3px 0 #1b2148;
+  max-inline-size: 26rem;
+  margin-inline-start: auto;
+  transform: rotate(-0.8deg);
+}
+
+.qrCode {
+  flex: none;
+  inline-size: 6.5rem;
+  block-size: 6.5rem;
+  display: block;
+}
+
+.qrText {
+  display: grid;
+  gap: 0.2rem;
+  font-family: var(--font-lettering-stack);
+  line-height: 1.25;
+}
+
+.qrKicker {
+  font-family: var(--font-display-stack);
+  font-weight: 700;
+  font-size: var(--step-0);
+}
+
+.qrHint {
+  font-size: var(--step--1);
+}
+
+.qr[data-size="small"] {
+  gap: var(--space-2xs);
+  padding: 0.35rem 0.5rem;
+  margin: 0;
+  box-shadow: 2px 2px 0 #1b2148;
+}
+
+.qr[data-size="small"] .qrCode {
+  inline-size: 3.6rem;
+  block-size: 3.6rem;
+}
+
+.qr[data-size="small"] .qrKicker {
+  font-size: var(--step--1);
+}
+
+.qr[data-size="small"] .qrHint {
+  font-size: 0.72rem;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .editItem {
+    transition: transform var(--dur-quick, 160ms) ease-out;
+  }
+
+  .editItem:hover {
+    transform: rotate(0deg) translateY(-2px);
+  }
+}
