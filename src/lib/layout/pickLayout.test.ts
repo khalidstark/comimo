@@ -3,8 +3,9 @@ import { SHOTS, type Beat, type Shot } from "../types";
 import { leanDegrees, quadArea } from "./geometry";
 import { panelFrames } from "./frames";
 import { DRAW_SIZES, desktopGeometry, phoneGeometry, type PageGeometry } from "./page";
-import { layoutChain, normalizeStory, pickLayout, resolveLayout, splashIndex, type StoryPanel } from "./pickLayout";
+import { normalizeStory, pickLayout, resolveLayout, splashIndex, type StoryPanel } from "./pickLayout";
 import { TEMPLATES } from "./templates";
+import { pageLayoutChain } from "./comicPages";
 
 function story(count: number, splash: number, shots: Shot[] = []): StoryPanel[] {
   return Array.from({ length: count }, (_, index) => ({
@@ -177,9 +178,9 @@ describe("day chain", () => {
       createdAt: `2026-10-${String(i + 1).padStart(2, "0")}T10:00:00Z`,
       panels: story(4 + (i % 3), i % (4 + (i % 3))),
     }));
-    const chain = layoutChain(days);
+    const chain = pageLayoutChain(days);
     for (let i = 1; i < days.length; i++) {
-      expect(chain.get(days[i].id)!.template).not.toBe(chain.get(days[i - 1].id)!.template);
+      expect(chain.get(days[i].id)![0]!.template).not.toBe(chain.get(days[i - 1].id)![0]!.template);
     }
   });
 });

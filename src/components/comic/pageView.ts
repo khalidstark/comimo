@@ -61,12 +61,14 @@ function outline(panel: PlacedPanel): string {
 }
 
 /**
- * Lay out a comic's panels. `choice` is the day's stored layout (or the one
- * picked for it on read); `seed` is the day id, which also seeds the phone
- * page's slants. Panels drawn before layouts get their frame computed here.
+ * Lay out one page of a comic. `choice` is the page's stored layout (or the
+ * one picked for it on read); `seed` is the page's seed (see pageSeed), which
+ * also seeds the phone page's slants. Panels drawn before layouts get their frame computed here.
  */
 export function pageView(panels: LayoutPanel[], choice: PageLayoutChoice | null | undefined, seed: string): PageView {
-  const story = normalizeStory([...panels].sort((a, b) => a.index - b.index));
+  // One page of a comic: the layout engine numbers its panels from 0; slots keep the panels' own indexes.
+  const sorted = [...panels].sort((a, b) => a.index - b.index);
+  const story = normalizeStory(sorted.map((panel, index) => ({ ...panel, index })));
   const { template, variant } = resolveLayout(choice, story.length);
   const desktop = desktopGeometry(variant);
   const phone = phoneGeometry(variant, story, seed);
@@ -78,7 +80,7 @@ export function pageView(panels: LayoutPanel[], choice: PageLayoutChoice | null 
     const onPhone = phone.panels.find((p) => p.index === i)!;
     const covered = panel.frame?.covered ?? computed?.[i].covered;
     return {
-      index: panel.index,
+      index: sorted[i].index,
       inset: onDesktop.inset,
       zone,
       stamp: covered === "bottom-right" ? "left" : "right",

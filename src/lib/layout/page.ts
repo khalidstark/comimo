@@ -32,6 +32,7 @@ export interface PanelMeta {
   shot?: Shot;
   beat?: Beat;
   caption?: string;
+  narration?: string;
   dialogue?: readonly { text: string }[];
 }
 
@@ -238,7 +239,7 @@ export function phoneGeometry(variant: TemplateVariant, metas: PanelMeta[], seed
   // Rows and their heights, sized so each image keeps its aspect ratio after gutters.
   const texts = variant.slots.map((_, i): Lettering | undefined => {
     const meta = metas.find((m) => m.index === i);
-    return meta ? { caption: meta.caption || undefined, lines: (meta.dialogue ?? []).map((line) => line.text) } : undefined;
+    return meta ? { caption: meta.narration || meta.caption || undefined, lines: (meta.dialogue ?? []).map((line) => line.text) } : undefined;
   });
   const rows: PhoneRow[] = planRows(order, aspects, focus, texts).map((items) => {
     const bleed = items.includes(focus);
