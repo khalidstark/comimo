@@ -2,10 +2,13 @@
 
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { useCallback, useEffect, useEffectEvent, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useEffectEvent, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties } from "react";
 import { Art } from "@/art/Art";
 import { art } from "@/art/manifest";
 import { PAGE_TURN } from "@/components/PageTurn";
+import { pageView, type SlotView } from "@/components/comic/pageView";
+import { SlotOutline } from "@/components/comic/SlotOutline";
+import pageStyles from "@/components/comic/page.module.css";
 import { formatDay, moodWords } from "@/lib/format";
 import {
   ComicPipeline,
@@ -22,6 +25,15 @@ import styles from "./making.module.css";
 const REDUCED_MOTION = "(prefers-reduced-motion: reduce)";
 /** Frames shown before the script says how many panels there will be. */
 const SKETCH_FRAMES = 4;
+/** The page pencilled in before the script picks the real layout. */
+const SKETCH_LAYOUT = { template: "turn-4", focus: 1 };
+const SKETCH_STORY = Array.from({ length: SKETCH_FRAMES }, (_, index) => ({
+  index,
+  dialogue: [],
+  characterIds: [],
+  shot: index === 1 ? ("splash" as const) : ("medium" as const),
+  beat: "build" as const,
+}));
 
 const STEP_LABELS: Record<PipelineStep, string> = {
   listen: "Listening",
@@ -170,6 +182,15 @@ export function MakingComic({ audio, language, style, onClose }: MakingComicProp
     setSettled((previous) => new Set(previous).add(index));
   }, []);
 
+  // The page builds in its final shape: the layout is picked right after the script.
+  const page = useMemo(
+    () =>
+      script && script.panels.length > 0
+        ? pageView(script.panels, state.layout, pipeline.dayId)
+        : pageView(SKETCH_STORY, SKETCH_LAYOUT, pipeline.dayId),
+    [script, state.layout, pipeline],
+  );
+
   const frames: { index: number; scene?: ScriptPanel; progress?: PanelProgress }[] = script
     ? script.panels.map((panel) => ({
         index: panel.index,
@@ -259,18 +280,21 @@ export function MakingComic({ audio, language, style, onClose }: MakingComicProp
             </div>
 
             {crisis ? null : (
-              <ol className={styles.frames} aria-label="Panels">
-                {frames.map((frame) => (
-                  <ProgressFrame
-                    key={frame.index}
-                    index={frame.index}
-                    total={frames.length}
-                    scene={frame.scene}
-                    progress={frame.progress}
-                    onSettled={markSettled}
-                  />
-                ))}
-              </ol>
+              <div className={`${pageStyles.wrap} ${styles.frames}`} data-style={style}>
+                <ol className={pageStyles.page} style={page.vars as CSSProperties} aria-label="Panels">
+                  {frames.map((frame, i) => (
+                    <ProgressFrame
+                      key={frame.index}
+                      index={frame.index}
+                      total={frames.length}
+                      slot={page.slots.find((s) => s.index === frame.index) ?? page.slots[i]}
+                      scene={frame.scene}
+                      progress={frame.progress}
+                      onSettled={markSettled}
+                    />
+                  ))}
+                </ol>
+              </div>
             )}
 
             {finished && !crisis ? (
@@ -320,13 +344,14 @@ export function MakingComic({ audio, language, style, onClose }: MakingComicProp
 interface ProgressFrameProps {
   index: number;
   total: number;
+  slot: SlotView;
   scene?: ScriptPanel;
   progress?: PanelProgress;
   onSettled: (index: number) => void;
 }
 
 /** One panel on the page: pencilled, being drawn, inked, or flipping from before to after. */
-function ProgressFrame({ index, total, scene, progress, onSettled }: ProgressFrameProps) {
+function ProgressFrame({ index, total, slot, scene, progress, onSettled }: ProgressFrameProps) {
   const status = progress?.status ?? "waiting";
   const fixing = status === "done" && Boolean(progress?.beforeUrl);
   const [flipped, setFlipped] = useState(false);
@@ -355,7 +380,14 @@ function ProgressFrame({ index, total, scene, progress, onSettled }: ProgressFra
           : "waiting";
 
   return (
-    <li className={styles.frame} data-status={status} data-fix={fixing ? (flipped ? "after" : "before") : undefined}>
+    <li
+      className={`${pageStyles.slot} ${styles.frame}`}
+      style={slot.vars as CSSProperties}
+      data-inset={slot.inset || undefined}
+      data-status={status}
+      data-fix={fixing ? (flipped ? "after" : "before") : undefined}
+    >
+      <span className={styles.cut}>
       <span className="visually-hidden">
         Panel {index + 1} of {total}: {spoken}
       </span>
@@ -403,6 +435,8 @@ function ProgressFrame({ index, total, scene, progress, onSettled }: ProgressFra
           Didn&apos;t draw
         </p>
       ) : null}
+      </span>
+      <SlotOutline slot={slot} className={styles.outline} />
     </li>
   );
 }
