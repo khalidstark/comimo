@@ -21,12 +21,10 @@
 - **Detail:** src/lib/guard.ts keeps per-visitor and daily counts in memory. Vercel instances don't share them and cold starts reset them, so the real ceiling is a multiple of the configured caps. Options: Vercel KV/Upstash Redis, or accept with low caps plus the Billing spend alert.
 - **Address in:** 05-01 (deploy)
 
-### ISS-010: "How Comimo kept faces the same" claims SAM ran while the check is still mock
-- **Found:** Phase 3, plan 03-02
-- **Detail:** Real comics show "SAM 3.1 compared every face… nothing needed redrawing" although checkConsistency is still the mock (it now reports no drift for real panels). The copy becomes true in 03-03; until then real comics overstate it.
-- **Address in:** 03-03
-
 ## Closed
+
+### ISS-010: "How Comimo kept faces the same" claimed SAM ran while the check was mock
+- **Closed:** 2026-10-31, fixed in 03-03. The check is real now, and the note is built only from what each panel stores (method and SAM report): "SAM 3.1 found 15 faces across 6 panels; 1 was redrawn: Nour, panel 3." Practice-mode comics say no model checked the faces and never mention SAM; days made before 03-03 show no note; the stamp says "by SAM 3.1" only on SAM-checked panels.
 
 ### ISS-007: Deleted custom character shows as an id in old comics
 - **Closed:** 2026-10-31, fixed in 03-05. Every new panel keeps a snapshot of its characters' and speakers' names (`Panel.names`); the day reader uses the current cast name, then that snapshot, then the starter cast, and shows "Someone" rather than a raw id for days made before snapshots.

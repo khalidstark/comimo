@@ -55,7 +55,7 @@ Plans:
 Plans:
 - [x] 03-01: Server model client, transcription and comic script generation with spending guard
 - [x] 03-02: Character reference sheets and panel generation, with a second art theme: Painterly
-- [ ] 03-03: SAM 3.1 consistency check and redraw loop
+- [x] 03-03: SAM 3.1 consistency check and redraw loop
 - [x] 03-04: Dynamic manga-style page layouts (shot types, varied panel sizes, splash, slants, insets)
 - [x] 03-05: Storytelling modes (narrated / dialogue / both) and cast recognised by name
 - [ ] 03-06: Ask about new names before drawing: add to cast or keep as a one-off character
@@ -107,7 +107,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 |-------|----------------|--------|-----------|
 | 1. Foundation | 2/2 | Complete | 2026-10-30 |
 | 2. Comic Experience | 3/3 | Complete | 2026-10-30 |
-| 3. Meta Model Pipeline | 4/6 | In progress | - |
+| 3. Meta Model Pipeline | 5/6 | In progress (03-06 left) | - |
 | 3.1. Design Refresh (INSERTED) | 1/1 | Complete (merged; user review pending) | 2026-10-31 |
 | 3.2. Accounts and Cloud (INSERTED) | 0/2 | Not started | - |
 | 4. Magazine and Art | 0/2 | Not started | - |

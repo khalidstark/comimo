@@ -10,18 +10,18 @@ See: .planning/PROJECT.md (updated 2026-10-30)
 ## Current Position
 
 Phase: 3 of 5 (Meta Model Pipeline)
-Plan: 4 of 5 in current phase (03-03 SAM next)
+Plan: 5 of 6 in current phase (03-06 new names before drawing next)
 Status: In progress
-Last activity: 2026-10-31 — 03-04 layouts, 03-05 storyteller/pages/cast-by-name and 03.1 design refresh merged on main
+Last activity: 2026-10-31 — Completed 03-03 (SAM 3.1 consistency loop, lettering off faces, full-width phone pages)
 
-Progress: ███████░░░ 71% (10 of 14 plans)
+Progress: ██████▌░░░ 65% (11 of 17 plans)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 8
-- Average duration: 46 min
-- Total execution time: 6.1 hours
+- Total plans completed: 11
+- Average duration: 70 min
+- Total execution time: about 12.8 hours
 
 **By Phase:**
 
@@ -29,10 +29,10 @@ Progress: ███████░░░ 71% (10 of 14 plans)
 |-------|-------|-------|----------|
 | 1. Foundation | 2 | 48 min | 24 min |
 | 2. Comic Experience | 3 | 87 min | 29 min |
-| 3. Meta Model Pipeline | 3 | 5.3 h | 106 min |
+| 3. Meta Model Pipeline | 5 | 12 h | 144 min |
 
 **Recent Trend:**
-- Last 5 plans: 21, 50, 22, 75, 225 min
+- Last 5 plans: 22, 75, 225, 180, 220 min
 - Trend: longer (real model calls, visual review rounds)
 
 ## Accumulated Context
@@ -63,20 +63,23 @@ Recent decisions affecting current work:
 - 03-04: Pages use 13 hand-designed templates (src/lib/layout); the layout is picked after the script, stored on the Day, never repeats the previous day's template; old days get one on read (layoutChain).
 - 03-04: Each panel is drawn at its slot's aspect (nearest of 15 Muse sizes) with a lettering zone Muse Image keeps empty; the frame is stored on the panel. Phone pages keep each image's aspect (no crop).
 - 03-04: `npm test` (Vitest 4) covers layout invariants; lint with `npx eslint src` (the whole folder also scans .claude/worktrees).
+- 03-03: Every panel gets a SAM 3.1 pass (one phrase per cast member + person + face sweeps, 1280 px copy, store:false); Spark judges cut-outs against sheets; at most 2 redraws; COMIMO_SAM_CHECK=0 keeps only the SAM pass. Panel.figures and consistency.method/sam are stored; UI copy about SAM comes only from them.
+- 03-03: Phone pages are full-width rows (one panel or a pair), cover-cropped around the characters (crop.ts shared by pageView and lettering); panels with figures letter in free space off every head.
+- 03-03: Test servers are built from a scratch copy so the user's :3000 server keeps its .next.
 
 ### Deferred Issues
 
-6 open (ISS-002 placeholder label, ISS-003 font warning, ISS-006 missing favicon, 04-02; ISS-007 deleted character id, Phase 4; ISS-008 in-memory guard counters, 05-01; ISS-010 SAM copy while mock, 03-03) — see ISSUES.md
+4 open (ISS-002 placeholder label, ISS-003 font warning, ISS-006 missing favicon, 04-02; ISS-008 in-memory guard counters, 05-01) — see ISSUES.md
 
 ### Blockers/Concerns
 
 - REMIND USER (they said yes, do later): create Vercel Blob store and accept Upstash Redis terms in the Vercel dashboard; needed for 03.2 in production and for 05-01 deploy.
 
-- Credits arrived ($150) and the key works. Free credits: Meta may use submitted content, so test with invented days. 03-04 spent about $0.36.
+- Credits arrived ($150) and the key works. Free credits: Meta may use submitted content, so test with invented days. 03-04 spent about $0.36, 03-03 about $0.80 (total about $2.90).
 - Billing spend alert was set to $500; user asked to lower it to $140.
 
 ## Session Continuity
 
-Last session: 2026-10-31 07:40
-Stopped at: Completed 03-04-PLAN.md; next are 03-03 (SAM consistency) and 03-05 (storytelling modes, cast by name)
+Last session: 2026-10-31 12:25
+Stopped at: Completed 03-03-PLAN.md; next is 03-06 (new names before drawing), then 03.2
 Resume file: None
