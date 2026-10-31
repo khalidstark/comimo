@@ -85,8 +85,8 @@ function PhotosUI() {
               </div>
             </div>
           ) : null}
-          <div style={{ position: "absolute", right: 22, bottom: 222, opacity: qrLabel, transform: `translateX(${(1 - qrLabel) * 20}px)` }}>
-            <Chip tone="highlight">Scan for the album ↓</Chip>
+          <div style={{ position: "absolute", right: 200, bottom: 120, opacity: qrLabel, transform: `translateX(${(1 - qrLabel) * 20}px)` }}>
+            <Chip tone="highlight">Scan for the album →</Chip>
           </div>
         </div>
       ) : null}
@@ -116,7 +116,7 @@ export function Photos() {
   return (
     <AbsoluteFill>
       <Paper />
-      <Camera keys={[{ f: 0, scale: 1.02 }, { f: TO_PAGE, scale: 1.0 }, { f: QR_LAND, scale: 1.06, x: vertical ? -10 : -40, y: vertical ? -40 : -30 }, { f: PHOTOS_DURATION, scale: 1.08, x: vertical ? -14 : -50, y: vertical ? -50 : -36 }]}>
+      <Camera keys={[{ f: 0, scale: 1.02 }, { f: TO_PAGE, scale: 1.0 }, { f: QR_LAND, scale: 1.04, x: vertical ? -10 : -12, y: vertical ? -40 : -24 }, { f: PHOTOS_DURATION, scale: 1.05, x: vertical ? -14 : -16, y: vertical ? -50 : -30 }]}>
         <StepFrame
           title={<StepTitle step={4} kicker="Optional" title="Add real photos" sub="They stay in an album with the day. A QR code on the last page opens it." size={vertical ? 92 : 84} width={vertical ? 900 : 640} />}
           ui={(box) => (
