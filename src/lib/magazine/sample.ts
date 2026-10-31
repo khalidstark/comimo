@@ -8,7 +8,7 @@ import { issueCast, issueDay, type MagazineIssue } from "./build";
 import { monthOf } from "./issue";
 
 /** The sample issue's cover line, written by Muse Spark with its cover art. */
-const SAMPLE_TAGLINE: string | null = null;
+const SAMPLE_TAGLINE = "Tea, cake, and one missing bus!";
 
 function artFor(ref: ImageRef | null): PanelArt | null {
   return ref?.kind === "art" ? { kind: "art", asset: artAt(ref.path) } : null;
@@ -32,6 +32,6 @@ export function sampleIssue(): MagazineIssue {
     number: null,
     days,
     cast: issueCast(sampleDays, starterCast, (member) => artFor(member.portrait)),
-    cover: { art: { kind: "art", asset: art.month.cover }, tagline: SAMPLE_TAGLINE, drawn: false },
+    cover: { art: { kind: "art", asset: art.month.sampleCover }, tagline: SAMPLE_TAGLINE, drawn: true },
   };
 }
