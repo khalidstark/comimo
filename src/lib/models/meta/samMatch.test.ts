@@ -75,6 +75,27 @@ describe("matching detections to the cast", () => {
   });
 });
 
+describe("bounded matching", () => {
+  it("matches 8 characters against 30 detections quickly, ignoring repeated ids", () => {
+    const sets: DetectionSet[] = Array.from({ length: 8 }, (_, k) => ({
+      characterId: `c${k}`,
+      animal: false,
+      detections: Array.from({ length: 30 }, (_, d) => ({ box: box(d * 33, (k * 7) % 50, d * 33 + 30, 900), score: 0.4 + ((d * 7 + k * 3) % 10) / 20 })),
+    }));
+    sets.push({ characterId: null, animal: false, detections: Array.from({ length: 30 }, (_, d) => ({ box: box(d * 33, 0, d * 33 + 30, 900), score: 0.9 })) });
+    const candidates = mergeDetections(sets, 1000, 1000);
+    expect(candidates.length).toBeGreaterThanOrEqual(30);
+    const cast = [...Array.from({ length: 8 }, (_, k) => ({ characterId: `c${k}`, animal: false })), { characterId: "c0", animal: false }];
+    const started = performance.now();
+    const matches = matchCast(cast, candidates);
+    expect(performance.now() - started).toBeLessThan(200);
+    expect(matches).toHaveLength(9);
+    expect(matches[8]).toBeNull();
+    const used = matches.filter((m) => m !== null);
+    expect(new Set(used).size).toBe(used.length);
+  });
+});
+
 describe("headBox", () => {
   it("takes the top of a downscaled mask", () => {
     // A 10 x 20 raster over a 100 x 200 box: a 4-wide head on top of a 10-wide body.
