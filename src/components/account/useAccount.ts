@@ -49,19 +49,8 @@ export function useAccount(): AccountState {
   );
 }
 
-/**
- * Only same-site paths, so `?next=` can't send anyone to another site
- * ("//evil.example", "/\evil.example" and "javascript:" are refused).
- */
-export function safeNext(raw: string | null | undefined, fallback = "/"): string {
-  if (!raw || !raw.startsWith("/") || raw.startsWith("//") || raw.startsWith("/\\") || raw.startsWith("/api/")) return fallback;
-  try {
-    const url = new URL(raw, "https://comimo.invalid");
-    return url.origin === "https://comimo.invalid" ? `${url.pathname}${url.search}${url.hash}` : fallback;
-  } catch {
-    return fallback;
-  }
-}
+/** `?next=` checking lives in a plain module so it can be tested on its own. */
+export { safeNext } from "@/lib/safeNext";
 
 /** Sign out everywhere this session is used, then start fresh on the home page. */
 export async function signOut(): Promise<void> {
