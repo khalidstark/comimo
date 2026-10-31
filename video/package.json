@@ -1,0 +1,25 @@
+{
+  "name": "comimo-video",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Comimo walkthrough: Remotion compositions built with the site's tokens, fonts and Muse art",
+  "type": "module",
+  "scripts": {
+    "sync-art": "node scripts/sync-art.mjs",
+    "sfx": "node scripts/synth-sfx.mjs",
+    "studio": "npm run sync-art && remotion studio",
+    "render": "npm run sync-art && node scripts/render-all.mjs",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@remotion/cli": "4.0.535",
+    "@remotion/google-fonts": "4.0.535",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "remotion": "4.0.535"
+  },
+  "devDependencies": {
+    "@types/react": "19.3.0",
+    "typescript": "5.9.3"
+  }
+}
