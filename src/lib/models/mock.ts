@@ -2,6 +2,7 @@ import "server-only";
 import { starterCastById } from "@/fixtures/cast";
 import { sampleDays } from "@/fixtures/days";
 import type { CastBrief, ComicScript, Day, ScriptPanel, Transcript } from "@/lib/types";
+import { normalizeStory } from "@/lib/layout/pickLayout";
 import type { AudioInput, CharacterReference, ComicModels, ConsistencyResult, ModelImage, SheetSubject } from "./index";
 
 /**
@@ -92,13 +93,40 @@ async function writeScript(transcript: string, cast: CastBrief[]): Promise<Comic
 
   const day = pickDay(transcript);
   const toCast = castMapper(cast);
-  const panels: ScriptPanel[] = day.panels.map(({ index, scene, caption, dialogue, characterIds }) => ({
+  const story: ScriptPanel[] = day.panels.map(({ index, scene, caption, dialogue, characterIds, shot, beat }) => ({
     index,
     scene,
     caption,
     dialogue: dialogue.map((line) => ({ ...line, speakerId: toCast(line.speakerId) })),
     characterIds: characterIds.map(toCast),
+    shot,
+    beat,
   }));
+  // The samples have 4 panels; add quiet beats so mock comics also come in 5 and 6 panels.
+  const extra = hash(transcript) % 3;
+  const who = story[1].characterIds[0];
+  const name = cast.find((member) => member.id === who)?.name ?? (who ? starterCastById[who]?.name : undefined) ?? "the speaker";
+  const beats: ScriptPanel[] = [
+    {
+      index: 0,
+      scene: `Close on ${name}'s face, a small reaction to what just happened.`,
+      dialogue: [],
+      characterIds: story[1].characterIds.slice(0, 1),
+      shot: "closeup",
+      beat: "build",
+    },
+    {
+      index: 0,
+      scene: "A small detail of the scene: hands, a cup, a phone screen, the light through the window.",
+      caption: "Meanwhile…",
+      dialogue: [],
+      characterIds: [],
+      shot: "detail",
+      beat: "build",
+    },
+  ];
+  story.splice(2, 0, ...beats.slice(0, extra));
+  const panels = normalizeStory(story.map((panel, index) => ({ ...panel, index })));
 
   return {
     title: day.title,

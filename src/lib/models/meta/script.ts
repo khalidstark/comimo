@@ -1,5 +1,6 @@
 import "server-only";
 import { firstStrongDir } from "@/lib/bidi";
+import { isBeat, isShot, normalizeStory } from "@/lib/layout/pickLayout";
 import { MOODS, type CastBrief, type ComicScript, type DialogueLine, type Mood, type ScriptPanel } from "@/lib/types";
 import type { ModelCallContext } from "../index";
 import { MetaApiError, metaJson } from "./client";
@@ -89,7 +90,16 @@ function toPanel(value: unknown, index: number, castIds: Set<string>): ScriptPan
   }
 
   const caption = clip(raw.caption, LIMITS.caption);
-  return { index, scene, ...(caption ? { caption } : {}), dialogue, characterIds };
+  return {
+    index,
+    scene,
+    ...(caption ? { caption } : {}),
+    dialogue,
+    characterIds,
+    ...(isShot(raw.shot) ? { shot: raw.shot } : {}),
+    ...(isBeat(raw.beat) ? { beat: raw.beat } : {}),
+    ...(raw.emphasis === true ? { emphasis: true } : {}),
+  };
 }
 
 /** Turn the model's JSON into a ComicScript, or throw ScriptShapeError so the call is tried again. */
@@ -114,7 +124,8 @@ export function toComicScript(content: string, cast: CastBrief[]): ComicScript {
   const castIds = new Set(cast.map((member) => member.id));
   const rawPanels = asArray(raw.panels);
   if (rawPanels.length < 4 || rawPanels.length > 6) throw new ScriptShapeError(`${rawPanels.length} panels, expected 4 to 6`);
-  const panels = rawPanels.map((panel, index) => toPanel(panel, index, castIds));
+  // Exactly one splash: the page layout gives it the biggest slot.
+  const panels = normalizeStory(rawPanels.map((panel, index) => toPanel(panel, index, castIds)));
 
   const questions = asArray(raw.checkInQuestions)
     .map((question) => clip(question, LIMITS.question))

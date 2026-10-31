@@ -1,5 +1,5 @@
 import type { SceneKey } from "@/art/manifest";
-import type { Day, DialogueLine, LanguageMix, Panel, TextDir } from "@/lib/types";
+import type { Beat, Day, DialogueLine, LanguageMix, Panel, Shot, TextDir } from "@/lib/types";
 
 /**
  * Invented sample days, written the way people actually talk: Egyptian Arabic
@@ -20,7 +20,9 @@ function panel(
   scene: string,
   characterIds: string[],
   dialogue: DialogueLine[],
-  caption?: string,
+  caption: string | undefined,
+  shot: Shot,
+  beat: Beat,
 ): Panel {
   return {
     index,
@@ -28,6 +30,8 @@ function panel(
     caption,
     dialogue,
     characterIds,
+    shot,
+    beat,
     image: { kind: "art", path: `scenes.${background}` },
     consistency: { checked: false, driftedCharacterIds: [], fixedCharacterIds: [], beforeImage: null },
   };
@@ -62,6 +66,8 @@ export const sampleDays: Day[] = [
         ["teta", "nour"],
         [say("teta", "الكيكة الأولى كانت تجربة بس", "rtl")],
         "Teta insisted on a second cake.",
+        "establishing",
+        "setup",
       ),
       panel(
         1,
@@ -69,6 +75,9 @@ export const sampleDays: Day[] = [
         "Nour, fork in hand, stares at Teta across the half-eaten cake in disbelief.",
         ["nour", "teta"],
         [say("nour", "A test? We ate all of it.", "ltr")],
+        undefined,
+        "closeup",
+        "build",
       ),
       panel(
         2,
@@ -77,6 +86,8 @@ export const sampleDays: Day[] = [
         ["mishmish"],
         [say("mishmish", "Mrrp.", "ltr")],
         "Meanwhile, under the table.",
+        "detail",
+        "turn",
       ),
       panel(
         3,
@@ -85,6 +96,8 @@ export const sampleDays: Day[] = [
         ["nour"],
         [say("nour", "Best day this month, honestly.", "ltr")],
         "Later.",
+        "splash",
+        "climax",
       ),
     ],
   },
@@ -109,6 +122,8 @@ export const sampleDays: Day[] = [
         ["nour"],
         [say("nour", "I won't make it, مش هلحق", "ltr")],
         "Three tabs. Two deadlines. One me.",
+        "wide",
+        "setup",
       ),
       panel(
         1,
@@ -116,6 +131,9 @@ export const sampleDays: Day[] = [
         "Teta Samia peeks around the bedroom door holding a plate, Nour still facing the screen.",
         ["teta", "nour"],
         [say("teta", "كلتي حاجة؟", "rtl")],
+        undefined,
+        "medium",
+        "build",
       ),
       panel(
         2,
@@ -124,6 +142,8 @@ export const sampleDays: Day[] = [
         ["nour"],
         [say("nour", "Still on slide four.", "ltr")],
         "9:40 pm.",
+        "detail",
+        "turn",
       ),
       panel(
         3,
@@ -132,6 +152,8 @@ export const sampleDays: Day[] = [
         ["nour"],
         [say("nour", "Sent. Nobody talk to me.", "ltr")],
         "11:52 pm.",
+        "splash",
+        "climax",
       ),
     ],
   },
@@ -155,6 +177,8 @@ export const sampleDays: Day[] = [
         ["karim"],
         [say("karim", "الشاي ده أحسن من أي café", "rtl")],
         "Golden hour, finally.",
+        "wide",
+        "setup",
       ),
       panel(
         1,
@@ -162,6 +186,9 @@ export const sampleDays: Day[] = [
         "Nour leans on the rooftop ledge holding her tea, grinning at Karim.",
         ["nour", "karim"],
         [say("nour", "We should do this every Thursday.", "ltr")],
+        undefined,
+        "medium",
+        "build",
       ),
       panel(
         2,
@@ -170,6 +197,8 @@ export const sampleDays: Day[] = [
         ["nour", "karim"],
         [],
         "We won't.",
+        "splash",
+        "climax",
       ),
       panel(
         3,
@@ -178,6 +207,8 @@ export const sampleDays: Day[] = [
         ["karim", "nour"],
         [say("karim", "Same time next week?", "ltr")],
         "But still.",
+        "medium",
+        "release",
       ),
     ],
   },
@@ -201,6 +232,8 @@ export const sampleDays: Day[] = [
         ["nour"],
         [say("karim", "العربية عطلت، I'm so sorry", "rtl")],
         "Sunday. Rain. Plans: cancelled.",
+        "wide",
+        "setup",
       ),
       panel(
         1,
@@ -209,6 +242,8 @@ export const sampleDays: Day[] = [
         ["nour", "mishmish"],
         [say("nour", "Mishmish, those are my notes.", "ltr")],
         "Attempted: studying.",
+        "medium",
+        "build",
       ),
       panel(
         2,
@@ -217,6 +252,8 @@ export const sampleDays: Day[] = [
         ["teta", "nour"],
         [say("teta", "استني، دلوقتي هيقولها", "rtl")],
         "Teta knows every line.",
+        "splash",
+        "climax",
       ),
       panel(
         3,
@@ -225,6 +262,8 @@ export const sampleDays: Day[] = [
         ["nour", "mishmish"],
         [say("nour", "Grey، بس مش وحش.", "ltr")],
         "Not a bad day. Just a grey one.",
+        "closeup",
+        "release",
       ),
     ],
   },
@@ -248,6 +287,8 @@ export const sampleDays: Day[] = [
         ["nour"],
         [say("nour", "يلا يا باص… any minute now", "rtl")],
         "7:40 am. Already late.",
+        "establishing",
+        "setup",
       ),
       panel(
         1,
@@ -256,6 +297,8 @@ export const sampleDays: Day[] = [
         ["nour"],
         [say("nour", "OK, now it's personal.", "ltr")],
         "8:15 am.",
+        "closeup",
+        "build",
       ),
       panel(
         2,
@@ -263,6 +306,9 @@ export const sampleDays: Day[] = [
         "Karim pulls up to the bus stop in a small dusty car, leaning out of the window.",
         ["karim", "nour"],
         [say("karim", "اركبي معايا، أنا جاي", "rtl")],
+        undefined,
+        "splash",
+        "climax",
       ),
       panel(
         3,
@@ -271,6 +317,8 @@ export const sampleDays: Day[] = [
         ["nour", "karim"],
         [say("nour", "Worst morning. Best shawarma.", "ltr")],
         "Evening.",
+        "wide",
+        "release",
       ),
     ],
   },
