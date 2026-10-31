@@ -102,6 +102,12 @@ export function AccountMenu() {
             </Link>
           </li>
           <li>
+            <Link href="/account" className={styles.item} transitionTypes={PAGE_TURN} onClick={() => setOpen(false)}>
+              <Icon name="cast" size="1.2em" />
+              Account
+            </Link>
+          </li>
+          <li>
             <button
               type="button"
               className={styles.item}
