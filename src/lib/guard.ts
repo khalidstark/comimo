@@ -16,7 +16,8 @@ import { createHash, randomBytes } from "node:crypto";
  * these numbers. Phase 5 decides whether to move them to a shared store.
  *
  * Env (all optional):
- *   COMIMO_COMICS_PER_HOUR   comics per visitor per hour (default 5; reference sheets get twice that)
+ *   COMIMO_COMICS_PER_HOUR   comics per visitor per hour (default 5; reference sheets get twice that,
+ *                            sprites the same, photo descriptions half)
  *   COMIMO_DAILY_COMIC_CAP   comics per day for everyone (default 200)
  *   COMIMO_DAILY_IMAGE_CAP   image and SAM calls per day for everyone (default 600), counted per call
  *   COMIMO_DAILY_UPLOAD_CAP  reference-sheet uploads per day for everyone (default 300); per visitor 4x comics an hour
@@ -24,7 +25,8 @@ import { createHash, randomBytes } from "node:crypto";
  *   COMIMO_GUARD_SALT        salt for the visitor hash (default: random per process)
  */
 
-export type GuardAction = "transcribe" | "script" | "panel" | "character";
+/** `sprite`: five image calls animating one character. `photo`: one SAM and one vision call describing a reference photo. */
+export type GuardAction = "transcribe" | "script" | "panel" | "character" | "sprite" | "photo";
 
 /**
  * Kinds of upstream call. Image and SAM calls count against the daily image
@@ -83,6 +85,10 @@ function limits() {
       panel: comics * 22,
       // Reference sheets: a few new characters (or redraws) an hour.
       character: comics * 2,
+      // Animating a character is five images: about one new character per comic.
+      sprite: comics,
+      // Describing a person from a photo: a few new people an hour.
+      photo: Math.max(1, Math.ceil(comics / 2)),
     } satisfies Record<GuardAction, number>,
     // Reference-sheet uploads: a few per comic (one per character), more only on stale tokens.
     uploadsPerHour: comics * 4,
@@ -213,12 +219,14 @@ export function guard(request: Request, action: GuardAction, options: { real: bo
   if (action === "script" && daily.comics >= dailyComics) {
     return { ok: false, status: 503, error: "Comimo has made all the comics it can for today. Come back tomorrow.", retryAfterSec: secondsToTomorrow() };
   }
-  if ((action === "panel" || action === "character") && daily.images >= dailyImages) {
+  if (action !== "transcribe" && action !== "script" && daily.images >= dailyImages) {
     return { ok: false, status: 503, error: "Comimo has drawn all the panels it can for today. Come back tomorrow.", retryAfterSec: secondsToTomorrow() };
   }
 
   sweep(now);
-  const counts = visitors.get(id) ?? { transcribe: [], script: [], panel: [], character: [] };
+  const counts = visitors.get(id) ?? { transcribe: [], script: [], panel: [], character: [], sprite: [], photo: [] };
+  // Visitors counted before these actions existed lack their lists.
+  counts[action] ??= [];
   const recent = counts[action].filter((t) => now - t < HOUR_MS);
   if (recent.length >= hourly[action]) {
     const retryAfterSec = Math.ceil((recent[0] + HOUR_MS - now) / 1000);
@@ -226,8 +234,10 @@ export function guard(request: Request, action: GuardAction, options: { real: bo
       ok: false,
       status: 429,
       error:
-        action === "character"
+        action === "character" || action === "sprite"
           ? `That's a lot of drawing for one hour. Try again in ${minutes(retryAfterSec)}.`
+          : action === "photo"
+            ? `That's a lot of photos for one hour. Try again in ${minutes(retryAfterSec)}.`
           : `That's a lot of comics for one hour. Try again in ${minutes(retryAfterSec)}.`,
       retryAfterSec,
     };

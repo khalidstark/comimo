@@ -39,13 +39,7 @@ export function modelErrorResponse(error: unknown): Response {
   return jsonError(502, "The model call failed. Please try again.");
 }
 
-export async function readJson(request: Request): Promise<unknown> {
-  try {
-    return await request.json();
-  } catch {
-    return undefined;
-  }
-}
+// Request bodies are read with src/lib/requestBody.ts (hard byte limits), never request.json() or formData().
 
 export function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
