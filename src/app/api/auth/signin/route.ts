@@ -1,3 +1,4 @@
+import { finishAccountDeletion, isBeingDeleted } from "@/lib/server/accountDeletion";
 import { checkCredentials, checkEmail, isProblem, PASSWORD_MAX } from "@/lib/server/auth";
 import { authError, authJson, logStoreError, readAuthBody, storeDown } from "@/lib/server/authHttp";
 import { setSessionCookie } from "@/lib/server/cookie";
@@ -49,6 +50,11 @@ export async function POST(request: Request) {
 
     const account = await checkCredentials(email.email, password, kv);
     if (!account) return authError(401, WRONG);
+    if (await isBeingDeleted(account.id, kv)) {
+      // A deletion that stopped part way: finish it now; the account is gone either way.
+      await finishAccountDeletion(account.id, kv).catch((error: unknown) => logStoreError("account deletion (resumed)", error));
+      return authError(401, WRONG);
+    }
 
     // The email's tries are forgiven; the network's are not (no decrement exists to abuse).
     await clearAttempts(kv, byEmail.subject);

@@ -89,4 +89,58 @@ describe("DELETE /api/me/account", () => {
     expect(left.map(([key]) => key)).toEqual([]);
     expect(await new FileBlobStore(join(dir, "blob")).list(`a/${account.id}/`)).toEqual([]);
   });
+
+  it("stays unusable after a failure part way, and the sweep or a sign-in finishes the job", async () => {
+    const { createAccount, findAccountByEmail } = await import("./auth");
+    const { createSession, readSession, sessionCookieName } = await import("./session");
+    const { getKV } = await import("./kv");
+    const { FileBlobStore } = await import("./blob");
+    const { startAccountDeletion, finishAccountDeletion, sweepDeletions, isBeingDeleted } = await import("./accountDeletion");
+    const kv = getKV();
+    const blobs = new FileBlobStore(join(dir, "blob"));
+    const account = (await createAccount({ email: "mishmish@example.com", name: "Mishmish", password: "whiskers-and-tea" }))!;
+    const sessionId = await createSession(account);
+    const cookie = `${sessionCookieName()}=${sessionId}`;
+    const at = (id: string) => ({ params: Promise.resolve({ id }) });
+    const album = await import("@/app/api/album/route");
+    const photos = await import("@/app/api/album/[id]/photos/route");
+    const photo = await import("@/app/api/album/[id]/photos/[photoId]/route");
+    const created = (await (await album.POST(req("POST", "/api/album", cookie, JSON.stringify({ dayId: "m1", title: "Nap day" })))).json()) as { id: string };
+    const jpeg = new Uint8Array(await sharp({ create: { width: 20, height: 20, channels: 3, background: "#888" } }).jpeg().toBuffer());
+    const added = (await (await photos.POST(req("POST", "", cookie, jpeg), at(created.id))).json()) as { id: string };
+    const photoAt = { params: Promise.resolve({ id: created.id, photoId: added.id }) };
+
+    // The blob store fails while the albums are being removed.
+    const failing = new FileBlobStore(join(dir, "blob"));
+    failing.del = async () => {
+      throw new Error("blob store down");
+    };
+    await startAccountDeletion(account, kv);
+    // Marked: sessions, new sessions and the public album are all refused already.
+    expect(await readSession(sessionId)).toBeNull();
+    await expect(createSession(account)).rejects.toThrow();
+    expect((await photo.GET(req("GET", "", null), photoAt)).status).toBe(404);
+    await expect(finishAccountDeletion(account.id, kv, failing)).rejects.toThrow("blob store down");
+    expect(await isBeingDeleted(account.id)).toBe(true);
+    expect((await photo.GET(req("GET", "", null), photoAt)).status).toBe(404);
+
+    // The sweep finishes it.
+    expect(await sweepDeletions(kv, blobs)).toEqual({ finished: 1, failed: 0 });
+    expect(await isBeingDeleted(account.id)).toBe(false);
+    expect(await findAccountByEmail("mishmish@example.com")).toBeNull();
+    expect(await blobs.list(`a/${account.id}/`)).toEqual([]);
+    expect(await sweepDeletions(kv, blobs)).toEqual({ finished: 0, failed: 0 });
+  });
+
+  it("finishes a stopped deletion when the owner tries to sign in", async () => {
+    const { createAccount, findAccountByEmail } = await import("./auth");
+    const { startAccountDeletion } = await import("./accountDeletion");
+    const account = (await createAccount({ email: "nour@example.com", name: "Nour", password: "rooftop-garden" }))!;
+    await startAccountDeletion(account);
+    const signin = await import("@/app/api/auth/signin/route");
+    const body = JSON.stringify({ email: "nour@example.com", password: "rooftop-garden" });
+    const response = await signin.POST(req("POST", "/api/auth/signin", null, body));
+    expect(response.status).toBe(401);
+    expect(await findAccountByEmail("nour@example.com")).toBeNull();
+  });
 });

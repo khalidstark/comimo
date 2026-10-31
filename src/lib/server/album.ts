@@ -4,6 +4,7 @@ import { getBlobStore, type BlobStore, type StoredBlob } from "./blob";
 import { getKV, type KV } from "./kv";
 import { isRecordId, libraryKeys, type LibraryResult } from "./library";
 import { hit, windowOf } from "./rateLimit";
+import { isAccountLive } from "./session";
 import { processAlbumPhoto } from "./albumPhoto";
 
 /**
@@ -169,9 +170,15 @@ async function owned(account: string, id: string, kv: KV): Promise<Album | null>
   return album && album.owner === account ? album : null;
 }
 
+/** An album anyone with the link may see: it exists and its owner's account is live (not missing, not being deleted). */
+async function viewable(id: string, kv: KV): Promise<Album | null> {
+  const album = await readAlbum(id, kv);
+  return album && (await isAccountLive(album.owner, kv)) ? album : null;
+}
+
 /** The public view: photos, captions, title and link. Null when there is no such album. */
 export async function publicAlbum(id: string, kv: KV = getKV()): Promise<PublicAlbum | null> {
-  const album = await readAlbum(id, kv);
+  const album = await viewable(id, kv);
   if (!album) return null;
   return { id: album.id, title: album.title, link: album.link, photos: await readPhotos(id, kv) };
 }
@@ -197,7 +204,7 @@ export async function albumForDay(account: string, dayId: string, kv: KV = getKV
 /** A photo from an album, for anyone with the album's link. */
 export async function albumPhoto(albumId: string, photoId: string, kv: KV = getKV(), blobs: BlobStore = getBlobStore()): Promise<StoredBlob | null> {
   if (!isAlbumId(photoId)) return null;
-  const album = await readAlbum(albumId, kv);
+  const album = await viewable(albumId, kv);
   if (!album) return null;
   if (!(await kv.hget(photosKey(albumId), photoId))) return null;
   return blobs.get(photoPath(album.owner, photoId));
