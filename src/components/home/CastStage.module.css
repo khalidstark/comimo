@@ -105,7 +105,7 @@
 
 .line {
   position: absolute;
-  inset-block-end: calc(100% - 1.5rem);
+  inset-block-end: calc(100% + 0.25rem); /* above the head, so the talking face shows */
   inset-inline-start: 50%;
   z-index: 3;
   inline-size: max-content;
