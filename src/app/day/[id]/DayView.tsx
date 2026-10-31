@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { art } from "@/art/manifest";
-import { Comic } from "@/components/comic/Comic";
+import { ComicBook, type BookPage } from "@/components/comic/ComicBook";
 import { FacesNote } from "@/components/comic/FacesNote";
 import { MoodBadge } from "@/components/comic/MoodBadge";
 import { pageView } from "@/components/comic/pageView";
@@ -10,6 +10,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { PAGE_TURN } from "@/components/PageTurn";
 import { artStyleOf } from "@/lib/artStyles";
 import { formatDay } from "@/lib/format";
+import { splitPages } from "@/lib/layout/comicPages";
 import type { Day, PageLayoutChoice } from "@/lib/types";
 import styles from "./day.module.css";
 
@@ -23,8 +24,8 @@ interface DayViewProps {
   panels: PanelView[];
   /** Characters SAM fixed; null when the day was never checked (sample days). */
   faces: FixedFace[] | null;
-  /** The day's page layout: stored, or picked for it on read (see layoutChain). */
-  layout: PageLayoutChoice | null;
+  /** Each page's layout: stored, or picked for it on read (see pageLayoutChain). */
+  layouts: (PageLayoutChoice | null)[];
   previous?: DayLink;
   next?: DayLink;
 }
@@ -32,9 +33,18 @@ interface DayViewProps {
 const monthFormat = new Intl.DateTimeFormat("en-GB", { month: "long", timeZone: "UTC" });
 
 /** One day as a comic: date, title and weather, the panels, then what comes after them. */
-export function DayView({ day, panels, faces, layout, previous, next }: DayViewProps) {
+export function DayView({ day, panels, faces, layouts, previous, next }: DayViewProps) {
   const crisis = day.safety === "crisis";
-  const page = crisis || day.panels.length === 0 ? null : pageView(day.panels, day.layout ?? layout, day.id);
+  const book: BookPage[] =
+    crisis || day.panels.length === 0
+      ? []
+      : splitPages(day.panels, day.pages, day.id, day.layout).map((slice) => {
+          const indexes = new Set(slice.panels.map((panel) => panel.index));
+          return {
+            page: pageView(slice.panels, slice.layout ?? layouts[slice.number] ?? null, slice.seed),
+            panels: panels.filter((panel) => indexes.has(panel.index)),
+          };
+        });
   const date = formatDay(day.date);
 
   return (
@@ -51,8 +61,24 @@ export function DayView({ day, panels, faces, layout, previous, next }: DayViewP
         )}
       </header>
 
-      {page ? (
-        <Comic panels={panels} page={page} style={artStyleOf(day.artStyle)} label={`Comic for ${date}, ${panels.length} panels`} />
+      {book.length > 0 ? (
+        <ComicBook
+          pages={book}
+          style={artStyleOf(day.artStyle)}
+          label={`Comic for ${date}, ${book.length > 1 ? `${book.length} pages, ` : ""}${panels.length} panels`}
+          rtl={day.languages.dominant === "ar"}
+        />
+      ) : null}
+
+      {!crisis && day.transcript ? (
+        <details className={styles.said}>
+          <summary className={styles.saidToggle}>What you said</summary>
+          <blockquote className={styles.saidText} dir="auto">
+            {day.transcript.split(/\n{2,}/).map((paragraph, i) => (
+              <p key={i}>{paragraph}</p>
+            ))}
+          </blockquote>
+        </details>
       ) : null}
 
       {!crisis && faces ? <FacesNote faces={faces} /> : null}

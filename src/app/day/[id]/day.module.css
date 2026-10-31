@@ -97,3 +97,39 @@
   align-items: center;
   gap: var(--space-m);
 }
+
+/* ---------- What you said ----------
+   The original transcript, folded away under the comic so the retelling can be compared with the note. */
+.said {
+  max-inline-size: 60rem;
+  margin-block-start: var(--space-m);
+  border: var(--panel-border-thin) solid var(--line);
+  background: var(--surface);
+}
+
+.saidToggle {
+  padding: var(--space-xs) var(--space-s);
+  font-family: var(--font-display-stack);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.saidToggle:focus-visible {
+  outline: 3px solid var(--highlight);
+  outline-offset: 2px;
+}
+
+.saidText {
+  display: grid;
+  gap: var(--space-xs);
+  margin: 0;
+  padding: 0 var(--space-s) var(--space-s);
+  color: var(--ink-soft);
+  font-size: var(--step--1);
+  line-height: 1.55;
+  unicode-bidi: plaintext;
+}
+
+.saidText p {
+  margin: 0;
+}

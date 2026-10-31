@@ -5,7 +5,7 @@ import { artAt } from "@/art/manifest";
 import { fixedFaces, toPanelViews, type FixedFace, type PanelArt, type PanelView } from "@/components/comic/view";
 import { starterCastById } from "@/fixtures/cast";
 import { getSampleDay, sampleDays } from "@/fixtures/days";
-import { layoutChain } from "@/lib/layout/pickLayout";
+import { pageLayoutChain } from "@/lib/layout/comicPages";
 import { getDay, getImage, listCast, listDays } from "@/lib/store";
 import type { Character, Day, ImageRef, PageLayoutChoice } from "@/lib/types";
 import { DayView, MissingDay, type DayLink } from "./DayView";
@@ -19,7 +19,7 @@ type Loaded =
       day: Day;
       panels: PanelView[];
       faces: FixedFace[] | null;
-      layout: PageLayoutChoice | null;
+      layouts: (PageLayoutChoice | null)[];
       previous?: DayLink;
       next?: DayLink;
     };
@@ -95,11 +95,11 @@ export function DayReader({ id }: { id: string }) {
 
       // Days made before page layouts get one picked now, different from the day before.
       const pool = stored && !day.sample ? days.filter((d) => !d.sample && d.safety !== "crisis") : sampleDays;
-      const chain = layoutChain(pool.some((d) => d.id === day.id) ? pool : [...pool, day]);
-      const layout = day.layout ?? chain.get(day.id) ?? null;
+      const chain = pageLayoutChain(pool.some((d) => d.id === day.id) ? pool : [...pool, day]);
+      const layouts = chain.get(day.id) ?? [];
 
       document.title = `${day.safety === "crisis" ? "Your day" : day.title} | Comimo`;
-      setLoaded({ status: "ready", day, panels, faces, layout, ...(stored ? neighbours(days, day) : {}) });
+      setLoaded({ status: "ready", day, panels, faces, layouts, ...(stored ? neighbours(days, day) : {}) });
     }
 
     void load();
@@ -116,7 +116,7 @@ export function DayReader({ id }: { id: string }) {
       day={loaded.day}
       panels={loaded.panels}
       faces={loaded.faces}
-      layout={loaded.layout}
+      layouts={loaded.layouts}
       previous={loaded.previous}
       next={loaded.next}
     />

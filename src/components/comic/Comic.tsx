@@ -20,6 +20,8 @@ interface ComicProps {
   page: PageView;
   style: ArtStyleId;
   label: string;
+  /** Show every panel at once with no ink-in (a page that is turning away). */
+  still?: boolean;
 }
 
 /**
@@ -29,7 +31,7 @@ interface ComicProps {
  * server HTML hydrates stay put, so nothing blinks; when the comic mounts on
  * the client (a stored day, a page turn) those animate too.
  */
-export function Comic({ panels, page, style, label }: ComicProps) {
+export function Comic({ panels, page, style, label, still = false }: ComicProps) {
   const listRef = useRef<HTMLOListElement>(null);
   // False only while hydrating server HTML.
   const clientRender = useSyncExternalStore(
@@ -41,7 +43,7 @@ export function Comic({ panels, page, style, label }: ComicProps) {
 
   useLayoutEffect(() => {
     const list = listRef.current;
-    if (!list || !("IntersectionObserver" in window) || window.matchMedia(REDUCED_MOTION).matches) return;
+    if (still || !list || !("IntersectionObserver" in window) || window.matchMedia(REDUCED_MOTION).matches) return;
 
     const frames = Array.from(list.querySelectorAll<HTMLElement>("[data-frame]"));
     const fold = window.innerHeight;
@@ -74,7 +76,7 @@ export function Comic({ panels, page, style, label }: ComicProps) {
       observer.disconnect();
       for (const frame of held) if (frame.dataset.reveal === "wait") delete frame.dataset.reveal;
     };
-  }, [animateOnScreen, panels.length]);
+  }, [animateOnScreen, panels.length, still]);
 
   return (
     <div className={`${pageStyles.wrap} ${styles.comic}`} data-style={style} data-template={page.template}>
