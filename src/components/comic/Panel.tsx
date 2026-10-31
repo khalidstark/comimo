@@ -127,7 +127,9 @@ function useFreeLettering(ref: RefObject<HTMLDivElement | null>, panel: PanelVie
           }),
         );
 
-      let chosen: { plan: LetteringPlan; scale: number } | null = null;
+      // Clear of every head first; then legible beats roomy: a smaller step is taken to keep off bodies only down to 0.88.
+      const rank = (plan: LetteringPlan, scale: number) => (plan.clear ? 0 : 1000 + plan.cost) + (plan.roomy ? 0 : 0.6) + (1 - scale) * 4;
+      let chosen: { plan: LetteringPlan; scale: number; rank: number } | null = null;
       for (const scale of FREE_SCALES) {
         const sizes = measure(scale);
         const items: LetteringItem[] = elements.map((element, i) => {
@@ -140,12 +142,8 @@ function useFreeLettering(ref: RefObject<HTMLDivElement | null>, panel: PanelVie
           };
         });
         const plan = placeLettering({ width: W, height: H, area, hard, soft: bodies, items });
-        const better =
-          !chosen ||
-          (plan.clear && !chosen.plan.clear) ||
-          (plan.clear === chosen.plan.clear && plan.roomy && !chosen.plan.roomy) ||
-          (!plan.clear && !chosen.plan.clear && plan.cost < chosen.plan.cost);
-        if (better) chosen = { plan, scale };
+        const score = rank(plan, scale);
+        if (!chosen || score < chosen.rank) chosen = { plan, scale, rank: score };
         if (plan.clear && plan.roomy) break;
       }
       const { plan, scale } = chosen!;
