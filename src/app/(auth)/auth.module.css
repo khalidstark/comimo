@@ -1,0 +1,245 @@
+/* Sign in / sign up: one screen. A comic panel with Mimo's world on one
+   side, a printed form card on the other. Phones: a short art strip above
+   the card, everything within thumb reach. */
+
+.main {
+  padding-block: var(--space-m) calc(var(--tabbar-h) + var(--space-l));
+}
+
+@media (min-width: 48rem) {
+  .main {
+    padding-block: var(--space-xl) var(--space-2xl);
+  }
+}
+
+.layout {
+  display: grid;
+  gap: var(--space-m);
+  max-inline-size: 60rem;
+  margin-inline: auto;
+}
+
+@media (min-width: 48rem) {
+  .layout {
+    grid-template-columns: 1fr 1.05fr;
+    align-items: center;
+    gap: var(--space-xl);
+  }
+}
+
+/* ---------- The art panel ---------- */
+.artPanel {
+  --dot-color: color-mix(in srgb, var(--accent) 30%, transparent);
+  --dot-angle: 200deg;
+  position: relative;
+  display: grid;
+  place-items: end center;
+  margin: 0;
+  padding: var(--space-m) var(--space-s) 0;
+  overflow: hidden;
+  background-color: var(--calm-wash);
+  min-block-size: 9.5rem;
+  rotate: -1.2deg;
+}
+
+.art {
+  inline-size: min(100%, 16rem);
+  block-size: auto;
+  translate: 0 4%;
+}
+
+.bubble {
+  position: absolute;
+  inset-block-start: var(--space-s);
+  inset-inline-end: var(--space-s);
+  max-inline-size: 14ch;
+  font-size: var(--step--1);
+  rotate: 3deg;
+}
+
+/* Phones: a short strip, so the form starts high on the screen. */
+@media (max-width: 47.999rem) {
+  .artPanel {
+    grid-template-columns: auto 1fr;
+    place-items: end start;
+    max-block-size: 9.5rem;
+  }
+
+  .art {
+    inline-size: 8.5rem;
+    translate: 0 6%;
+  }
+
+  .bubble {
+    position: static;
+    align-self: center;
+    justify-self: center;
+    margin-block-end: var(--space-m);
+  }
+}
+
+@media (min-width: 48rem) {
+  .artPanel {
+    min-block-size: 26rem;
+    padding: var(--space-xl) var(--space-l) 0;
+  }
+
+  .art {
+    inline-size: min(100%, 22rem);
+  }
+
+  .bubble {
+    inset-block-start: var(--space-l);
+    font-size: var(--step-0);
+  }
+}
+
+/* ---------- The form card ---------- */
+.card {
+  display: grid;
+  gap: var(--space-2xs);
+  padding: var(--space-m) var(--space-m) var(--space-l);
+}
+
+@media (min-width: 48rem) {
+  .card {
+    padding: var(--space-l) var(--space-xl) var(--space-xl);
+  }
+}
+
+.kicker {
+  justify-self: start;
+  rotate: -2deg;
+  margin-block-start: calc(var(--space-m) * -1 - 0.9rem);
+}
+
+@media (min-width: 48rem) {
+  .kicker {
+    margin-block-start: calc(var(--space-l) * -1 - 0.9rem);
+  }
+}
+
+.title {
+  font-size: var(--step-3);
+  line-height: 1.05;
+  margin-block-start: var(--space-2xs);
+}
+
+.lede {
+  color: var(--ink-soft);
+  line-height: 1.45;
+}
+
+.form {
+  display: grid;
+  gap: var(--space-s);
+  margin-block-start: var(--space-s);
+}
+
+.field {
+  display: grid;
+  gap: var(--space-3xs);
+}
+
+.label {
+  font-weight: 700;
+}
+
+.field input {
+  inline-size: 100%;
+  min-block-size: 3rem;
+  padding: var(--space-2xs) var(--space-xs);
+  border: var(--panel-border-thin) solid var(--line);
+  border-radius: 10px;
+  background: var(--paper);
+  color: var(--ink);
+  font-size: var(--step-0); /* 16px+ keeps iOS from zooming in */
+}
+
+.field input:focus-visible {
+  outline: 3px solid var(--highlight);
+  outline-offset: 1px;
+}
+
+.field [aria-invalid="true"] {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 35%, transparent);
+}
+
+.passwordRow {
+  position: relative;
+  display: flex;
+}
+
+.passwordRow input {
+  padding-inline-end: 5rem;
+}
+
+.reveal {
+  position: absolute;
+  inset-block: 0.3rem;
+  inset-inline-end: 0.3rem;
+  min-inline-size: 4.25rem;
+  padding: 0 var(--space-xs);
+  border: var(--panel-border-thin) solid var(--line);
+  border-radius: 7px;
+  background: var(--surface);
+  color: var(--ink);
+  font-family: var(--font-display-stack);
+  font-weight: 700;
+  font-size: 0.95rem;
+  cursor: pointer;
+}
+
+.reveal[aria-pressed="true"] {
+  background: var(--highlight);
+  color: var(--on-highlight);
+}
+
+.hint {
+  color: var(--ink-soft);
+  font-size: var(--step--1);
+}
+
+.error {
+  color: var(--accent-text);
+  font-size: var(--step--1);
+  font-weight: 600;
+}
+
+/* A friendly "uh-oh" box for errors that aren't about one field. */
+.alert {
+  padding: var(--space-2xs) var(--space-s);
+  border: var(--panel-border-thin) solid var(--line);
+  border-radius: var(--radius-panel);
+  background: color-mix(in srgb, var(--accent) 14%, var(--surface));
+  color: var(--ink);
+  font-weight: 600;
+  rotate: -0.5deg;
+}
+
+.alert:focus {
+  outline: none;
+}
+
+.submit {
+  inline-size: 100%;
+  margin-block-start: var(--space-2xs);
+  font-size: var(--step-1);
+}
+
+.switch {
+  text-align: center;
+  color: var(--ink-soft);
+}
+
+.already {
+  display: grid;
+  gap: var(--space-s);
+  justify-items: start;
+  margin-block-start: var(--space-s);
+}
+
+.alreadyText {
+  font-size: var(--step-1);
+}

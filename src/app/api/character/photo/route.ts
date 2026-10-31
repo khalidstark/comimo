@@ -1,4 +1,5 @@
 import { guard, guardResponse } from "@/lib/guard";
+import { requireSession } from "@/lib/server/session";
 import { isMockMode } from "@/lib/models";
 import { describePerson, findPeople, pickPerson } from "@/lib/models/meta/photo";
 import { json, jsonError, modelErrorResponse, toWire } from "@/lib/models/wire";
@@ -23,9 +24,11 @@ const MOCK_LOOK = "Adult with short dark hair, wearing a plain jacket over a T-s
  * disk, not in the Files API, not in a log.
  */
 export async function POST(request: Request) {
+  const session = await requireSession(request);
+  if (!session.ok) return session.response;
   const mock = isMockMode();
   // The limit comes before any parsing or image work. Mock mode is counted too: decoding photos costs CPU.
-  const check = guard(request, "photo", { real: true });
+  const check = await guard(request, "photo", { real: true });
   if (!check.ok) return guardResponse(check);
 
   const body = await readBoundedForm(request, BODY_LIMITS.photo, "Send the photo as multipart form data with `photo` and `consent`.");
