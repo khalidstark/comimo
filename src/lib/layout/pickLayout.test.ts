@@ -291,7 +291,9 @@ describe("cover crop", () => {
     expect(crop.w).toBeCloseTo(0.4);
     expect(crop.x).toBeLessThanOrEqual(0.05);
     expect(crop.x + crop.w).toBeGreaterThanOrEqual(0.449);
-    // Without figures, a left lettering zone stays in view.
-    expect(coverCrop(3, 1.2, null, { side: "left", size: 0.3 }).x).toBe(0);
+    // Without figures, a slice of a left lettering zone stays in view and the rest shows the art.
+    const legacy = coverCrop(3, 1.2, null, { side: "left", size: 0.45 });
+    expect(legacy.x).toBeGreaterThan(0);
+    expect((0.45 - legacy.x) / legacy.w).toBeCloseTo(0.34);
   });
 });

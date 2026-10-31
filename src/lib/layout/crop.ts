@@ -5,7 +5,8 @@ import type { LetteringZone, PanelFigures, UnitBox } from "../types";
  * shape with object-fit: cover (phone pages crop panels to fill the width).
  * The crop keeps the characters SAM found in view: it centres on the union
  * of their boxes, or of their heads when the bodies don't fit, so a face is
- * never cut off. Panels without boxes keep their lettering zone in view.
+ * never cut off. Panels without boxes keep a slice of their lettering zone
+ * and give the rest of the view to the art beside it.
  *
  * Shared by pageView (object-position) and the lettering placement in the
  * browser (to map boxes through the crop), so both agree to the pixel.
@@ -65,11 +66,14 @@ export function coverCrop(imageAspect: number, viewAspect: number, figures?: Pan
       h,
     };
   }
+  // No boxes (days made before SAM): the characters are where the lettering zone isn't. Keep a slice
+  // of the zone (a third of the view) for the lettering and give the rest of the view to the art.
+  const keep = 0.34;
   let x = centreX;
   let y = centreY;
-  if (zone?.side === "left") x = 0;
-  if (zone?.side === "right") x = 1 - w;
-  if (zone?.side === "top") y = 0;
+  if (zone?.side === "left") x = Math.min(1 - w, Math.max(0, zone.size - keep * w));
+  if (zone?.side === "right") x = Math.min(1 - w, Math.max(0, 1 - zone.size + keep * w - w));
+  if (zone?.side === "top") y = Math.min(1 - h, Math.max(0, zone.size - keep * h));
   return { x, y, w, h };
 }
 
