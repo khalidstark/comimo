@@ -229,8 +229,15 @@
   font-weight: 600;
 }
 
+/* The quick form takes the card's whole width (the photo panel needs it on phones) */
 .form {
+  grid-column: 1 / -1;
+  min-inline-size: 0;
   padding-block-start: var(--space-2xs);
+}
+
+.form :global(form) {
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .foot {

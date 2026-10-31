@@ -690,6 +690,18 @@
   background: var(--paper-deep);
 }
 
+/* A one-off has no portrait: a dashed "1x" ticket instead (03-06) */
+.oneOffMark {
+  display: grid;
+  flex: none;
+  place-items: center;
+  border-style: dashed;
+  background: var(--highlight);
+  color: #1b2148;
+  font-family: var(--font-lettering-stack);
+  font-weight: 700;
+}
+
 .facePortrait img {
   inline-size: 100%;
   block-size: 100%;

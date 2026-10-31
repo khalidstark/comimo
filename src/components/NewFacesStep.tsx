@@ -49,7 +49,8 @@ export function NewFacesStep({ people, style, onDone }: NewFacesStepProps) {
   const [cast, setCast] = useState<Character[]>([]);
   const [choices, setChoices] = useState<Record<string, FaceChoice>>({});
   const [open, setOpen] = useState<string | null>(null);
-  const [drawing, setDrawing] = useState<string | null>(null);
+  /** People whose sheet is drawing; the rest can be settled meanwhile. */
+  const [drawing, setDrawing] = useState<ReadonlySet<string>>(() => new Set());
   const [notes, setNotes] = useState<Record<string, { text: string; error?: boolean }>>({});
   const [notice, setNotice] = useState("");
 
@@ -88,11 +89,15 @@ export function NewFacesStep({ people, style, onDone }: NewFacesStepProps) {
   }
 
   async function add(key: string, character: Character, photo: WireImage | null): Promise<string | null> {
-    setDrawing(key);
-    setOpen(null);
+    setDrawing((current) => new Set(current).add(key));
+    setOpen((current) => (current === key ? null : current));
     setNotice(`Drawing ${character.name}'s ${styleLabel} sheet.`);
     const joined = await joinCast(character, style, photo);
-    setDrawing(null);
+    setDrawing((current) => {
+      const next = new Set(current);
+      next.delete(key);
+      return next;
+    });
     if (!joined) {
       setOpen(key);
       return "This browser isn't letting Comimo save right now. Try again in a normal (not private) window.";
@@ -114,7 +119,7 @@ export function NewFacesStep({ people, style, onDone }: NewFacesStepProps) {
     onDone(all);
   }
 
-  const busy = drawing !== null;
+  const busy = drawing.size > 0;
 
   return (
     <section className={styles.step} aria-labelledby={`${id}-title`}>
@@ -146,7 +151,7 @@ export function NewFacesStep({ people, style, onDone }: NewFacesStepProps) {
                 <h4 className={styles.name}>
                   <bdi>{choice?.kind === "cast" ? choice.name : person.name}</bdi>
                 </h4>
-                <p className={styles.said}>
+                <p className={styles.said} hidden={choice?.kind === "cast" || undefined}>
                   {person.look ? (
                     <>
                       Your note: <span dir="auto">{person.look}</span>
@@ -156,7 +161,7 @@ export function NewFacesStep({ people, style, onDone }: NewFacesStepProps) {
                   )}
                 </p>
 
-                {drawing === key ? (
+                {drawing.has(key) ? (
                   <p className={styles.drawing}>
                     Drawing their {styleLabel} sheet<span aria-hidden="true">…</span> about a minute.
                   </p>
@@ -164,20 +169,20 @@ export function NewFacesStep({ people, style, onDone }: NewFacesStepProps) {
                   <div className={styles.settled}>
                     <span className={styles.stamp}>{stampFor(choice)}</span>
                     {choice.kind !== "cast" ? (
-                      <button type="button" className={styles.textButton} onClick={() => undo(key)} disabled={busy}>
+                      <button type="button" className={styles.textButton} onClick={() => undo(key)}>
                         Change
                       </button>
                     ) : null}
                   </div>
                 ) : open === key ? null : (
                   <div className={styles.actions}>
-                    <button type="button" className="btn btn--accent" onClick={() => setOpen(key)} disabled={busy}>
+                    <button type="button" className="btn btn--accent" onClick={() => setOpen(key)}>
                       Add to cast
                     </button>
-                    <button type="button" className="btn btn--ink" onClick={() => choose(key, person, { kind: "oneoff" })} disabled={busy}>
+                    <button type="button" className="btn btn--ink" onClick={() => choose(key, person, { kind: "oneoff" })}>
                       Just this story
                     </button>
-                    <button type="button" className={styles.textButton} onClick={() => choose(key, person, { kind: "never" })} disabled={busy}>
+                    <button type="button" className={styles.textButton} onClick={() => choose(key, person, { kind: "never" })}>
                       Never ask for this name
                     </button>
                   </div>
@@ -188,19 +193,18 @@ export function NewFacesStep({ people, style, onDone }: NewFacesStepProps) {
                     {note.text}
                   </p>
                 ) : null}
-
-                {open === key && !choice ? (
-                  <div className={styles.form}>
-                    <NewPersonForm
-                      person={person}
-                      cast={cast}
-                      styleLabel={ART_STYLES[style].label}
-                      onSave={(character, photo) => add(key, character, photo)}
-                      onCancel={() => setOpen(null)}
-                    />
-                  </div>
-                ) : null}
               </div>
+              {open === key && !choice && !drawing.has(key) ? (
+                <div className={styles.form}>
+                  <NewPersonForm
+                    person={person}
+                    cast={cast}
+                    styleLabel={ART_STYLES[style].label}
+                    onSave={(character, photo) => add(key, character, photo)}
+                    onCancel={() => setOpen(null)}
+                  />
+                </div>
+              ) : null}
             </li>
           );
         })}
