@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Icon } from "@/art/Icon";
+import { RequireAccount } from "@/components/account/RequireAccount";
 import { PAGE_TURN, PageTurn } from "@/components/PageTurn";
 import { RecordPanel } from "./RecordPanel";
 import styles from "./record.module.css";
@@ -18,6 +19,7 @@ export default function RecordPage() {
   return (
     <PageTurn>
       <main id="main" className="page">
+        <RequireAccount />
         <header className="page-head">
           <h1>Tell me about today</h1>
           <p className="page-head__lede">

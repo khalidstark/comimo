@@ -1,5 +1,6 @@
 import "server-only";
 import { createHash, randomBytes } from "node:crypto";
+import { sessionCookieName } from "./cookieName";
 import { getKV, type KV } from "./kv";
 import { isSameOrigin } from "./request";
 
@@ -12,13 +13,7 @@ import { isSameOrigin } from "./request";
 
 export const SESSION_TTL_SEC = 30 * 24 * 60 * 60;
 
-/**
- * In production the cookie carries the __Host- prefix: the browser then only
- * accepts it over HTTPS, for this exact host and path "/".
- */
-export function sessionCookieName(production = process.env.NODE_ENV === "production"): string {
-  return production ? "__Host-comimo_session" : "comimo_session";
-}
+export { sessionCookieName };
 
 export function sessionCookieOptions(production = process.env.NODE_ENV === "production") {
   return {
