@@ -18,6 +18,8 @@ import { maskAt, matchCast, mergeDetections, nounPhrase, toFigures, type CastInP
 
 const MODEL = "sam-3.1";
 const SAM_TIMEOUT_MS = 45_000;
+/** Longest side of the copy SAM looks at. */
+const SAM_MAX_SIDE = 1280;
 
 interface ResponsesBody {
   output_text?: string;
@@ -124,14 +126,22 @@ export async function locate(image: ModelImage, references: CharacterReference[]
   const cast: CastInPanel[] = references.map((ref) => ({ characterId: ref.characterId, animal: isAnimal(ref) }));
   const phrases = new Map(references.map((ref) => [ref.characterId, nounPhrase(ref.look, isAnimal(ref))]));
 
+  // SAM gets a copy at most 1280 px on the long side (a fifth of the upload, same boxes); boxes are scaled back.
+  const small = await sharp(image.data).resize({ width: SAM_MAX_SIDE, height: SAM_MAX_SIDE, fit: "inside", withoutEnlargement: true }).webp({ quality: 82 }).toBuffer({ resolveWithObject: true });
+  const sent: ModelImage = { mimeType: "image/webp", data: new Uint8Array(small.data) };
+  const sx = width / small.info.width;
+  const sy = height / small.info.height;
+  const find = async (phrase: string) =>
+    (await segment(sent, phrase, context)).map((d) => ({ ...d, box: { x1: d.box.x1 * sx, y1: d.box.y1 * sy, x2: d.box.x2 * sx, y2: d.box.y2 * sy } }));
+
   const requests: Promise<DetectionSet>[] = [
     ...cast.map(async (member) => ({
       characterId: member.characterId,
       animal: member.animal,
-      detections: await segment(image, phrases.get(member.characterId)!, context),
+      detections: await find(phrases.get(member.characterId)!),
     })),
-    segment(image, "person", context).then((detections) => ({ characterId: null, animal: false, detections })),
-    segment(image, "face", context).then((detections) => ({ characterId: null, animal: false, faces: true, detections })),
+    find("person").then((detections) => ({ characterId: null, animal: false, detections })),
+    find("face").then((detections) => ({ characterId: null, animal: false, faces: true, detections })),
   ];
   const sets = await Promise.all(requests);
   const candidates = mergeDetections(sets, width, height);
