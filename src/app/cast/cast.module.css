@@ -335,3 +335,9 @@
   color: var(--ink-soft);
   font-size: var(--step--1);
 }
+
+/* Other names under the role chip */
+.aliases {
+  color: var(--ink-soft);
+  font-size: var(--step--1);
+}

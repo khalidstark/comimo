@@ -12,6 +12,7 @@ export const starterCast: Character[] = [
   {
     id: "nour",
     name: "Nour",
+    aliases: ["نور"],
     role: "self",
     roleLabel: "You",
     look:
@@ -31,6 +32,7 @@ export const starterCast: Character[] = [
   {
     id: "karim",
     name: "Karim",
+    aliases: ["كريم"],
     role: "friend",
     roleLabel: "Best friend",
     look:
@@ -50,6 +52,7 @@ export const starterCast: Character[] = [
   {
     id: "teta",
     name: "Teta Samia",
+    aliases: ["Teta", "تيتا", "تيتا سامية", "Samia"],
     role: "family",
     roleLabel: "Grandmother",
     look:
@@ -69,6 +72,7 @@ export const starterCast: Character[] = [
   {
     id: "mishmish",
     name: "Mishmish",
+    aliases: ["مشمش"],
     role: "pet",
     roleLabel: "The cat",
     look: "Chubby orange tabby cat with a white chest, one bent ear and a very fluffy tail.",
@@ -90,9 +94,10 @@ export const starterCastById: Record<string, Character> = Object.fromEntries(
 );
 
 /** The starter cast as the script model sees it. */
-export const starterCastBriefs: CastBrief[] = starterCast.map(({ id, name, role, look, personality }) => ({
+export const starterCastBriefs: CastBrief[] = starterCast.map(({ id, name, aliases, role, look, personality }) => ({
   id,
   name,
+  ...(aliases ? { aliases } : {}),
   role,
   look,
   personality,
