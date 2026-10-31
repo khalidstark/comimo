@@ -5,7 +5,7 @@ import { signFileId, signSheet } from "@/lib/models/fileTokens";
 import { drawReferenceSheetFromPhoto, isContentPolicyError } from "@/lib/models/meta/image";
 import { fromWire, isRecord, isText, json, jsonError, modelErrorResponse, toWire } from "@/lib/models/wire";
 import { BODY_LIMITS, readBoundedJson } from "@/lib/requestBody";
-import { PhotoInputError, readPhotoCrop } from "@/lib/photoInput";
+import { PhotoInputError, isPhotoType, readPhotoCrop } from "@/lib/photoInput";
 import type { CharacterRole, CharacterSheetResponse } from "@/lib/types";
 
 /** Muse Image can take a minute or two with reasoning_strength "high". */
@@ -44,24 +44,30 @@ export async function POST(request: Request) {
     return jsonError(400, "Describe how they look (hair, clothes, something they carry) before drawing them.");
   }
 
-  let reference: ModelImage | null = null;
+  // Cheap checks on the photo first (nothing decoded yet).
+  const wire = photo === undefined ? null : fromWire(photo);
   if (photo !== undefined) {
     if (consent !== true) return jsonError(400, "Confirm you have this person's permission to use their photo.");
-    const wire = fromWire(photo);
-    if (!wire) return jsonError(400, "`photo` must be an image.");
-    try {
-      reference = await readPhotoCrop(wire);
-    } catch (error) {
-      if (error instanceof PhotoInputError) return jsonError(400, error.message);
-      throw error;
-    }
+    if (!wire || !isPhotoType(wire.data)) return jsonError(400, "`photo` must be a JPEG, PNG or WebP image.");
   }
 
   const models = getModels();
   const source = models.sources.drawReferenceSheet;
   // The sheet is one image call (two if a photo is refused), counted against the daily image cap by the meter as it is sent.
-  const check = guard(request, "character", { real: source === "meta" });
+  // A photo is decoded on this server, so it is counted in mock mode too.
+  const check = guard(request, "character", { real: source === "meta" || wire !== null });
   if (!check.ok) return guardResponse(check);
+
+  // Decoding costs CPU: once it starts, the visitor's slot is never refunded.
+  let reference: ModelImage | null = null;
+  if (wire) {
+    try {
+      reference = await readPhotoCrop(wire);
+    } catch (error) {
+      if (error instanceof PhotoInputError) return jsonError(400, error.message);
+      return modelErrorResponse(error);
+    }
+  }
 
   try {
     const context = { visitorId: check.visitorId, signal: request.signal, meter: check.meter };
@@ -92,8 +98,8 @@ export async function POST(request: Request) {
       source,
     );
   } catch (error) {
-    // Refund only when nothing billable reached Meta; an abort or timeout after sending still counts.
-    check.refundIfUnbilled();
+    // Refund only when nothing billable reached Meta and no photo was decoded; an abort or timeout after sending still counts.
+    if (!wire) check.refundIfUnbilled();
     return modelErrorResponse(error);
   }
 }
