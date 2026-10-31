@@ -194,7 +194,7 @@ export default function Home() {
         </section>
 
         <footer className={`page ${styles.footer}`}>
-          <p>Your account keeps your place. Your comics are kept on this device.</p>
+          <p>Your account keeps your place, and your comics follow it to every device.</p>
         </footer>
       </main>
     </PageTurn>

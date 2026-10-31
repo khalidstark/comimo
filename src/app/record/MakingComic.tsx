@@ -43,7 +43,7 @@ const STEP_LABELS: Record<PipelineStep, string> = {
   meet: "New faces",
   draw: "Drawing the panels",
   check: "Checking faces",
-  save: "Saving to this device",
+  save: "Saving to your comic book",
 };
 
 function prefersReducedMotion(): boolean {

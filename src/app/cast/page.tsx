@@ -12,7 +12,7 @@ export default function CastPage() {
           <h1>Your cast</h1>
           <p className="page-head__lede">
             Make them once and they star in every comic, looking the same in every panel. Start with this cast,
-            change them, or add the people in your life. They stay on this device.
+            change them, or add the people in your life. They follow your account to every device.
           </p>
         </header>
 
