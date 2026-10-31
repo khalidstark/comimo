@@ -35,12 +35,22 @@ function neighbours(days: Day[], day: Day): { previous?: DayLink; next?: DayLink
 }
 
 /**
- * Reads a day from this browser's IndexedDB and shows it as a comic. Image
+ * Reads a day from the store (the account's offline copy, fetched from the
+ * account when missing) and shows it as a comic. Image
  * Blobs become object URLs, revoked when the reader unmounts. Sample ids fall
  * back to the fixtures (the page normally renders those on the server).
  */
 export function DayReader({ id }: { id: string }) {
   const [loaded, setLoaded] = useState<Loaded>({ status: "loading" });
+  // Bumped when a slow first sync finishes, so a day that only just arrived from the account shows up.
+  const [synced, setSynced] = useState(0);
+
+  useEffect(() => {
+    if (loaded.status !== "missing") return;
+    const again = () => setSynced((n) => n + 1);
+    window.addEventListener("comimo:synced", again);
+    return () => window.removeEventListener("comimo:synced", again);
+  }, [loaded.status]);
 
   useEffect(() => {
     let cancelled = false;
@@ -109,7 +119,7 @@ export function DayReader({ id }: { id: string }) {
       cancelled = true;
       urls.forEach((url) => URL.revokeObjectURL(url));
     };
-  }, [id]);
+  }, [id, synced]);
 
   if (loaded.status === "missing") return <MissingDay />;
   if (loaded.status === "loading") return <DayLoading />;
