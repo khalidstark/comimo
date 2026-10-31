@@ -24,12 +24,16 @@ let r: {
 };
 
 const ORIGIN = "http://localhost:3190";
+const ACCOUNT_IDS = ["44444444-4444-4444-8444-444444444444", "55555555-5555-4555-8555-555555555555"];
 
 beforeAll(async () => {
   dir = await mkdtemp(join(tmpdir(), "comimo-album-"));
   process.env.COMIMO_DATA_DIR = dir;
   process.env.COMIMO_MOCK = "1";
   const { createSession, sessionCookieName } = await import("./session");
+  const { getKV } = await import("./kv");
+  // Sessions count only while their account record exists.
+  for (const id of ACCOUNT_IDS) await getKV().set(`account:${id}`, JSON.stringify({ id }));
   cookieA = `${sessionCookieName()}=${await createSession({ id: "44444444-4444-4444-8444-444444444444", name: "A" })}`;
   cookieB = `${sessionCookieName()}=${await createSession({ id: "55555555-5555-4555-8555-555555555555", name: "B" })}`;
   r = {

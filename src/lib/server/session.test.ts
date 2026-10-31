@@ -23,6 +23,7 @@ let kv: FileKV;
 beforeEach(async () => {
   dir = await mkdtemp(join(tmpdir(), "comimo-session-"));
   kv = new FileKV(dir);
+  await kv.set(`account:${NOUR.id}`, JSON.stringify({ id: NOUR.id }));
 });
 
 afterEach(async () => {
@@ -41,6 +42,18 @@ describe("session lifecycle", () => {
     expect(await createSession(NOUR, kv)).not.toBe(id);
     expect(await readSession(id, kv)).toEqual(NOUR);
     await destroySession(id, kv);
+    expect(await readSession(id, kv)).toBeNull();
+  });
+
+  it("refuses to start a session for an account that doesn't exist", async () => {
+    await expect(createSession({ id: "acct-gone", name: "Gone" }, kv)).rejects.toThrow("No such account");
+  });
+
+  it("stops honouring every session once the account record is gone, even one no list knows about", async () => {
+    const id = await createSession(NOUR, kv);
+    await kv.del(`sessions:${NOUR.id}`); // as if the per-account list had missed it
+    expect(await readSession(id, kv)).toEqual(NOUR);
+    await kv.del(`account:${NOUR.id}`);
     expect(await readSession(id, kv)).toBeNull();
   });
 
