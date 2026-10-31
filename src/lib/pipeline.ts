@@ -5,6 +5,8 @@ import { animateCharacter, drawReferenceSheet, loadCast, referenceFileTokenFor, 
 import { layoutPages, localPanels, pageLayoutChain } from "./layout/comicPages";
 import { panelFrames } from "./layout/frames";
 import { detectLanguages } from "./languages";
+import { applyFaceChoices, isOneOffId, newPersonKey, type FaceChoice } from "./newPeople";
+import { neverAskKeys, rememberNever } from "./newPeopleChoices";
 import { getDay, getImage, listDays, newId, putImage, saveCharacter, saveDay } from "./store";
 import { blobToWire, wireToBlob } from "./wireImage";
 import type {
@@ -16,6 +18,8 @@ import type {
   Day,
   ImageRef,
   LanguageHint,
+  NewPerson,
+  OneOff,
   Panel,
   PanelRequest,
   PanelResponse,
@@ -25,6 +29,7 @@ import type {
   StoryMode,
   TranscribeResponse,
   Transcript,
+  UnitBox,
   WireImage,
   WireReference,
 } from "./types";
@@ -39,7 +44,7 @@ import type {
  * (useSyncExternalStore).
  */
 
-export const PIPELINE_STEPS = ["listen", "write", "draw", "check", "save"] as const;
+export const PIPELINE_STEPS = ["listen", "write", "meet", "draw", "check", "save"] as const;
 export type PipelineStep = (typeof PIPELINE_STEPS)[number];
 export type StepStatus = "waiting" | "active" | "done" | "skipped" | "error";
 
@@ -81,6 +86,13 @@ export interface PipelineState {
   date: string;
   /** Set once the day is saved and read back from the store. */
   dayId: string | null;
+  /**
+   * New faces (03-06): the people in the script who aren't in the cast, while
+   * the run waits for the user to say who they are (before any panel is drawn).
+   */
+  meeting: NewPerson[] | null;
+  /** Once settled: who joined the cast and who is a one-off in this story. */
+  faces: { joined: string[]; oneOffs: string[] } | null;
 }
 
 export interface PipelineInput {
@@ -185,14 +197,23 @@ function toBrief({ id, name, aliases, role, look, personality }: Character): Cas
   return { id, name, role, look, personality, ...(aliases?.length ? { aliases } : {}) };
 }
 
-/** The names a panel's characters and speakers had when it was made (ISS-007). */
-function nameSnapshot(panel: ScriptPanel, cast: Character[]): Record<string, string> {
+/** The names a panel's characters and speakers had when it was made (ISS-007), one-offs included. */
+function nameSnapshot(panel: ScriptPanel, cast: Character[], oneOffs: OneOff[]): Record<string, string> {
   const names: Record<string, string> = {};
   for (const id of new Set([...panel.characterIds, ...panel.dialogue.map((line) => line.speakerId)])) {
-    const member = cast.find((character) => character.id === id);
+    const member = cast.find((character) => character.id === id) ?? oneOffs.find((oneOff) => oneOff.id === id);
     if (member) names[id] = member.name;
   }
   return names;
+}
+
+/** The first panel (by index) each one-off appears in. */
+function firstAppearances(script: ComicScript): Map<string, number> {
+  const first = new Map<string, number>();
+  for (const panel of script.panels) {
+    for (const id of panel.characterIds) if (isOneOffId(id) && !first.has(id)) first.set(id, panel.index);
+  }
+  return first;
 }
 
 /* ---------- Pipeline ---------- */
@@ -200,7 +221,7 @@ function nameSnapshot(panel: ScriptPanel, cast: Character[]): Record<string, str
 function initialState(): PipelineState {
   return {
     status: "idle",
-    steps: { listen: "waiting", write: "waiting", draw: "waiting", check: "waiting", save: "waiting" },
+    steps: { listen: "waiting", write: "waiting", meet: "waiting", draw: "waiting", check: "waiting", save: "waiting" },
     error: null,
     transcript: null,
     script: null,
@@ -208,7 +229,20 @@ function initialState(): PipelineState {
     panels: [],
     date: localIsoDate(),
     dayId: null,
+    meeting: null,
+    faces: null,
   };
+}
+
+/** How a one-off looked in the panel they first appeared in: the reference for their later panels. */
+interface Appearance {
+  image?: WireImage;
+  /** The server's signature over that panel (PanelResponse.imageToken). */
+  imageToken?: string;
+  /** Where SAM found them in it. */
+  box?: UnitBox;
+  /** Their cut-out, once the server uploaded it. */
+  fileToken?: string;
 }
 
 export class ComicPipeline {
@@ -227,6 +261,12 @@ export class ComicPipeline {
   private wav: Blob | null = null;
   /** True when the day was typed: there is nothing to transcribe. */
   private readonly typed: boolean;
+  /** Answers the new-faces question the run is waiting on. */
+  private answerFaces: ((choices: Record<string, FaceChoice>) => void) | null = null;
+  /** Each one-off's first appearance, once drawn. */
+  private readonly appearances = new Map<string, Appearance>();
+  /** Settles when a one-off's first panel is done (or failed), so later panels can wait for it. */
+  private readonly appeared = new Map<string, Promise<void>>();
 
   constructor(private readonly input: PipelineInput) {
     this.typed = !input.audio && Boolean(input.text?.trim());
@@ -253,7 +293,20 @@ export class ComicPipeline {
   }
 
   private characterName(id: string): string {
-    return this.cast?.find((member) => member.id === id)?.name ?? id;
+    return this.cast?.find((member) => member.id === id)?.name ?? this.oneOff(id)?.name ?? id;
+  }
+
+  private oneOff(id: string): OneOff | undefined {
+    return this.state.script?.oneOffs?.find((oneOff) => oneOff.id === id);
+  }
+
+  /**
+   * The new-faces step's answer: for each person (by `NewPerson.id`), who they
+   * are. People added to the cast must already be saved (their sheet drawn or
+   * failed); anyone missing from `choices` is skipped (a one-off today).
+   */
+  chooseFaces(choices: Record<string, FaceChoice>) {
+    this.answerFaces?.(choices);
   }
 
   /**
@@ -276,10 +329,14 @@ export class ComicPipeline {
       const transcript = this.state.transcript ?? (await this.transcribe(signal));
 
       step = "write";
-      const script = this.state.script ?? (await this.writeScript(transcript, signal));
+      const written = this.state.script ?? (await this.writeScript(transcript, signal));
+
+      // New faces are settled before any panel is drawn.
+      step = "meet";
+      const script = await this.meetNewFaces(written, signal);
 
       if (script.safety === "crisis") {
-        this.set({ steps: { ...this.state.steps, draw: "skipped", check: "skipped" } });
+        this.set({ steps: { ...this.state.steps, meet: "skipped", draw: "skipped", check: "skipped" } });
       } else {
         step = "draw";
         await this.drawPanels(script, signal);
@@ -308,12 +365,13 @@ export class ComicPipeline {
     if (!this.controller) return;
     this.controller.abort();
     this.controller = null;
+    this.answerFaces = null;
     const steps = { ...this.state.steps };
     for (const key of PIPELINE_STEPS) if (steps[key] === "active") steps[key] = "waiting";
     const panels = this.state.panels.map((panel) =>
       panel.status === "drawing" ? { ...panel, status: "waiting" as const } : panel,
     );
-    this.set({ status: "cancelled", steps, panels });
+    this.set({ status: "cancelled", steps, panels, meeting: null });
   }
 
   /** Cancel and free the object URLs behind the panel previews. */
@@ -415,6 +473,64 @@ export class ComicPipeline {
     return laidOut;
   }
 
+  /**
+   * New faces (03-06): when the script has people who aren't in the cast,
+   * wait for the user to say who each one is (add to the cast, a one-off for
+   * this story, or never ask), then swap their placeholders in the script.
+   * Names the user said "never ask" to before are one-offs without asking.
+   */
+  private async meetNewFaces(script: ComicScript, signal: AbortSignal): Promise<ComicScript> {
+    const { meet } = this.state.steps;
+    if (meet === "done" || meet === "skipped") return script;
+    const people = script.safety === "crisis" ? [] : (script.newPeople ?? []);
+    if (people.length === 0) {
+      this.setStep("meet", "skipped");
+      return script;
+    }
+    this.setStep("meet", "active");
+    const never = await neverAskKeys().catch(() => new Set<string>());
+    const keyOf = (person: NewPerson, i: number) => person.id ?? `new${i + 1}`;
+    const choices: Record<string, FaceChoice> = {};
+    const ask = people.filter((person, i) => {
+      if (!never.has(newPersonKey(person))) return true;
+      choices[keyOf(person, i)] = { kind: "never" };
+      return false;
+    });
+
+    if (ask.length > 0) {
+      const answered = await new Promise<Record<string, FaceChoice>>((resolve, reject) => {
+        const stop = () => reject(new DOMException("Cancelled", "AbortError"));
+        if (signal.aborted) return stop();
+        signal.addEventListener("abort", stop, { once: true });
+        this.answerFaces = (value) => {
+          signal.removeEventListener("abort", stop);
+          this.answerFaces = null;
+          resolve(value);
+        };
+        this.set({ meeting: ask });
+      });
+      for (const person of ask) {
+        const key = keyOf(person, people.indexOf(person));
+        const choice = answered[key];
+        if (choice) choices[key] = choice;
+        if (choice?.kind === "never") void rememberNever(person).catch(() => undefined);
+      }
+    }
+
+    // People who joined the cast are in the store now, with their sheets.
+    this.cast = await loadCast();
+    this.references.clear();
+    const settled = applyFaceChoices(script, choices);
+    const joined = Object.values(choices).flatMap((choice) => (choice.kind === "cast" ? [choice.name] : []));
+    this.set({
+      script: settled,
+      meeting: null,
+      faces: { joined, oneOffs: (settled.oneOffs ?? []).map((oneOff) => oneOff.name) },
+      steps: { ...this.state.steps, meet: "done" },
+    });
+    return settled;
+  }
+
   /** A character's sheet as an inline image, loaded once per run. */
   private referenceFor(characterId: string, signal: AbortSignal): Promise<WireImage | undefined> {
     let pending = this.references.get(characterId);
@@ -430,6 +546,13 @@ export class ComicPipeline {
 
   /** Keep (or forget, with null) the uploaded-sheet token on a character, here and in the store. */
   private async rememberReferenceFile(characterId: string, token: string | null) {
+    const appearance = this.appearances.get(characterId);
+    if (appearance) {
+      // A one-off's uploaded cut-out lives for this comic only.
+      if (token) appearance.fileToken = token;
+      else delete appearance.fileToken;
+      return;
+    }
     const character = this.cast?.find((member) => member.id === characterId);
     const { style } = this.input;
     if (!character || (token ?? undefined) === referenceFileTokenFor(character, style)) return;
@@ -443,6 +566,11 @@ export class ComicPipeline {
   private async referencesFor(panel: ScriptPanel, signal: AbortSignal, inline: boolean): Promise<WireReference[]> {
     const references: WireReference[] = [];
     for (const id of panel.characterIds) {
+      const oneOff = this.oneOff(id);
+      if (oneOff) {
+        references.push(this.oneOffReference(oneOff, inline));
+        continue;
+      }
       const character = this.cast?.find((member) => member.id === id);
       if (!character) continue;
       const base = { characterId: id, name: character.name, look: character.look, role: character.role };
@@ -457,6 +585,35 @@ export class ComicPipeline {
       references.push({ ...base, ...(image ? { image, ...(sheetToken ? { sheetToken } : {}) } : {}) });
     }
     return references;
+  }
+
+  /**
+   * A one-off for the panel request: their look from the note and, after
+   * their first panel, that panel (signed, with where they are in it) or the
+   * cut-out the server uploaded from it. In their first panel they are drawn freely.
+   */
+  private oneOffReference(oneOff: OneOff, inline: boolean): WireReference {
+    const base: WireReference = { characterId: oneOff.id, name: oneOff.name, look: oneOff.look, role: oneOff.role, oneOff: true };
+    const seen = this.appearances.get(oneOff.id);
+    if (!seen) return base;
+    if (seen.fileToken && !inline) return { ...base, fileToken: seen.fileToken };
+    if (seen.image && seen.imageToken) return { ...base, image: seen.image, sheetToken: seen.imageToken, ...(seen.box ? { box: seen.box } : {}) };
+    return base;
+  }
+
+  /** Later panels with a one-off wait for their first panel, so it can be their reference. */
+  private async waitForAppearances(panel: ScriptPanel, first: Map<string, number>, signal: AbortSignal) {
+    const waits = panel.characterIds.flatMap((id) => (isOneOffId(id) && first.get(id) !== panel.index ? [this.appeared.get(id)] : []));
+    if (waits.length === 0) return;
+    await new Promise<void>((resolve, reject) => {
+      const stop = () => reject(new DOMException("Cancelled", "AbortError"));
+      if (signal.aborted) return stop();
+      signal.addEventListener("abort", stop, { once: true });
+      void Promise.all(waits).then(() => {
+        signal.removeEventListener("abort", stop);
+        resolve();
+      });
+    });
   }
 
   /**
@@ -489,19 +646,35 @@ export class ComicPipeline {
     await this.ensureSheets(script, signal);
     const queue = script.panels.filter((panel) => this.state.panels.find((p) => p.index === panel.index)?.status !== "done");
     for (const panel of queue) this.setPanel(panel.index, { status: "waiting", error: undefined });
+
+    // One-offs: a first panel still to draw settles its promise when done (or failed); otherwise there is nothing to wait for.
+    const first = firstAppearances(script);
+    const settle = new Map<string, () => void>();
+    for (const [id, index] of first) {
+      if (queue.some((panel) => panel.index === index)) {
+        this.appeared.set(id, new Promise<void>((resolve) => settle.set(id, resolve)));
+      } else {
+        this.appeared.set(id, Promise.resolve());
+      }
+    }
     this.set({ steps: { ...this.state.steps, draw: "active", check: "active" } });
 
     let failed = 0;
     const worker = async () => {
       for (let next = queue.shift(); next; next = queue.shift()) {
         if (signal.aborted) return;
+        const firstOf = [...first].filter(([, index]) => index === next!.index).map(([id]) => id);
         try {
+          await this.waitForAppearances(next, first, signal);
           await this.drawPanel(next, signal);
         } catch (error) {
           if (signal.aborted || isAbort(error)) throw error;
           failed += 1;
           const message = error instanceof StepError ? error.message : "This panel didn't draw.";
           this.setPanel(next.index, { status: "error", error: message });
+        } finally {
+          // Later panels go ahead either way: from this first appearance, or from the description if it failed.
+          for (const id of firstOf) settle.get(id)?.();
         }
       }
     };
@@ -549,6 +722,13 @@ export class ComicPipeline {
     const stored = (await putImage(imageId, image)) && (!before || (await putImage(beforeId, before)));
     if (!stored) {
       throw new StepError("draw", "Couldn't keep the panels on this device. Private windows can block storage.");
+    }
+
+    // A one-off's first panel becomes their reference for the rest of the comic.
+    for (const id of panel.characterIds) {
+      if (!isOneOffId(id) || this.appearances.has(id) || !result.imageToken) continue;
+      const box = result.figures?.items.find((figure) => figure.characterId === id)?.box;
+      this.appearances.set(id, { image: result.image, imageToken: result.imageToken, ...(box ? { box } : {}) });
     }
 
     const { method, sam } = result.consistency;
@@ -609,8 +789,11 @@ export class ComicPipeline {
     };
 
     // Cast by name (03-05): keep each panel's names as they are today (ISS-007), and the new people to offer once.
+    // New faces (03-06): one-offs are kept with the day; only people skipped before drawing are offered afterwards.
     const cast = this.cast ?? [];
-    day.panels = day.panels.map((panel) => ({ ...panel, names: nameSnapshot(panel, cast) }));
+    const oneOffs = crisis ? [] : (script.oneOffs ?? []);
+    day.panels = day.panels.map((panel) => ({ ...panel, names: nameSnapshot(panel, cast, oneOffs) }));
+    if (oneOffs.length > 0) day.oneOffs = oneOffs;
     if (!crisis && script.newPeople?.length) day.newPeople = script.newPeople;
 
     // Read it back: only route to the day once it is really on the device.

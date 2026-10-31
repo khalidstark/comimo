@@ -190,6 +190,48 @@ async function updateStoredCharacter(character: Character, change: (current: Cha
   return (await saveCharacter(next)) ? next : null;
 }
 
+/* ---------- Adding someone new ---------- */
+
+/** How adding a new person to the cast went, in words for the screen. */
+export interface JoinResult {
+  /** The character as saved (with the sheet when it drew). */
+  character: Character;
+  message: string;
+  /** True when they joined but the sheet didn't draw. */
+  sheetFailed: boolean;
+}
+
+/**
+ * Add a new person to the cast and draw their sheet once in `style`, from
+ * the photo's cut-out when there is one (used for this one drawing and then
+ * dropped) or from the written look. Null when the browser won't save. The
+ * animated sprite is up to the caller (animateCharacter).
+ */
+export async function joinCast(added: Character, style: ArtStyleId, photo: WireImage | null, signal?: AbortSignal): Promise<JoinResult | null> {
+  if (!(await saveCharacter(added))) return null;
+  try {
+    if (photo) {
+      const { character, photoRefused } = await drawReferenceSheetFromPhoto(added, style, photo, signal);
+      return {
+        character,
+        sheetFailed: false,
+        message: photoRefused
+          ? `Muse Image wouldn't draw from that photo, so ${character.name} was drawn from the description instead. The photo is gone.`
+          : `${character.name} is in your cast, drawn from the photo. The photo is gone; only the drawing is kept.`,
+      };
+    }
+    const character = await drawReferenceSheet(added, style, signal);
+    return { character, sheetFailed: false, message: `${character.name} is in your cast and looks the same from now on.` };
+  } catch (problem) {
+    if (signal?.aborted) throw problem;
+    return {
+      character: added,
+      sheetFailed: true,
+      message: `${added.name} joined your cast, but the sheet didn't draw (${problem instanceof SheetError ? problem.message : "try again"}).`,
+    };
+  }
+}
+
 /* ---------- Animated sprites ---------- */
 
 /** A drawn sheet the server will animate: a stored Blob with its server signature (prefers the zine one). */

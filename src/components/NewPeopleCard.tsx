@@ -9,12 +9,10 @@ import { ART_STYLES, artStyleOf } from "@/lib/artStyles";
 import {
   LIMITS,
   ROLE_OPTIONS,
-  SheetError,
   animateCharacter,
   characterFromDraft,
   defaultRoleLabel,
-  drawReferenceSheet,
-  drawReferenceSheetFromPhoto,
+  joinCast,
   loadCast,
   referenceSheetFor,
   spriteSheetFor,
@@ -24,35 +22,15 @@ import {
   type DraftField,
 } from "@/lib/cast";
 import { newPersonKey, peopleToOffer } from "@/lib/newPeople";
-import { getMeta, saveCharacter, setMeta } from "@/lib/store";
+import { declinedKeys, rememberLater, rememberNever } from "@/lib/newPeopleChoices";
 import type { Character, CharacterRole, Day, NewPerson, WireImage } from "@/lib/types";
 import styles from "./NewPeopleCard.module.css";
 
-/** Names the user said "Never for this name" to, on this device. */
-const NEVER_KEY = "newPeople:never";
-/** Names the user said "Not now" to, for one day. */
-const laterKey = (dayId: string) => `newPeople:later:${dayId}`;
-
-async function readList(key: string): Promise<string[]> {
-  const value = await getMeta(key);
-  if (typeof value !== "string") return [];
-  try {
-    const list: unknown = JSON.parse(value);
-    return Array.isArray(list) ? list.filter((item): item is string => typeof item === "string") : [];
-  } catch {
-    return [];
-  }
-}
-
-async function remember(key: string, name: string) {
-  const list = await readList(key);
-  if (!list.includes(name)) await setMeta(key, JSON.stringify([...list, name].slice(-200)));
-}
-
 /**
- * After a comic: "Meet Omar?" for each named person in the note who isn't in
- * the cast. Adding them takes a quick, prefilled form (or a photo) and draws
- * their sheet once in the day's art style, then animates them. "Not now"
+ * After a comic: "Meet Omar?" for each person in the note who isn't in the
+ * cast and whom the user skipped before drawing (03-06; on days made in 03-05,
+ * everyone new). Adding them takes a quick, prefilled form (or a photo) and
+ * draws their sheet once in the day's art style, then animates them. "Not now"
  * hides them on this day; "Never for this name" stops asking on this device.
  */
 export function NewPeopleCard({ day }: { day: Day }) {
@@ -63,9 +41,9 @@ export function NewPeopleCard({ day }: { day: Day }) {
     if (!day.newPeople?.length) return;
     let cancelled = false;
     void (async () => {
-      const [cast, never, later] = await Promise.all([loadCast(), readList(NEVER_KEY), readList(laterKey(day.id))]);
+      const [cast, declined] = await Promise.all([loadCast(), declinedKeys(day.id)]);
       if (cancelled) return;
-      setState({ cast, offer: peopleToOffer(day.newPeople, cast, new Set([...never, ...later])) });
+      setState({ cast, offer: peopleToOffer(day.newPeople, cast, declined) });
     })();
     return () => {
       cancelled = true;
@@ -81,8 +59,7 @@ export function NewPeopleCard({ day }: { day: Day }) {
   }
 
   function dismiss(person: NewPerson, forever: boolean) {
-    const key = newPersonKey(person);
-    void remember(forever ? NEVER_KEY : laterKey(day.id), key);
+    void (forever ? rememberNever(person) : rememberLater(day.id, person));
     setState((current) => current && { ...current, offer: current.offer.filter((p) => p !== person) });
     setNotice(forever ? `Comimo won't ask about ${person.name} again.` : `Not now. ${person.name} can join your cast another day.`);
   }
@@ -136,41 +113,26 @@ function NewPersonOffer({
   }, [stage]);
 
   async function add(added: Character, photo: WireImage | null): Promise<string | null> {
-    if (!(await saveCharacter(added))) return "This browser isn't letting Comimo save right now. Try again in a normal (not private) window.";
-    onAdded(added);
     setCharacter(added);
     setStage("drawing");
     setMessage(null);
-    try {
-      let drawn: Character;
-      let refused = false;
-      if (photo) {
-        const result = await drawReferenceSheetFromPhoto(added, style, photo);
-        drawn = result.character;
-        refused = result.photoRefused;
-      } else {
-        drawn = await drawReferenceSheet(added, style);
-      }
-      setCharacter(drawn);
-      setStage("done");
-      setMessage({
-        text: refused
-          ? `Muse Image wouldn't draw from that photo, so ${drawn.name} was drawn from the description instead. The photo is gone.`
-          : photo
-            ? `${drawn.name} is in your cast, drawn from the photo. The photo is gone; only the drawing is kept.`
-            : `${drawn.name} is in your cast and looks the same from now on.`,
-      });
-      setAnimating(true);
-      const animated = await animateCharacter(drawn);
-      setAnimating(false);
-      if (animated) setCharacter(animated);
-    } catch (problem) {
-      setStage("done");
-      setMessage({
-        text: `${added.name} joined your cast, but the sheet didn't draw (${problem instanceof SheetError ? problem.message : "try again"}). Draw it from the cast screen, or let the next comic draw it.`,
-        error: true,
-      });
+    const joined = await joinCast(added, style, photo);
+    if (!joined) {
+      setStage("form");
+      return "This browser isn't letting Comimo save right now. Try again in a normal (not private) window.";
     }
+    onAdded(joined.character);
+    setCharacter(joined.character);
+    setStage("done");
+    if (joined.sheetFailed) {
+      setMessage({ text: `${joined.message} Draw it from the cast screen, or let the next comic draw it.`, error: true });
+      return null;
+    }
+    setMessage({ text: joined.message });
+    setAnimating(true);
+    const animated = await animateCharacter(joined.character);
+    setAnimating(false);
+    if (animated) setCharacter(animated);
     return null;
   }
 
@@ -211,7 +173,11 @@ function NewPersonOffer({
               </>
             ) : null}
           </p>
-          <p className={styles.note}>Today they were drawn as a background figure.</p>
+          <p className={styles.note}>
+            {day.oneOffs?.some((oneOff) => oneOff.name === person.name)
+              ? "Today they were drawn just for this story."
+              : "Today they were drawn as a background figure."}
+          </p>
           <div className={styles.actions}>
             <button type="button" className="btn btn--accent" onClick={() => setStage("form")}>
               Add <bdi>{person.name}</bdi>
@@ -225,7 +191,7 @@ function NewPersonOffer({
           </div>
         </>
       ) : stage === "form" ? (
-        <QuickForm person={person} cast={cast} styleLabel={ART_STYLES[style].label} onSave={add} onCancel={() => setStage("ask")} />
+        <NewPersonForm person={person} cast={cast} styleLabel={ART_STYLES[style].label} onSave={add} onCancel={() => setStage("ask")} />
       ) : (
         <div className={styles.result}>
           <div className={`sticker ${styles.portrait}`} aria-hidden={!sprite || undefined}>
@@ -260,8 +226,11 @@ function NewPersonOffer({
 
 const FIELDS: DraftField[] = ["name", "aliases", "role", "look"];
 
-/** The prefilled quick form: name, other names, who they are, and how they look (typed or from a photo). */
-function QuickForm({
+/**
+ * The prefilled quick form: name, other names, who they are, and how they
+ * look (typed or from a photo). Shared with the new-faces step (03-06).
+ */
+export function NewPersonForm({
   person,
   cast,
   styleLabel,
@@ -275,9 +244,10 @@ function QuickForm({
   onCancel: () => void;
 }) {
   const id = useId();
+  // Someone the note never named ("the cashier") gets an empty name to fill in.
   const [draft, setDraft] = useState<CharacterDraft>(() => ({
-    name: person.name,
-    aliases: person.mentionedAs.filter((form) => form !== person.name).join(", "),
+    name: person.named === false ? "" : person.name,
+    aliases: person.mentionedAs.filter((form) => form !== person.name || person.named === false).join(", "),
     role: person.role,
     roleLabel: "",
     look: person.look,
@@ -329,6 +299,7 @@ function QuickForm({
             id={fieldId("name")}
             value={draft.name}
             onChange={(event) => set("name", event.target.value)}
+            placeholder={person.named === false ? `Who is ${person.name}?` : undefined}
             dir="auto"
             autoComplete="off"
             maxLength={LIMITS.name + 8}

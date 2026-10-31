@@ -7,6 +7,7 @@ import { Art } from "@/art/Art";
 import { art } from "@/art/manifest";
 import { PAGE_TURN } from "@/components/PageTurn";
 import { pageView, type SlotView } from "@/components/comic/pageView";
+import { NewFacesStep } from "@/components/NewFacesStep";
 import { SlotOutline } from "@/components/comic/SlotOutline";
 import pageStyles from "@/components/comic/page.module.css";
 import { formatDay, moodWords } from "@/lib/format";
@@ -39,6 +40,7 @@ const SKETCH_STORY = Array.from({ length: SKETCH_FRAMES }, (_, index) => ({
 const STEP_LABELS: Record<PipelineStep, string> = {
   listen: "Listening",
   write: "Writing the script",
+  meet: "New faces",
   draw: "Drawing the panels",
   check: "Checking faces",
   save: "Saving to this device",
@@ -81,6 +83,8 @@ function stepDetail(step: PipelineStep, status: StepStatus, state: PipelineState
       const pages = state.pages?.length ?? 1;
       return pages > 1 ? `${pages} pages, ${total} panels` : `${total} panels`;
     }
+    case "meet":
+      return meetDetail(state);
     case "draw":
       return `${drawn} of ${total}`;
     case "check":
@@ -88,6 +92,16 @@ function stepDetail(step: PipelineStep, status: StepStatus, state: PipelineState
     case "save":
       return status === "done" ? "Saved" : "";
   }
+}
+
+/** "2 to meet", then "Omar joined · 1 one-off". */
+function meetDetail(state: PipelineState): string {
+  if (state.meeting) return `${state.meeting.length} to meet`;
+  if (!state.faces) return "";
+  const parts = state.faces.joined.map((name) => `${name} joined`);
+  const oneOffs = state.faces.oneOffs.length;
+  if (oneOffs > 0) parts.push(`${oneOffs} ${oneOffs === 1 ? "one-off" : "one-offs"}`);
+  return parts.join(" · ");
 }
 
 /** What the face check really did so far: SAM's counts, or practice mode. */
@@ -114,6 +128,7 @@ function captionFor(state: PipelineState, fixing: PanelProgress | undefined): st
     return crisis ? "Comimo didn't turn this note into a comic." : "Your comic is ready. Opening it…";
   const { steps } = state;
   if (steps.save === "active") return "Binding the pages…";
+  if (steps.meet === "active") return state.meeting ? "Before I draw: who's who?" : "Getting the new faces ready…";
   if (steps.draw === "active") {
     const pages = state.pages?.length ?? 1;
     const drawingPanels = state.panels.filter((panel) => panel.status === "drawing");
@@ -165,6 +180,8 @@ export function MakingComic({ audio, text, language, style, storyMode, onClose }
     (panel) => panel.page === pageNumber && panel.status === "done" && panel.beforeUrl && !settled.has(panel.index),
   );
   const finished = status === "done" && state.dayId !== null && !fixing;
+  // "New faces" is a step only on comics that met someone new.
+  const steps = PIPELINE_STEPS.filter((step) => step !== "meet" || state.meeting !== null || state.faces !== null || state.steps.meet === "active");
   const failedStep = state.error?.step;
 
   // Coming back to /record after the comic opened: the run is over, so drop the screen.
@@ -319,7 +336,9 @@ export function MakingComic({ audio, text, language, style, storyMode, onClose }
               )}
             </div>
 
-            {crisis ? null : (
+            {crisis ? null : state.meeting ? (
+              <NewFacesStep people={state.meeting} style={style} onDone={(choices) => pipeline.chooseFaces(choices)} />
+            ) : (
               <div key={pageNumber} className={`${pageStyles.wrap} ${styles.frames}`} data-style={style} data-turned={pageNumber > 0 || undefined}>
                 {pageCount > 1 ? (
                   <p className={styles.pageTag}>
@@ -356,7 +375,7 @@ export function MakingComic({ audio, text, language, style, storyMode, onClose }
 
           <div className={styles.side}>
             <ol className={styles.steps} aria-label="Steps">
-              {PIPELINE_STEPS.map((step, i) => {
+              {steps.map((step, i) => {
                 const stepStatus = state.steps[step];
                 const detail = stepDetail(step, stepStatus, state);
                 return (
