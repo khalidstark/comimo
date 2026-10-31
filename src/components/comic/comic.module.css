@@ -200,6 +200,43 @@
   letter-spacing: 0.01em;
 }
 
+/* Bubbles stack in narrow panels and side columns; in a top band of a wide panel they sit two to a row,
+   the first speaker on the left, so the band stays thin (see BUBBLE_ROW_MIN_PX in lettering.ts). */
+.bubbles {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  align-self: stretch;
+}
+
+@container (min-width: 300px) {
+  .frame:not([data-zone="left"], [data-zone="right"]) .bubbles {
+    flex-flow: row wrap;
+    justify-content: space-between;
+    align-items: flex-start;
+  }
+
+  .frame:not([data-zone="left"], [data-zone="right"]) .bubbles .bubble {
+    align-self: flex-start;
+  }
+
+  .frame:not([data-zone="left"], [data-zone="right"]) .bubbles .bubble:not(:only-child) {
+    max-inline-size: min(48%, 18em);
+  }
+
+  .frame:not([data-zone="left"], [data-zone="right"]) .bubbles .bubble[data-tail="right"]:only-child {
+    margin-left: auto;
+  }
+
+  .frame:not([data-zone="left"], [data-zone="right"]) .bubbles[data-swapped] .bubble:first-child {
+    order: 2;
+  }
+
+  .frame:not([data-zone="left"], [data-zone="right"]) .bubbles[data-swapped] .bubble:last-child {
+    margin-top: 0.9em;
+  }
+}
+
 .bubble {
   max-inline-size: min(86%, 18em);
   font-size: clamp(0.78rem, 0.5rem + 1.5cqi, 1.3rem);

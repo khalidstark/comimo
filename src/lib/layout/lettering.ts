@@ -43,18 +43,31 @@ function linesFor(text: string, widthPx: number, font: number): number {
   return lines;
 }
 
-/** Height in px the caption and bubbles need in a column `columnPx` wide, on a panel `panelPx` wide. */
-export function letteringHeight({ caption, lines }: Lettering, columnPx: number, panelPx: number): number {
+/** Panels at least this wide (CSS px) set two bubbles side by side in a top band (comic.module.css). */
+export const BUBBLE_ROW_MIN_PX = 300;
+
+/**
+ * Height in px the caption and bubbles need in a column `columnPx` wide, on a
+ * panel `panelPx` wide. In a top band of a wide enough panel, bubbles sit two
+ * to a row; in a side column they stack.
+ */
+export function letteringHeight({ caption, lines }: Lettering, columnPx: number, panelPx: number, side = false): number {
   const cap = fontPx.caption(panelPx);
   const bub = fontPx.bubble(panelPx);
+  const perRow = !side && panelPx >= BUBBLE_ROW_MIN_PX && lines.length > 1 ? 2 : 1;
+  const share = perRow === 2 ? 0.48 : 0.86;
   let height = 0;
   if (caption) {
     const width = columnPx * 0.92 - cap * 1.2;
     height += linesFor(caption, width, cap) * cap * LINE + cap * 0.5;
   }
-  for (const text of lines) {
-    const width = Math.min(columnPx * 0.86, bub * 18) - bub * 1.9;
-    height += (height ? bub * 0.45 : 0) + linesFor(text, width, bub) * bub * LINE + bub * (1.2 + 0.72 * 1.2) + bub * 0.55;
+  for (let i = 0; i < lines.length; i += perRow) {
+    const width = Math.min(columnPx * share, bub * 18) - bub * 1.9;
+    const tallest = Math.max(...lines.slice(i, i + perRow).map((text) => linesFor(text, width, bub)));
+    // A pair whose speakers stand the other way round is staggered by 0.9em (comic.module.css).
+    const stagger = perRow === 2 && i + 1 < lines.length ? bub * 0.9 : 0;
+    height += (height ? bub * 0.45 : 0) + tallest * bub * LINE + bub * (1.2 + 0.72 * 1.2) + bub * 0.55 + stagger;
   }
-  return height + (lines.length ? 6 : 4);
+  // The layer's own padding, the bubble tail and a little air.
+  return height + 22;
 }
