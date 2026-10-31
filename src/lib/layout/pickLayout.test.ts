@@ -41,7 +41,16 @@ describe("templates", () => {
     for (const template of TEMPLATES) {
       for (const variant of template.variants) {
         expect(variant.slots).toHaveLength(template.count);
-        for (const geometry of [desktopGeometry(variant), phoneGeometry(variant, story(template.count, variant.focus), template.id)]) {
+        const wordy = story(template.count, variant.focus).map((p) => ({
+          ...p,
+          caption: "It was the longest morning of the whole week, honestly.",
+          dialogue: [{ text: "I can't believe the bus just never came, again!" }],
+        }));
+        for (const geometry of [
+          desktopGeometry(variant),
+          phoneGeometry(variant, story(template.count, variant.focus), template.id),
+          phoneGeometry(variant, wordy, template.id),
+        ]) {
           const sizes = areas(geometry);
           const others = sizes.filter((_, i) => i !== variant.focus);
           expect(sizes[variant.focus], `${template.id} focus ${variant.focus}`).toBeGreaterThan(Math.max(...others) * 1.25);

@@ -1,5 +1,6 @@
 import { BEATS, SHOTS, type Beat, type PageLayoutChoice, type Shot } from "../types";
 import { aspectOf, line, quadArea, type Line } from "./geometry";
+import type { Lettering } from "./lettering";
 import { desktopGeometry, hashString } from "./page";
 import { TEMPLATES, templateById, type PageTemplate, type Slot, type TemplateVariant } from "./templates";
 
@@ -29,6 +30,11 @@ export interface ResolvedLayout {
   variant: TemplateVariant;
   /** True when no template fits and the safe layout is used. */
   fallback: boolean;
+}
+
+/** The panel's caption and lines as text to letter. */
+export function letteringOf(panel: StoryPanel): Lettering {
+  return { caption: panel.caption || undefined, lines: panel.dialogue.map((line) => line.text) };
 }
 
 export function isShot(value: unknown): value is Shot {
