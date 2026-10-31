@@ -18,8 +18,9 @@ function story(count: number, splash: number, shots: Shot[] = []): StoryPanel[] 
   }));
 }
 
+/** Each panel's art area (a phone caption band above the art is page, not picture). */
 function areas(geometry: PageGeometry): number[] {
-  return [...geometry.panels].sort((a, b) => a.index - b.index).map((panel) => quadArea(panel.quad));
+  return [...geometry.panels].sort((a, b) => a.index - b.index).map((panel) => quadArea(panel.quad) * (1 - (panel.band ?? 0)));
 }
 
 describe("templates", () => {
@@ -210,5 +211,25 @@ describe("insets", () => {
     expect(hero.coverage!.w).toBeGreaterThan(0.3);
     expect(hero.zone.side).toBe("top");
     expect(hero.zone.size).toBeGreaterThanOrEqual(hero.coverage!.h);
+  });
+});
+
+describe("phone caption bands", () => {
+  it("give long narration a band above the art instead of covering it, and only when it is needed", () => {
+    const narration = "The roof air was cool against my face. The bridge lights blinked far away while his small speaker hummed old songs.";
+    for (const template of TEMPLATES) {
+      const variant = template.variants[0];
+      const silent = story(template.count, variant.focus).map((p) => ({ ...p, caption: undefined, dialogue: [] }));
+      const quiet = phoneGeometry(variant, silent, template.id);
+      expect(quiet.panels.every((panel) => !panel.band)).toBe(true);
+      const told = story(template.count, variant.focus).map((p) => ({ ...p, narration, dialogue: [{ text: "So, is his tea better than mine?" }] }));
+      const phone = phoneGeometry(variant, told, template.id);
+      for (const panel of phone.panels) {
+        if (!panel.band) continue;
+        expect(panel.inset).toBe(false);
+        expect(panel.band).toBeGreaterThan(0);
+        expect(panel.band).toBeLessThanOrEqual(0.6);
+      }
+    }
   });
 });

@@ -47,6 +47,13 @@ export interface PlacedPanel {
   inset: boolean;
   /** For an inset: the panel it overlaps. */
   host?: number;
+  /**
+   * Phone pages only: a caption band above the art, as a share of the box's
+   * height, for a panel whose lettering needs more room than its art left
+   * empty. The art keeps its aspect below the band (like a graphic novel's
+   * caption on the dark page above a picture).
+   */
+  band?: number;
 }
 
 export interface PageGeometry {
@@ -141,6 +148,8 @@ interface PhoneRow {
   width?: number;
   x?: number;
   bleed: boolean;
+  /** Caption band above the art, in units (single-panel rows only). */
+  band?: number;
 }
 
 /** FNV-1a, for deterministic choices from a seed. */
@@ -158,6 +167,10 @@ const TRIO_MIN_WIDTH = 3.1;
 const ROW_MIN_HEIGHT = 3.6;
 /** A lone small panel on the phone page stays below this share of the splash's area. */
 const SINGLE_MAX_SHARE = 0.55;
+/** A panel's lettering may take this much of its art's height on the phone before it gets a caption band above the art. */
+const BAND_TRIGGER = 0.4;
+/** With a band, the art still holds this much of the lettering (the band the art was drawn to leave empty). */
+const BAND_KEEP = 0.24;
 
 function singleCost(aspect: number, focus: boolean): number {
   if (focus) return 0;
@@ -264,6 +277,19 @@ export function phoneGeometry(variant: TemplateVariant, metas: PanelMeta[], seed
     side ^= 1;
   }
 
+  // Wordy panels alone in a row get a caption band above the art, so narration never has to sit on faces.
+  for (const r of rows) {
+    if (r.items.length !== 1) continue;
+    const text = texts[r.items[0]];
+    if (!text || (!text.caption && text.lines.length === 0)) continue;
+    const width = (r.width ?? (r.bleed ? W : W - 2 * m)) - g;
+    const art = width / aspects[r.items[0]];
+    const need = letteringHeight(text, width * PHONE_UNIT_PX, width * PHONE_UNIT_PX) / PHONE_UNIT_PX;
+    if (need <= BAND_TRIGGER * art) continue;
+    r.band = need - BAND_KEEP * art;
+    r.height += r.band;
+  }
+
   // Edge margins: the first row's top and last row's bottom sit on the page margin.
   rows[0].height += m - g / 2;
   rows[rows.length - 1].height += m - g / 2;
@@ -308,7 +334,9 @@ export function phoneGeometry(variant: TemplateVariant, metas: PanelMeta[], seed
       const distances = edges.map((edge) =>
         edge === "left" || edge === "right" ? (r.bleed ? 0 : m) : edge ? m : g / 2,
       ) as unknown as EdgeValues;
-      placed.push(place(index, insetQuad(raw, distances), false));
+      const panel = place(index, insetQuad(raw, distances), false);
+      if (r.band) panel.band = Math.min(0.6, r.band / panel.box.h);
+      placed.push(panel);
     });
     top = bottomLine;
   });

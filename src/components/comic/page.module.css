@@ -45,6 +45,7 @@
   --ly: var(--p-ly);
   --lw: var(--p-lw);
   --lh: var(--p-lh);
+  --band: var(--p-band, 0%);
   --il: var(--p-il);
   --it: var(--p-it);
   --ir: var(--p-ir);
@@ -80,6 +81,7 @@
     --ly: var(--d-ly);
     --lw: var(--d-lw);
     --lh: var(--d-lh);
+    --band: var(--d-band, 0%);
     --il: var(--d-il);
     --it: var(--d-it);
     --ir: var(--d-ir);

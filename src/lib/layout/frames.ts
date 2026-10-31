@@ -18,13 +18,16 @@ interface Measured {
   h: number;
   /** Width lost to an inset over a top corner. */
   topCut: number;
+  /** Height of a caption band above the art (phone pages); the art is `h` tall below it. */
+  band: number;
 }
 
 function measure(geometry: PageGeometry, panel: PlacedPanel, pagePx: number): Measured {
   const unit = pagePx / geometry.width;
   const inset = geometry.panels.find((other) => other.inset && other.host === panel.index);
   const topCut = inset && inset.box.y - panel.box.y < panel.box.h * 0.3 ? inset.box.w * unit : 0;
-  return { w: panel.box.w * unit, h: panel.box.h * unit, topCut };
+  const band = (panel.band ?? 0) * panel.box.h * unit;
+  return { w: panel.box.w * unit, h: panel.box.h * unit - band, topCut, band };
 }
 
 const TOP_MAX = 0.42;
@@ -42,7 +45,8 @@ function up(value: number): number {
  */
 export function zoneFor(text: Lettering, sizes: Measured[], aspect: number, covered?: Corner): LetteringZone {
   if (!text.caption && text.lines.length === 0) return { side: "none", size: 0 };
-  const top = Math.max(...sizes.map((s) => letteringHeight(text, s.w - s.topCut, s.w) / s.h));
+  // A caption band above the art takes what it can of the lettering; the art keeps room for the rest.
+  const top = Math.max(...sizes.map((s) => Math.max(0, letteringHeight(text, s.w - s.topCut, s.w) - s.band) / s.h));
   if (top <= 0.34 || aspect < 1.6) return { side: "top", size: Math.min(TOP_MAX + 0.02, Math.max(0.2, up(top))) };
   const side = covered?.endsWith("left") ? "right" : "left";
   // A side column must stay wide enough to read on the phone page.
@@ -117,7 +121,8 @@ export function letteringBox(panel: PlacedPanel, zone: LetteringZone, geometry: 
   let x1 = right;
   const y0 = topEdge;
   let y1 = bottomEdge;
-  if (zone.side === "top" || zone.side === "none") y1 = Math.max(y0 + 0.12, zone.size || 0.3);
+  const band = panel.band ?? 0;
+  if (zone.side === "top" || zone.side === "none") y1 = Math.max(y0 + 0.12, band + (zone.size || 0.3) * (1 - band));
   if (zone.side === "left") x1 = Math.max(x0 + 0.2, zone.size);
   if (zone.side === "right") x0 = Math.min(x1 - 0.2, 1 - zone.size);
 
