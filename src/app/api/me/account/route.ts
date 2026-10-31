@@ -37,16 +37,24 @@ export async function DELETE(request: Request) {
     if (!slot.ok) return jsonNoStore({ error: `Too many tries. Try again in ${minutesText(slot.retryAfterSec)}.` }, 429, { "Retry-After": String(slot.retryAfterSec) });
     const account = await getAccount(accountId, kv);
     if (!account) {
+      // Nothing is deleted unless the password was checked against a loaded account.
       await burnPasswordCheck(password);
-    } else if (!(await verifyPassword(password, account.passwordHash))) {
+      return jsonNoStore({ error: "That password isn't right.", field: "password" }, 401);
+    }
+    if (!(await verifyPassword(password, account.passwordHash))) {
       return jsonNoStore({ error: "That password isn't right.", field: "password" }, 401);
     }
 
-    // Albums first (their public links die at once), then the library and its blob folder, then sign-in.
+    // The account record goes first: from that moment every session of it is
+    // refused (readSession checks the record) and no new one can start
+    // (createSession checks it too). Then the albums (their public links die),
+    // the library and its blob folder, and the session list, twice: once more
+    // at the very end for anything that raced the teardown.
+    await deleteAccountRecord(account, kv);
     await deleteAllAlbums(accountId, kv);
     await deleteLibrary(accountId, kv);
     await destroyAllSessions(accountId, kv);
-    if (account) await deleteAccountRecord(account, kv);
+    await destroyAllSessions(accountId, kv);
   } catch (error) {
     return logLibraryError("account deletion", error);
   }

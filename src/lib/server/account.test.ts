@@ -27,6 +27,25 @@ function req(method: string, path: string, cookie: string | null, body?: Uint8Ar
 }
 
 describe("DELETE /api/me/account", () => {
+  it("deletes nothing when the account record can't be loaded", async () => {
+    const { createAccount } = await import("./auth");
+    const { createSession, sessionCookieName } = await import("./session");
+    const { getKV } = await import("./kv");
+    const account = (await createAccount({ email: "karim@example.com", name: "Karim", password: "rooftop-tea-1" }))!;
+    const cookie = `${sessionCookieName()}=${await createSession(account)}`;
+    const days = await import("@/app/api/me/days/[id]/route");
+    const at = { params: Promise.resolve({ id: "k1" }) };
+    const day = JSON.stringify({ id: "k1", date: "2026-10-30", updatedAt: "2026-10-30T10:00:00.000Z" });
+    expect((await days.PUT(req("PUT", "/api/me/days/k1", cookie, day), at)).status).toBe(200);
+
+    // The record exists (so the session stands) but can't be read as an account.
+    await getKV().set(`account:${account.id}`, "not json");
+    const route = await import("@/app/api/me/account/route");
+    const refused = await route.DELETE(req("DELETE", "/api/me/account", cookie, JSON.stringify({ password: "rooftop-tea-1" })));
+    expect(refused.status).toBe(401);
+    expect((await days.GET(req("GET", "/api/me/days/k1", cookie), at)).status).toBe(200);
+  });
+
   it("needs the password, then removes days, images, albums, sessions and the account", async () => {
     const { createAccount, findAccountByEmail } = await import("./auth");
     const { createSession, readSession, sessionCookieName } = await import("./session");
