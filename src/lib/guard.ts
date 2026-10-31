@@ -1,28 +1,34 @@
 import "server-only";
-import { createHash, randomBytes } from "node:crypto";
+import { after } from "next/server";
+import { getKV, type KV } from "@/lib/server/kv";
+import { hit, minutesText, windowOf } from "@/lib/server/rateLimit";
+import { hashTag } from "@/lib/server/request";
+import { sessionAccount, type SessionAccount } from "@/lib/server/session";
 
 /**
  * Spending guard for the real model calls.
  *
- * - Per visitor (a salted hash of the IP, never the IP itself): a few comics an
- *   hour, with room for retries on the transcribe and panel steps.
+ * - Per account: a few comics an hour, with room for retries on the
+ *   transcribe and panel steps. Every generation route needs a signed-in
+ *   account (requireSession), and sign-ups are capped per IP, so making more
+ *   accounts doesn't buy more drawing.
  * - Global per UTC day: a ceiling on comics (script calls) and on image calls.
  * - Kill switch: COMIMO_PAUSE_GENERATION=1 stops every real call.
  *
+ * Counters live in the shared KV store (Upstash in production), so every
+ * server instance sees the same counts and a cold start resets nothing.
+ * Hourly limits use fixed clock-hour windows.
+ *
  * Mock calls cost nothing, so they are never limited.
  *
- * Counters live in this server's memory. On Vercel each instance keeps its own
- * counts and they reset on a cold start, so the real ceiling is a multiple of
- * these numbers. Phase 5 decides whether to move them to a shared store.
- *
  * Env (all optional):
- *   COMIMO_COMICS_PER_HOUR   comics per visitor per hour (default 5; reference sheets get twice that,
+ *   COMIMO_COMICS_PER_HOUR   comics per account per hour (default 5; reference sheets get twice that,
  *                            sprites the same, photo descriptions half)
  *   COMIMO_DAILY_COMIC_CAP   comics per day for everyone (default 200)
  *   COMIMO_DAILY_IMAGE_CAP   image and SAM calls per day for everyone (default 600), counted per call
- *   COMIMO_DAILY_UPLOAD_CAP  reference-sheet uploads per day for everyone (default 300); per visitor 4x comics an hour
+ *   COMIMO_DAILY_UPLOAD_CAP  reference-sheet uploads per day for everyone (default 300); per account 4x comics an hour
  *   COMIMO_PAUSE_GENERATION  "1" pauses all real calls
- *   COMIMO_GUARD_SALT        salt for the visitor hash (default: random per process)
+ *   COMIMO_GUARD_SALT        salt for hashed ids (account tag sent to Meta, IP tags); set it in production
  */
 
 /** `sprite`: five image calls animating one character. `photo`: one SAM and one vision call describing a reference photo. */
@@ -30,7 +36,7 @@ export type GuardAction = "transcribe" | "script" | "panel" | "character" | "spr
 
 /**
  * Kinds of upstream call. Image and SAM calls count against the daily image
- * cap; reference uploads to the Files API against the daily and per-visitor upload caps.
+ * cap; reference uploads to the Files API against the daily and per-account upload caps.
  */
 export type UpstreamCall = "transcribe" | "text" | "image" | "sam" | "upload";
 
@@ -55,19 +61,27 @@ export class SpendCapError extends Error {
   }
 }
 
+/** An upload cap was reached; the caller sends the sheet inline instead. */
+export class UploadCapError extends Error {
+  constructor() {
+    super("Reference upload limit reached");
+    this.name = "UploadCapError";
+  }
+}
+
 export type GuardResult =
   | {
       ok: true;
+      /** A salted hash of the account id: stable, not reversible. Fits `safety_identifier` (64 chars). */
       visitorId: string;
       meter: UsageMeter;
-      /** Give back the visitor's slot, but only if nothing billable was sent. */
+      /** Give back the account's slot, but only if nothing billable was sent. */
       refundIfUnbilled: () => void;
     }
-  | { ok: false; status: 429 | 503; error: string; retryAfterSec: number };
+  | { ok: false; status: 401 | 429 | 503; error: string; retryAfterSec: number };
 
-const HOUR_MS = 60 * 60 * 1000;
-/** Visitors remembered before old entries are swept. */
-const MAX_VISITORS = 5_000;
+const HOUR_SEC = 60 * 60;
+const DAY_SEC = 24 * HOUR_SEC;
 
 function envInt(name: string, fallback: number): number {
   const value = Number.parseInt(process.env[name] ?? "", 10);
@@ -99,12 +113,6 @@ function limits() {
   };
 }
 
-const salt = process.env.COMIMO_GUARD_SALT || randomBytes(16).toString("hex");
-const visitors = new Map<string, Record<GuardAction, number[]>>();
-/** Upload times per visitor in the last hour. */
-const visitorUploads = new Map<string, number[]>();
-const daily = { day: "", comics: 0, images: 0, uploads: 0 };
-
 function today(): string {
   return new Date().toISOString().slice(0, 10);
 }
@@ -115,163 +123,191 @@ function secondsToTomorrow(): number {
   return Math.ceil((tomorrow - now.getTime()) / 1000);
 }
 
-function rollDay() {
-  const day = today();
-  if (daily.day !== day) {
-    daily.day = day;
-    daily.comics = 0;
-    daily.images = 0;
-    daily.uploads = 0;
-  }
+/** Daily counters for everyone, kept two days so the rollover is never early. */
+function dayKey(what: "comics" | "images" | "uploads"): string {
+  return `guard:day:${today()}:${what}`;
 }
 
-/**
- * The caller's IP, only from a source the visitor can't set.
- *
- * On Vercel (VERCEL=1 at runtime) the platform overwrites X-Forwarded-For and
- * sets X-Vercel-Forwarded-For "to prevent IP spoofing" (vercel.com/docs/headers/request-headers),
- * so those are trusted there. Anywhere else these headers come straight from
- * the client, so every caller counts as "local" and the global daily caps do
- * the limiting. X-Real-IP is never read.
- */
-function clientIp(request: Request): string {
-  if (process.env.VERCEL !== "1") return "local";
-  const header = request.headers.get("x-vercel-forwarded-for") ?? request.headers.get("x-forwarded-for");
-  return header?.split(",")[0]?.trim() || "local";
+function accountKey(account: SessionAccount, what: string): string {
+  return `guard:acct:${account.id}:${what}`;
 }
 
-/** A salted hash of the IP: stable within this server, not reversible to the IP. Fits `safety_identifier` (64 chars). */
-export function visitorId(request: Request): string {
-  return createHash("sha256").update(`${salt}:${clientIp(request)}`).digest("hex").slice(0, 32);
+/** The account's hourly upload counter (fixed clock-hour window). */
+function uploadHourKey(account: SessionAccount): string {
+  return `${accountKey(account, "upload")}:${windowOf(HOUR_SEC).index}`;
 }
 
-function sweep(now: number) {
-  if (visitors.size < MAX_VISITORS) return;
-  for (const [id, counts] of visitors) {
-    const active = Object.values(counts).some((times) => times.some((t) => now - t < HOUR_MS));
-    if (!active) visitors.delete(id);
-  }
-  for (const [id, times] of visitorUploads) if (!times.some((t) => now - t < HOUR_MS)) visitorUploads.delete(id);
+/** The tag Meta sees for this account: a salted hash, never the id or email. */
+export function accountTag(account: SessionAccount): string {
+  return hashTag("account", account.id);
 }
 
-function minutes(seconds: number): string {
-  const m = Math.max(1, Math.ceil(seconds / 60));
-  return `${m} minute${m === 1 ? "" : "s"}`;
-}
+const DOWN: Extract<GuardResult, { ok: false }> = {
+  ok: false,
+  status: 503,
+  error: "Comimo can't check its limits right now. Try again in a minute.",
+  retryAfterSec: 60,
+};
 
-/** An upload cap was reached; the caller sends the sheet inline instead. */
-export class UploadCapError extends Error {
-  constructor() {
-    super("Reference upload limit reached");
-    this.name = "UploadCapError";
+/** Keep the counter writes alive after the response on serverless hosts. */
+function flushAfterResponse(pending: Promise<unknown>[]) {
+  try {
+    after(async () => {
+      while (pending.length) await Promise.allSettled(pending.splice(0));
+    });
+  } catch {
+    // Outside a request (tests): the writes still run, nothing waits for them.
   }
 }
 
 /**
  * Counts upstream calls for one request: image and SAM calls go against the
- * daily image cap, uploads against the daily and this visitor's hourly upload caps.
+ * daily image cap, uploads against the daily and this account's hourly upload caps.
+ *
+ * The model code calls `beforeCall` synchronously, so the meter works from
+ * the counts read when the request began, adds its own calls, and writes each
+ * one to the shared store as it goes (reading back the newest totals). Two
+ * requests running at the same moment on different instances can each send
+ * a call or two past a cap before they see each other's counts.
  */
-function createMeter(visitor: string): UsageMeter {
+function createMeter(
+  kv: KV,
+  account: SessionAccount,
+  start: { images: number; uploads: number; accountUploads: number },
+): UsageMeter {
   let billed = false;
+  const counts = { ...start };
+  const pending: Promise<unknown>[] = [];
+  flushAfterResponse(pending);
+
+  function record(key: string, ttlSec: number, onTotal: (total: number) => void) {
+    pending.push(
+      kv.incr(key, { ttlSec }).then(onTotal, (error: unknown) => {
+        console.error(`Comimo: usage counter write failed (${error instanceof Error ? error.name : "unknown"})`);
+      }),
+    );
+  }
+
   return {
     get billed() {
       return billed;
     },
     beforeCall(kind) {
+      const { dailyImages, dailyUploads, uploadsPerHour } = limits();
       if (kind === "image" || kind === "sam") {
-        rollDay();
-        if (daily.images >= limits().dailyImages) throw new SpendCapError();
-        daily.images += 1;
+        if (counts.images >= dailyImages) throw new SpendCapError();
+        counts.images += 1;
+        record(dayKey("images"), 2 * DAY_SEC, (total) => (counts.images = Math.max(counts.images, total)));
       }
       if (kind === "upload") {
-        rollDay();
-        const now = Date.now();
-        const recent = (visitorUploads.get(visitor) ?? []).filter((t) => now - t < HOUR_MS);
-        const { dailyUploads, uploadsPerHour } = limits();
-        if (daily.uploads >= dailyUploads || recent.length >= uploadsPerHour) throw new UploadCapError();
-        daily.uploads += 1;
-        recent.push(now);
-        visitorUploads.set(visitor, recent);
+        if (counts.uploads >= dailyUploads || counts.accountUploads >= uploadsPerHour) throw new UploadCapError();
+        counts.uploads += 1;
+        counts.accountUploads += 1;
+        record(dayKey("uploads"), 2 * DAY_SEC, (total) => (counts.uploads = Math.max(counts.uploads, total)));
+        record(uploadHourKey(account), HOUR_SEC + 60, (total) => (counts.accountUploads = Math.max(counts.accountUploads, total)));
       }
       billed = true;
     },
   };
 }
 
+/** A meter for mock calls: counts nothing, never blocks. */
+function freeMeter(): UsageMeter {
+  let billed = false;
+  return {
+    get billed() {
+      return billed;
+    },
+    beforeCall() {
+      billed = true;
+    },
+  };
+}
+
+async function readCount(kv: KV, key: string): Promise<number> {
+  return Number.parseInt((await kv.get(key)) ?? "0", 10) || 0;
+}
+
+function limitMessage(action: GuardAction, retryAfterSec: number): string {
+  const wait = minutesText(retryAfterSec);
+  if (action === "character" || action === "sprite") return `That's a lot of drawing for one hour. Try again in ${wait}.`;
+  if (action === "photo") return `That's a lot of photos for one hour. Try again in ${wait}.`;
+  return `That's a lot of comics for one hour. Try again in ${wait}.`;
+}
+
 /**
- * Check and count one request. `real` is false for mock calls, which pass
- * untouched. Pass `meter` to the model code so each upstream call is recorded
- * as it is sent. After a failure, `refundIfUnbilled()` gives the visitor's
- * slot back only when no request reached Meta (bad input, a cap hit first).
+ * Check and count one request for the signed-in account. `real` is false for
+ * mock calls, which pass untouched (the route still needs a session). Pass
+ * `meter` to the model code so each upstream call is recorded as it is sent.
+ * After a failure, `refundIfUnbilled()` gives the account's slot back only
+ * when no request reached Meta (bad input, a cap hit first).
  */
-export function guard(request: Request, action: GuardAction, options: { real: boolean }): GuardResult {
-  const id = visitorId(request);
-  if (!options.real) return { ok: true, visitorId: id, meter: createMeter(id), refundIfUnbilled: () => {} };
+export async function guard(request: Request, action: GuardAction, options: { real: boolean }): Promise<GuardResult> {
+  const kv = getKV();
+  let account: SessionAccount | null;
+  try {
+    account = await sessionAccount(request, kv);
+  } catch {
+    return DOWN;
+  }
+  if (!account) return { ok: false, status: 401, error: "Sign in to keep going. It takes a few seconds.", retryAfterSec: 0 };
+
+  const visitorId = accountTag(account);
+  if (!options.real) return { ok: true, visitorId, meter: freeMeter(), refundIfUnbilled: () => {} };
 
   if (process.env.COMIMO_PAUSE_GENERATION === "1") {
     return { ok: false, status: 503, error: "Making new comics is paused right now. The sample days still work.", retryAfterSec: 3600 };
   }
 
-  const now = Date.now();
   const { hourly, dailyComics, dailyImages } = limits();
-  rollDay();
+  try {
+    const slot = await hit(kv, accountKey(account, action), hourly[action], HOUR_SEC);
+    if (!slot.ok) return { ok: false, status: 429, error: limitMessage(action, slot.retryAfterSec), retryAfterSec: slot.retryAfterSec };
 
-  if (action === "script" && daily.comics >= dailyComics) {
-    return { ok: false, status: 503, error: "Comimo has made all the comics it can for today. Come back tomorrow.", retryAfterSec: secondsToTomorrow() };
-  }
-  if (action !== "transcribe" && action !== "script" && daily.images >= dailyImages) {
-    return { ok: false, status: 503, error: "Comimo has drawn all the panels it can for today. Come back tomorrow.", retryAfterSec: secondsToTomorrow() };
-  }
+    let comicSlot: Awaited<ReturnType<typeof hit>> | null = null;
+    if (action === "script") {
+      comicSlot = await hit(kv, `guard:day:${today()}:comics`, dailyComics, DAY_SEC);
+      if (!comicSlot.ok) {
+        await slot.undo();
+        return { ok: false, status: 503, error: "Comimo has made all the comics it can for today. Come back tomorrow.", retryAfterSec: secondsToTomorrow() };
+      }
+    }
 
-  sweep(now);
-  const counts = visitors.get(id) ?? { transcribe: [], script: [], panel: [], character: [], sprite: [], photo: [] };
-  // Visitors counted before these actions existed lack their lists.
-  counts[action] ??= [];
-  const recent = counts[action].filter((t) => now - t < HOUR_MS);
-  if (recent.length >= hourly[action]) {
-    const retryAfterSec = Math.ceil((recent[0] + HOUR_MS - now) / 1000);
+    // Starting counts for the meter; only actions that draw or upload need them.
+    const draws = action !== "transcribe" && action !== "script";
+    const [images, uploads, accountUploads] = draws
+      ? await Promise.all([readCount(kv, dayKey("images")), readCount(kv, dayKey("uploads")), readCount(kv, uploadHourKey(account))])
+      : [0, 0, 0];
+    if (draws && images >= dailyImages) {
+      await slot.undo();
+      return { ok: false, status: 503, error: "Comimo has drawn all the panels it can for today. Come back tomorrow.", retryAfterSec: secondsToTomorrow() };
+    }
+
+    const meter = createMeter(kv, account, { images, uploads, accountUploads });
+    let refunded = false;
     return {
-      ok: false,
-      status: 429,
-      error:
-        action === "character" || action === "sprite"
-          ? `That's a lot of drawing for one hour. Try again in ${minutes(retryAfterSec)}.`
-          : action === "photo"
-            ? `That's a lot of photos for one hour. Try again in ${minutes(retryAfterSec)}.`
-          : `That's a lot of comics for one hour. Try again in ${minutes(retryAfterSec)}.`,
-      retryAfterSec,
+      ok: true,
+      visitorId,
+      meter,
+      refundIfUnbilled: () => {
+        if (refunded || meter.billed) return;
+        refunded = true;
+        const undo = Promise.all([slot.undo(), comicSlot?.ok ? comicSlot.undo() : null]).catch(() => {});
+        flushAfterResponse([undo]);
+      },
     };
+  } catch (error) {
+    console.error(`Comimo: limit check failed (${error instanceof Error ? error.name : "unknown"})`);
+    return DOWN;
   }
-
-  recent.push(now);
-  counts[action] = recent;
-  visitors.set(id, counts);
-  if (action === "script") daily.comics += 1;
-
-  const meter = createMeter(id);
-  let refunded = false;
-  const day = daily.day;
-  return {
-    ok: true,
-    visitorId: id,
-    meter,
-    refundIfUnbilled: () => {
-      if (refunded || meter.billed) return;
-      refunded = true;
-      const index = counts[action].lastIndexOf(now);
-      if (index >= 0) counts[action].splice(index, 1);
-      if (action === "script" && daily.day === day) daily.comics = Math.max(0, daily.comics - 1);
-    },
-  };
 }
 
 /** A blocked guard result as an API response. */
 export function guardResponse(result: Extract<GuardResult, { ok: false }>): Response {
-  return Response.json(
-    { error: result.error },
-    {
-      status: result.status,
-      headers: { "Cache-Control": "no-store", "Retry-After": String(Math.max(1, result.retryAfterSec)) },
-    },
-  );
+  const headers: Record<string, string> = { "Cache-Control": "no-store" };
+  if (result.status !== 401) headers["Retry-After"] = String(Math.max(1, result.retryAfterSec));
+  return Response.json(result.status === 401 ? { error: result.error, code: "signin" } : { error: result.error }, {
+    status: result.status,
+    headers,
+  });
 }
