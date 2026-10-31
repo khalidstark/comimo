@@ -313,6 +313,54 @@
   right: 1.3em;
 }
 
+/* ---------- Free lettering (panels SAM measured) ----------
+   Every caption and bubble is placed by useFreeLettering (Panel.tsx) in the panel's free space,
+   off every head; until it is placed it stays hidden so nothing flashes over a face. */
+.free {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  direction: ltr;
+  pointer-events: none;
+}
+
+.free > * {
+  position: absolute;
+  /* Placement sets the position; the pinned-caption and tail-side margins don't apply here */
+  margin: 0 !important;
+  visibility: hidden;
+}
+
+.free[data-placed] > * {
+  visibility: visible;
+}
+
+/* Captions placed freely get a full border: they float, they aren't pinned to an edge */
+.free > .caption {
+  border-width: var(--panel-border-thin);
+}
+
+.comic[data-style="painterly"] .free > .caption {
+  border-width: 1px;
+}
+
+.free > .bubble {
+  align-self: auto;
+  text-wrap: pretty;
+}
+
+/* The tail sits under the speaker's head (--tail-x from the placement) and points at it */
+.free > .bubble[data-tail-dir]::after {
+  left: calc(var(--tail-x) - 0.475em);
+  right: auto;
+}
+
+.free > .bubble[data-tail-dir="up"]::after {
+  inset-block-end: auto;
+  top: calc(-0.5em - 1px);
+  transform: rotate(225deg) skew(12deg, 12deg);
+}
+
 /* ---------- "Face fixed by SAM 3.1" stamp ---------- */
 .stamp {
   position: absolute;
