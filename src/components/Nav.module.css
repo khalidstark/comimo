@@ -130,6 +130,7 @@
 
 .tab[aria-current="page"] {
   color: var(--ink);
+  font-weight: 800;
 }
 
 .tab[aria-current="page"] .tabIcon {
@@ -257,8 +258,15 @@
     transform: scaleX(0.35);
   }
 
+  /* Where you are: a solid ink tab, readable at a glance. */
+  .tab[aria-current="page"] {
+    background: var(--ink);
+    color: var(--paper);
+    border-radius: var(--radius-pill);
+  }
+
   .tab[aria-current="page"]::after {
-    transform: scaleX(1);
+    transform: scaleX(0);
   }
 
   .primaryItem {

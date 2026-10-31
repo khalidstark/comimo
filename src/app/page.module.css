@@ -2,200 +2,179 @@
   overflow-x: clip;
 }
 
-/* ---------- Hero: page one of the zine ---------- */
+/* ==========================================================================
+   Hero: the zine's night cover. One orchestrated moment on load: letterbox
+   bars open, the camera settles in on Nour, the headline rises line by line.
+   On scroll the camera drifts down while the light page cuts in on a slant.
+   ========================================================================== */
 .hero {
+  position: relative;
+  isolation: isolate;
+  overflow: clip;
+  background: var(--night);
+  color: var(--on-night);
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 3.5vw), 0 100%);
+  padding-block-end: calc(3.5vw + var(--space-l));
+}
+
+.heroArt {
+  position: relative;
+  aspect-ratio: 5 / 4;
+  overflow: hidden;
+  mask-image: linear-gradient(to bottom, #000 62%, transparent 98%);
+}
+
+.heroImage {
+  inline-size: 100%;
+  block-size: 100%;
+  object-fit: cover;
+  object-position: 74% 50%;
+}
+
+/* Letterbox bars, opened on load. */
+.heroArt::before,
+.heroArt::after {
+  content: "";
+  position: absolute;
+  inset-inline: 0;
+  z-index: 1;
+  block-size: 13%;
+  background: var(--night-deep);
+  scale: 1 0;
+  pointer-events: none;
+}
+
+.heroArt::before {
+  inset-block-start: 0;
+  transform-origin: top;
+}
+
+.heroArt::after {
+  inset-block-end: 0;
+  transform-origin: bottom;
+}
+
+.heroInner {
+  position: relative;
+  z-index: 2;
   display: grid;
-  gap: calc(var(--gutter) + 4px);
-  padding-block: var(--space-m) var(--space-l);
+  gap: var(--space-l);
+  margin-block-start: -18%;
 }
 
-@media (min-width: 48rem) {
-  .hero {
-    grid-template-columns: 1.25fr 1fr;
-    grid-template-areas:
-      "lead scene"
-      "lead week";
-    grid-template-rows: 1fr auto;
-    padding-block-start: var(--space-l);
-  }
-  .lead {
-    grid-area: lead;
-  }
-  .scene {
-    grid-area: scene;
-  }
-  .week {
-    grid-area: week;
-  }
-}
-
-/* One orchestrated entrance: panels are inked in reading order,
-   then the mascot and the speech bubble pop on. */
-.lead,
-.scene,
-.week {
-  animation: panel-in 620ms var(--ease-ink) backwards;
-  animation-delay: calc(var(--i, 0) * 150ms + 80ms);
-}
-
-@keyframes panel-in {
-  from {
-    clip-path: inset(-12px 100% -12px -12px);
-  }
-  to {
-    clip-path: inset(-12px -12px -12px -12px);
-  }
-}
-
-:global(:root[dir="rtl"]) .lead,
-:global(:root[dir="rtl"]) .scene,
-:global(:root[dir="rtl"]) .week {
-  animation-name: panel-in-rtl;
-}
-
-@keyframes panel-in-rtl {
-  from {
-    clip-path: inset(-12px -12px -12px 100%);
-  }
-  to {
-    clip-path: inset(-12px -12px -12px -12px);
-  }
-}
-
-.lead {
-  --dot-color: color-mix(in srgb, var(--accent) 38%, transparent);
-  --dot-angle: 320deg;
-  --dot-fade: 55%;
-  --dot-size: 10px;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
+.heroText {
+  display: grid;
+  justify-items: start;
   gap: var(--space-s);
-  padding: var(--space-m) var(--space-m) var(--space-l);
 }
 
-@media (min-width: 48rem) {
-  .lead {
-    padding: var(--space-l) var(--space-xl) var(--space-l);
-  }
+.kicker {
+  border-color: #1b2148;
 }
 
 .headline {
   font-size: var(--step-5);
-  line-height: 0.92;
+  line-height: 0.95;
   letter-spacing: -0.025em;
-  text-shadow: 0.04em 0.035em 0 color-mix(in srgb, var(--accent) 70%, transparent);
-  margin-block-start: var(--space-2xs);
+  color: var(--on-night);
+  text-wrap: balance;
 }
 
-.headline span {
+.line {
   display: block;
+  overflow: clip;
+  padding-block-end: 0.06em;
+}
+
+.line > span {
+  display: inline-block;
 }
 
 .intro {
   max-inline-size: 34ch;
   font-size: var(--step-1);
   line-height: 1.45;
-  color: var(--ink-soft);
+  color: var(--on-night-soft);
 }
 
 .actions {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--space-xs) var(--space-l);
-  margin-block-start: auto;
-  padding-block-start: var(--space-s);
+  gap: var(--space-s) var(--space-l);
+  padding-block-start: var(--space-2xs);
 }
 
-.mascot {
-  position: absolute;
-  inset-inline-end: -0.4rem;
-  inset-block-end: -1.25rem;
-  inline-size: clamp(5.5rem, 4rem + 6vw, 9.5rem);
-  padding: 0.35rem;
-  animation: pop-in 520ms var(--ease-pop) 640ms backwards;
+.magnet {
+  display: inline-block;
+  transition: translate 380ms var(--ease-cine);
 }
 
-.mascotButton {
-  display: block;
-  inline-size: 100%;
-  padding: 0;
-  border: 0;
-  background: none;
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
+.seeDemo {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5em;
+  min-block-size: 2.75rem;
+  color: var(--on-night);
+  font-family: var(--font-display-stack);
+  font-weight: 700;
+  font-size: var(--step-1);
+  text-decoration: underline;
+  text-decoration-color: var(--highlight);
+  text-decoration-thickness: 3px;
+  text-underline-offset: 0.3em;
 }
 
-@keyframes pop-in {
-  from {
-    scale: 0.2;
-    opacity: 0;
-  }
+.seeDemo::after {
+  content: "";
+  inline-size: 0.55em;
+  block-size: 0.55em;
+  border-inline-end: 3px solid currentColor;
+  border-block-end: 3px solid currentColor;
+  rotate: 45deg;
+  translate: 0 -0.15em;
 }
 
-/* Scene panel */
-.scene {
-  margin: 0;
-  overflow: hidden;
-  aspect-ratio: 4 / 3;
+.seeDemo:focus-visible {
+  outline-color: var(--highlight);
 }
 
-@media (min-width: 48rem) {
-  .scene {
-    aspect-ratio: auto;
-    min-block-size: 20rem;
-  }
-}
-
-.sceneArt {
-  inline-size: 100%;
-  block-size: 100%;
-  object-fit: cover;
-}
-
-.sceneCaption {
-  position: absolute;
-  inset-block-start: 0;
-  inset-inline-start: 0;
-  border-width: 0 var(--panel-border-thin) var(--panel-border-thin) 0;
-}
-
-.sceneBubble {
-  position: absolute;
-  inset-block-start: 3.25rem;
-  inset-inline-end: 1rem;
-  max-inline-size: min(17rem, 70%);
-  animation: pop-in 420ms var(--ease-pop) 900ms backwards;
-  transform-origin: bottom right;
-}
-
-/* Week panel */
+/* This week, kept quiet: small icons on the night band. */
 .week {
-  --dot-color: rgb(27 33 72 / 0.14);
-  --dot-angle: 180deg;
-  --dot-fade: 100%;
-  display: block;
-  padding: var(--space-s) var(--space-m) var(--space-m);
-  background: var(--highlight);
-  color: var(--on-highlight);
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2xs) var(--space-s);
+  justify-self: start;
+  padding: var(--space-2xs) var(--space-s);
+  border: 1px solid rgb(255 255 255 / 0.14);
+  border-radius: var(--radius-pill);
+  background: rgb(255 255 255 / 0.05);
+  color: var(--on-night-soft);
   text-decoration: none;
-  transition: transform var(--dur-quick) var(--ease-ink);
+  transition:
+    background var(--dur-quick),
+    border-color var(--dur-quick);
 }
 
 .week:hover {
-  transform: rotate(-0.6deg) translateY(-2px);
+  background: rgb(255 255 255 / 0.1);
+  border-color: rgb(255 255 255 / 0.3);
+}
+
+.week:focus-visible {
+  outline-color: var(--highlight);
 }
 
 .weekTitle {
-  font-size: var(--step-1);
-  margin-block-end: var(--space-xs);
+  font-family: var(--font-display-stack);
+  font-size: var(--step--1);
+  font-weight: 700;
 }
 
 .weekRow {
-  display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: var(--space-2xs);
+  display: flex;
+  gap: 0.35rem;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -204,35 +183,168 @@
 .weekDay {
   display: grid;
   justify-items: center;
-  gap: 0.2rem;
-  font-family: var(--font-display-stack);
-  font-size: var(--step--1);
-  font-weight: 700;
+  gap: 0.1rem;
+  font-size: 0.68rem;
+  font-weight: 600;
+  line-height: 1;
 }
 
 .weekIcon,
 .weekBlank {
-  inline-size: 100%;
-  max-inline-size: 3rem;
-  aspect-ratio: 1;
-  block-size: auto;
+  inline-size: 1.6rem;
+  block-size: 1.6rem;
 }
 
 .weekBlank {
   display: block;
-  inline-size: 72%;
-  border: var(--panel-border-thin) dashed rgb(27 33 72 / 0.5);
+  inline-size: 1.1rem;
+  block-size: 1.1rem;
+  margin-block: 0.25rem;
+  border: 1.5px dashed rgb(255 255 255 / 0.35);
   border-radius: 50%;
+}
+
+@media (min-width: 56rem) {
+  .hero {
+    display: grid;
+    align-items: end;
+    min-block-size: min(50rem, calc(100svh - var(--topbar-h)));
+    padding-block: var(--space-2xl) calc(3.5vw + var(--space-xl));
+  }
+
+  /* The art takes the right of the frame and fades into the night on its
+     left edge, so the words sit on clear sky and the panels drift past them. */
+  .heroArt {
+    position: absolute;
+    inset-block: 0;
+    inset-inline: 30% 0;
+    aspect-ratio: auto;
+    mask-image: linear-gradient(90deg, transparent 0%, #000 24%);
+  }
+
+  .heroImage {
+    object-position: 72% 45%;
+  }
+
+  /* Scrim behind the words, over the window's night sky. */
+  .hero::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    background: linear-gradient(0deg, color-mix(in srgb, var(--night) 70%, transparent) 0%, transparent 30%);
+    pointer-events: none;
+  }
+
+  .heroInner {
+    margin-block-start: 0;
+    gap: var(--space-xl);
+  }
+
+  .heroText {
+    max-inline-size: 32rem;
+  }
+}
+
+/* The load sequence and the scroll camera. */
+@media (prefers-reduced-motion: no-preference) {
+  .heroArt::before,
+  .heroArt::after {
+    animation: letterbox 1300ms var(--ease-cine) 150ms both;
+  }
+
+  .heroImage {
+    animation: camera-in 2400ms var(--ease-cine) both;
+  }
+
+  .kicker {
+    animation: rise 700ms var(--ease-cine) 450ms both;
+  }
+
+  .line > span {
+    animation: line-up 900ms var(--ease-cine) both;
+  }
+
+  .line:nth-child(1) > span {
+    animation-delay: 550ms;
+  }
+
+  .line:nth-child(2) > span {
+    animation-delay: 700ms;
+  }
+
+  .intro {
+    animation: rise 800ms var(--ease-cine) 900ms both;
+  }
+
+  .actions,
+  .week {
+    animation: rise 800ms var(--ease-cine) 1050ms both;
+  }
+
+  @supports (animation-timeline: view()) {
+    .heroArt {
+      animation: camera-drift linear both;
+      animation-timeline: view();
+      animation-range: exit 0% exit 100%;
+    }
+  }
+}
+
+@keyframes letterbox {
+  from {
+    scale: 1 1;
+  }
+  to {
+    scale: 1 0;
+  }
+}
+
+@keyframes camera-in {
+  from {
+    scale: 1.14;
+    translate: 3% 2%;
+  }
+  to {
+    scale: 1;
+    translate: 0 0;
+  }
+}
+
+@keyframes camera-drift {
+  to {
+    translate: 0 18%;
+  }
+}
+
+@keyframes line-up {
+  from {
+    translate: 0 105%;
+  }
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    translate: 0 1.25rem;
+  }
+}
+
+/* ==========================================================================
+   Light, airy sections after the hero
+   ========================================================================== */
+.demo {
+  padding-block-start: var(--space-xl);
 }
 
 /* ---------- How it works ---------- */
 .how {
-  padding-block-start: var(--space-3xl);
+  padding-block-start: var(--space-xl);
 }
 
 .steps {
   display: grid;
-  gap: var(--space-l) calc(var(--gutter) + 4px);
+  gap: var(--space-2xl) var(--space-xl);
   margin: var(--space-xl) 0 0;
   padding: 0;
   list-style: none;
@@ -242,52 +354,84 @@
   .steps {
     grid-template-columns: repeat(3, 1fr);
   }
+
+  /* A slow pan: the middle step sits lower, like a camera tracking across a shelf. */
+  .step:nth-child(2) {
+    margin-block-start: var(--space-xl);
+  }
 }
 
 .step {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2xs);
-  padding: var(--space-xs) var(--space-xs) var(--space-m);
-}
-
-.stepNumber {
-  position: absolute;
-  inset-block-start: -1rem;
-  inset-inline-start: -0.75rem;
-  z-index: 1;
   display: grid;
-  place-items: center;
-  inline-size: 2.5rem;
-  block-size: 2.5rem;
-  background: var(--ink);
-  color: var(--paper);
-  border-radius: 50%;
-  font-family: var(--font-display-stack);
-  font-size: var(--step-1);
-  font-weight: 800;
-  line-height: 1;
-  padding-block-start: 0.15em;
+  align-content: start;
+  gap: var(--space-xs);
 }
 
 .stepArt {
   inline-size: 100%;
+  max-inline-size: 22rem;
   block-size: auto;
   aspect-ratio: 4 / 3;
-  object-fit: cover;
-  border: var(--panel-border-thin) solid var(--line);
-  margin-block-end: var(--space-2xs);
+  object-fit: contain;
+  margin-block-end: var(--space-xs);
+  filter: drop-shadow(2px 0 0 #fff) drop-shadow(-2px 0 0 #fff) drop-shadow(0 2px 0 #fff) drop-shadow(0 -2px 0 #fff)
+    drop-shadow(0 12px 14px rgb(27 33 72 / 0.16));
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  @supports (animation-timeline: view()) {
+    .stepArt {
+      animation: drift-up linear both;
+      animation-timeline: view();
+      animation-range: entry 0% cover 50%;
+    }
+  }
+}
+
+@keyframes drift-up {
+  from {
+    translate: 0 2.5rem;
+    rotate: -2deg;
+  }
+  to {
+    translate: 0 0;
+    rotate: 0deg;
+  }
 }
 
 .stepTitle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
   font-size: var(--step-2);
-  padding-inline: var(--space-2xs);
+}
+
+.stepNumber {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  inline-size: 2.1rem;
+  block-size: 2.1rem;
+  padding-block-start: 0.12em;
+  border-radius: 50%;
+  background: var(--ink);
+  color: var(--paper);
+  font-size: var(--step-0);
 }
 
 .stepBody {
-  padding-inline: var(--space-2xs);
+  max-inline-size: 34ch;
   color: var(--ink-soft);
-  max-inline-size: 38ch;
+}
+
+/* ---------- The cast ---------- */
+.cast {
+  padding-block-start: var(--space-xl);
+}
+
+.castMore {
+  margin-block-start: var(--space-xl);
+  text-align: center;
 }
 
 /* ---------- Check-in ---------- */
@@ -307,8 +451,8 @@
 .checkinCard {
   padding: var(--space-l);
   background: var(--calm-wash);
-  border: var(--panel-border-thin) solid var(--calm);
   border-radius: var(--radius-card-soft);
+  box-shadow: var(--lift);
 }
 
 .checkinHello {
@@ -366,7 +510,6 @@
 
 .monthText {
   display: grid;
-  gap: 0;
 }
 
 .glanceTitle {
