@@ -1,6 +1,6 @@
 import "server-only";
 import { readBoundedJson } from "@/lib/requestBody";
-import { isSameOrigin } from "./request";
+import { authSetupProblem, isSameOrigin } from "./request";
 import type { AuthField } from "./auth";
 
 /** Sign-in and sign-up bodies are three short strings. */
@@ -25,8 +25,29 @@ export function storeDown(): Response {
   return authError(503, "Comimo can't reach its account store right now. Try again in a minute.");
 }
 
-/** Same-origin check plus a small JSON object body; either the fields or the response to send. */
+let setupLogged = false;
+
+/**
+ * Sign-in and sign-up fail closed in production without a trusted client IP
+ * source (see authSetupProblem). Logged once, with no request data.
+ */
+export function authUnavailable(): Response | null {
+  const problem = authSetupProblem();
+  if (!problem) return null;
+  if (!setupLogged) {
+    setupLogged = true;
+    console.error(`Comimo: sign-in and sign-up are off: ${problem}.`);
+  }
+  return authError(503, "Signing in isn't available on this server yet.");
+}
+
+/**
+ * The gate for sign-in and sign-up: setup check, same-origin check, then a
+ * small JSON object body. Either the fields or the response to send.
+ */
 export async function readAuthBody(request: Request): Promise<{ ok: true; body: Record<string, unknown> } | { ok: false; response: Response }> {
+  const unavailable = authUnavailable();
+  if (unavailable) return { ok: false, response: unavailable };
   if (!isSameOrigin(request)) return { ok: false, response: authError(403, "That request came from another site.") };
   const read = await readBoundedJson(request, AUTH_BODY_LIMIT);
   if (!read.ok) return read;

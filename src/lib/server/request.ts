@@ -79,6 +79,18 @@ export function hashTag(kind: string, value: string): string {
   return createHash("sha256").update(`${identifierSalt()}:${kind}:${value}`).digest("hex").slice(0, 32);
 }
 
+/**
+ * Why sign-in and sign-up must stay closed on this server, or `null` when
+ * they may run. In production a trusted client IP source is required (Vercel,
+ * or COMIMO_TRUSTED_IP_HEADER), so per-IP limits are real rather than the
+ * global fallback. Development is always allowed.
+ */
+export function authSetupProblem(env: Record<string, string | undefined> = process.env): string | null {
+  if (env.NODE_ENV !== "production") return null;
+  if (env.VERCEL === "1" || env.COMIMO_TRUSTED_IP_HEADER?.trim()) return null;
+  return "no trusted client IP source in production: deploy on Vercel or set COMIMO_TRUSTED_IP_HEADER";
+}
+
 /** The caller's IP as a hashed tag for per-IP limits, or `null` when no trusted IP is known. */
 export function ipTag(request: Request): string | null {
   const ip = clientIp(request);
