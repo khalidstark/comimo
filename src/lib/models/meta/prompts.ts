@@ -60,7 +60,7 @@ const STORY_MODE_RULES: Record<StoryMode, string> = {
     "STORY MODE: narrated. The speaker narrates the whole comic: every panel has narration. Speech is rare: at most one short line of dialogue on a page, and only where a spoken line is the punch of the moment; every other panel has no dialogue. caption is \"\" on every panel.",
   dialogue:
     "STORY MODE: dialogue. The story is told through what people say: give each line the note reports or clearly implies its own panel, sharpened into punchy speech. Where nobody spoke, the panel stays silent and the scene shows the feeling on their faces: a silent panel is better than an invented line. narration is \"\" on every panel. caption is \"\", or a tiny time or place tag where the story jumps.",
-  both: "STORY MODE: both. Narration carries the story on most panels (at least two thirds of them). On each page 1 or 2 panels also have one short line of dialogue, where a spoken line hits harder than narration. caption is \"\" on every panel.",
+  both: "STORY MODE: both. Narration carries the story on most panels (at least two thirds of them). Up to 2 panels a page also have one short line of dialogue, where a spoken line hits harder than narration, but only a line the note reports or clearly implies was said aloud; when the speaker doesn't remember or doesn't say what was said, nobody speaks. caption is \"\" on every panel.",
 };
 
 export function storyModeBlock(mode: StoryMode): string {
