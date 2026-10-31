@@ -5,6 +5,9 @@ import { MOODS, type CastBrief, type ComicScript, type DialogueLine, type Mood, 
 import type { ModelCallContext } from "../index";
 import { MetaApiError, metaJson } from "./client";
 import { SCRIPT_SYSTEM_PROMPT, castBlock, scriptSchema, transcriptMessage } from "./prompts";
+// Cast by name (03-05): aliases in, new people out.
+import { cleanNewPeople } from "@/lib/newPeople";
+import { CAST_NAMES_PROMPT, castNamesBlock, withNewPeopleSchema } from "./prompts";
 
 /**
  * Muse Spark writes the comic script: POST /v1/chat/completions with a
@@ -152,11 +155,12 @@ export async function writeScript(transcript: string, cast: CastBrief[], context
     messages: [
       { role: "system", content: SCRIPT_SYSTEM_PROMPT },
       { role: "system", content: castBlock(cast) },
+      { role: "system", content: `${CAST_NAMES_PROMPT}\n\n${castNamesBlock(cast)}` },
       { role: "user", content: transcriptMessage(transcript) },
     ],
     response_format: {
       type: "json_schema",
-      json_schema: { name: "comic_script", strict: true, schema: scriptSchema(cast.map((member) => member.id)) },
+      json_schema: { name: "comic_script", strict: true, schema: withNewPeopleSchema(scriptSchema(cast.map((member) => member.id))) },
     },
   };
 
@@ -176,7 +180,7 @@ export async function writeScript(transcript: string, cast: CastBrief[], context
     try {
       if (choice?.finish_reason === "length") throw new ScriptShapeError("answer was cut off");
       if (!content) throw new ScriptShapeError(choice?.message?.refusal ? "model refused" : "empty answer");
-      return toComicScript(content, cast);
+      return withNewPeople(toComicScript(content, cast), content, cast);
     } catch (error) {
       if (!(error instanceof ScriptShapeError)) throw error;
       lastProblem = error.message;
@@ -184,4 +188,19 @@ export async function writeScript(transcript: string, cast: CastBrief[], context
     }
   }
   throw new MetaApiError("server", 200, `script unusable after ${ATTEMPTS} attempts: ${lastProblem}`);
+}
+
+/* ---------- Cast by name (03-05) ---------- */
+
+/** Add the named people the note mentioned who aren't in the cast (none on a crisis note). */
+function withNewPeople(script: ComicScript, content: string, cast: CastBrief[]): ComicScript {
+  if (script.safety === "crisis") return script;
+  let raw: unknown;
+  try {
+    raw = (JSON.parse(content) as { newPeople?: unknown }).newPeople;
+  } catch {
+    return script;
+  }
+  const newPeople = cleanNewPeople(raw, cast);
+  return newPeople.length > 0 ? { ...script, newPeople } : script;
 }
