@@ -25,6 +25,13 @@
   transition: translate 700ms var(--ease-cine);
 }
 
+/* Two-up: the book is exactly the spread, so a 25% slide centres a lone cover */
+.frame[data-two-up] .book {
+  inline-size: fit-content;
+  max-inline-size: 100%;
+  margin-inline: auto;
+}
+
 .book[data-turning] {
   transition: none;
 }

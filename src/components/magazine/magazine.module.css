@@ -212,6 +212,7 @@
 }
 
 .tagline {
+  inline-size: fit-content;
   max-inline-size: 92%;
   padding: 0.6cqi 2.4cqi 1cqi;
   background: var(--mag-pink);
