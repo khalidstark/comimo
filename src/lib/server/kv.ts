@@ -48,6 +48,8 @@ export interface KV {
   sizedPut(hash: string, counter: string, field: string, value: string, size: number, caps: SizedCaps): Promise<SizedPutResult>;
   /** Remove fields and take their sizes off the total (never below 0). Returns the new total. */
   sizedDel(hash: string, counter: string, fields: string[]): Promise<number>;
+  /** Remove one field only while its entry's `v` (version) is still `version`; true when it was removed. */
+  sizedDelIf(hash: string, counter: string, field: string, version: string): Promise<boolean>;
   /** Set the total to the sum of the entries' sizes (repairs any drift). Returns it. */
   sizedRecount(hash: string, counter: string): Promise<number>;
 }
@@ -57,7 +59,19 @@ export interface SizedCaps {
   maxCount: number;
 }
 
-export type SizedPutResult = { ok: true; total: number } | { ok: false; reason: "total" | "count"; total: number };
+/** On success, `previous` is the entry this write replaced (null for a new field). */
+export type SizedPutResult = { ok: true; total: number; previous: string | null } | { ok: false; reason: "total" | "count"; total: number };
+
+/** The `v` (version) of a sized entry, or null. */
+export function versionOf(raw: string | null | undefined): string | null {
+  if (!raw) return null;
+  try {
+    const version = (JSON.parse(raw) as { v?: unknown }).v;
+    return typeof version === "string" ? version : null;
+  } catch {
+    return null;
+  }
+}
 
 /** The `s` (size) of a sized entry; 0 for anything malformed. */
 export function sizeOf(raw: string | null | undefined): number {
@@ -173,11 +187,12 @@ export class FileKV implements KV {
       const next = Math.max(0, total - old + size);
       if (!exists && Object.keys(entries).length >= caps.maxCount) return { ok: false, reason: "count", total };
       if (size > old && next > caps.maxTotal) return { ok: false, reason: "total", total };
+      const previous = exists ? entries[field] : null;
       entries[field] = value;
       data[hash] = { h: entries };
       data[counter] = { v: String(next) };
       await this.save(data);
-      return { ok: true, total: next };
+      return { ok: true, total: next, previous };
     });
   }
 
@@ -196,6 +211,20 @@ export class FileKV implements KV {
       data[counter] = { v: String(total) };
       await this.save(data);
       return total;
+    });
+  }
+
+  sizedDelIf(hash: string, counter: string, field: string, version: string): Promise<boolean> {
+    return this.locked(async () => {
+      const data = await this.load(Date.now());
+      const entries = data[hash]?.h;
+      if (!entries || !Object.hasOwn(entries, field) || versionOf(entries[field]) !== version) return false;
+      const total = Math.max(0, (Number.parseInt(data[counter]?.v ?? "0", 10) || 0) - sizeOf(entries[field]));
+      delete entries[field];
+      if (!Object.keys(entries).length) delete data[hash];
+      data[counter] = { v: String(total) };
+      await this.save(data);
+      return true;
     });
   }
 
@@ -266,7 +295,7 @@ if not old and redis.call("HLEN", KEYS[1]) >= tonumber(ARGV[5]) then return {-1,
 if size > oldSize and nextTotal > tonumber(ARGV[4]) then return {0, total} end
 redis.call("HSET", KEYS[1], ARGV[1], ARGV[2])
 redis.call("SET", KEYS[2], nextTotal)
-return {1, nextTotal}`;
+return {1, nextTotal, old or ""}`;
 
 /** KEYS: hash, counter. ARGV: fields. Returns the new total. */
 const SIZED_DEL = `${LUA_SIZE}
@@ -280,6 +309,16 @@ for _, field in ipairs(ARGV) do
 end
 redis.call("SET", KEYS[2], total)
 return total`;
+
+/** KEYS: hash, counter. ARGV: field, version. Returns 1 when removed. */
+const SIZED_DEL_IF = `${LUA_SIZE}
+local old = redis.call("HGET", KEYS[1], ARGV[1])
+if not old then return 0 end
+local ok, entry = pcall(cjson.decode, old)
+if not ok or type(entry) ~= "table" or entry.v ~= ARGV[2] then return 0 end
+redis.call("HDEL", KEYS[1], ARGV[1])
+redis.call("SET", KEYS[2], math.max(0, (tonumber(redis.call("GET", KEYS[2]) or "0") or 0) - sizeof(old)))
+return 1`;
 
 /** KEYS: hash, counter. Returns the recounted total. */
 const SIZED_RECOUNT = `${LUA_SIZE}
@@ -350,20 +389,24 @@ export class UpstashKV implements KV {
   }
 
   async sizedPut(hash: string, counter: string, field: string, value: string, size: number, caps: SizedCaps): Promise<SizedPutResult> {
-    const [code, total] = await this.redis.eval<string[], [number, number]>(SIZED_PUT, [hash, counter], [
+    const [code, total, previous] = await this.redis.eval<string[], [number, number, string?]>(SIZED_PUT, [hash, counter], [
       field,
       value,
       String(size),
       String(caps.maxTotal),
       String(caps.maxCount),
     ]);
-    if (Number(code) === 1) return { ok: true, total: Number(total) };
+    if (Number(code) === 1) return { ok: true, total: Number(total), previous: previous ? String(previous) : null };
     return { ok: false, reason: Number(code) === -1 ? "count" : "total", total: Number(total) };
   }
 
   async sizedDel(hash: string, counter: string, fields: string[]): Promise<number> {
     if (!fields.length) return Number((await this.redis.get<string>(counter)) ?? 0) || 0;
     return Number(await this.redis.eval<string[], number>(SIZED_DEL, [hash, counter], fields));
+  }
+
+  async sizedDelIf(hash: string, counter: string, field: string, version: string): Promise<boolean> {
+    return Number(await this.redis.eval<string[], number>(SIZED_DEL_IF, [hash, counter], [field, version])) === 1;
   }
 
   async sizedRecount(hash: string, counter: string): Promise<number> {

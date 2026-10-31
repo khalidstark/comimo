@@ -1,7 +1,8 @@
 import "server-only";
 import { sniffImageType } from "@/lib/models/meta/image";
 import { getBlobStore, type BlobStore, type StoredBlob } from "./blob";
-import { getKV, sizeOf, type KV } from "./kv";
+import { randomBytes } from "node:crypto";
+import { getKV, versionOf, type KV } from "./kv";
 import { hit } from "./rateLimit";
 
 /**
@@ -22,7 +23,7 @@ import { hit } from "./rateLimit";
  *   lib:a:meta      hash  key -> {"u", "v"} (covers, starter-cast flag, never-ask names)
  *   lib:a:imgs      hash  imageId -> {"t": type, "s": bytes}
  *   lib:a:imgbytes  counter of stored image bytes (quota)
- * Blob layout: a/<accountId>/i/<imageId>
+ * Blob layout: a/<accountId>/i/<imageId>/<version> (a new random version per upload)
  */
 
 export type RecordKind = "days" | "cast";
@@ -78,8 +79,16 @@ const keys = {
 
 export const libraryKeys = keys;
 
-export function imagePath(account: string, imageId: string): string {
-  return `a/${account}/i/${imageId}`;
+/** Where one version of an image is kept: a/<account>/i/<imageId>/<version>. */
+export function imagePath(account: string, imageId: string, version: string): string {
+  return `a/${account}/i/${imageId}/${version}`;
+}
+
+/** The blob path an image entry points at, or null when there is no entry. */
+function imagePathFor(account: string, imageId: string, raw: string | null): string | null {
+  if (!raw) return null;
+  const version = versionOf(raw);
+  return version ? imagePath(account, imageId, version) : `a/${account}/i/${imageId}`;
 }
 
 export function accountBlobPrefix(account: string): string {
@@ -170,7 +179,7 @@ function entries(raw: Record<string, string>): Record<string, IndexEntry> {
 /** What the account has, without the records themselves: enough for a device to know what to fetch and send. */
 export async function libraryIndex(account: string, kv: KV = getKV()): Promise<LibraryIndex> {
   // At most once an hour per account (every device syncs through here), recount the stored image bytes.
-  if (await kv.set(`lib:${account}:imgrecount`, "1", { ttlSec: 3600, onlyIfNew: true })) await recountImageBytes(account, kv);
+  if (await recountDue(account, kv)) await recountImageBytes(account, kv);
   const [days, cast, meta, images, albums] = await Promise.all([
     kv.hgetall(keys.index(account, "days")),
     kv.hgetall(keys.index(account, "cast")),
@@ -308,6 +317,8 @@ interface ImageEntry {
   t: string;
   /** Size in bytes. */
   s: number;
+  /** Random version: the blob path of these bytes. */
+  v: string;
 }
 
 function parseImage(raw: string | null): ImageEntry | null {
@@ -344,59 +355,80 @@ export async function putImage(
   if (!type) return fail(400, "Only PNG, JPEG and WebP images are kept.");
   const limits = libraryLimits();
 
+  // Rate-limit slots are spent for good once taken, refused or not: a client
+  // over its quota can't keep retrying for free.
   const hourly = await hit(kv, `lib:${account}:uploads`, limits.imageUploadsPerHour, 3600);
   if (!hourly.ok) return fail(429, "That's a lot of pictures for one hour. Try again later.", { retryAfterSec: hourly.retryAfterSec });
   const daily = await hit(kv, `lib:uploads:${today()}`, limits.imageUploadsPerDay, 86_400);
   if (!daily.ok) {
-    await hourly.undo();
     return fail(429, "Comimo has saved all the pictures it can for today. Your comics stay on this device until tomorrow.", {
       retryAfterSec: daily.retryAfterSec,
     });
   }
 
-  // Reserve the bytes before writing anything: the entry and the running total
-  // move together in one atomic step, so parallel uploads (even to the same id)
-  // can't double-count, drift or slip past the quota.
-  const entryKeyArgs = [keys.images(account), keys.imageBytes(account)] as const;
-  const previous = await kv.hget(keys.images(account), imageId);
-  const entry = JSON.stringify({ t: type, s: bytes.byteLength } satisfies ImageEntry);
+  // Each upload gets its own blob path (a random version), so two uploads to
+  // one id never write the same object, and the entry always names the bytes it counts.
+  const version = randomBytes(9).toString("base64url");
+  const entry = JSON.stringify({ t: type, s: bytes.byteLength, v: version } satisfies ImageEntry);
+  const hash = keys.images(account);
+  const counter = keys.imageBytes(account);
   const caps = { maxTotal: limits.imageBytes, maxCount: limits.images };
-  let reserved = await kv.sizedPut(...entryKeyArgs, imageId, entry, bytes.byteLength, caps);
-  if (!reserved.ok && reserved.reason === "total") {
-    // The total may have drifted (a crash between steps): recount from the entries and try once more.
-    await kv.sizedRecount(...entryKeyArgs);
-    reserved = await kv.sizedPut(...entryKeyArgs, imageId, entry, bytes.byteLength, caps);
-  }
-  if (!reserved.ok) {
-    await Promise.all([hourly.undo(), daily.undo()]);
-    return fail(507, "Your comic book has no room for more pictures.");
-  }
 
+  // Reserve the bytes before writing anything: entry and running total move
+  // together in one atomic step, so parallel uploads can't double-count,
+  // drift or slip past the quota.
+  let reserved = await kv.sizedPut(hash, counter, imageId, entry, bytes.byteLength, caps);
+  if (!reserved.ok && reserved.reason === "total" && (await recountDue(account, kv))) {
+    // The total may have drifted (a crash between steps): recount from the entries, at most once an hour, and try once more.
+    await recountImageBytes(account, kv);
+    reserved = await kv.sizedPut(hash, counter, imageId, entry, bytes.byteLength, caps);
+  }
+  if (!reserved.ok) return fail(507, "Your comic book has no room for more pictures.");
+
+  // The entry this upload replaced is no longer counted, so its bytes go once ours are settled.
+  const replaced = reserved.previous ? imagePathFor(account, imageId, reserved.previous) : null;
+  const mine = imagePath(account, imageId, version);
   try {
-    await blobs.put(imagePath(account, imageId), bytes, type);
+    await blobs.put(mine, bytes, type);
   } catch (error) {
-    // Put the accounting back as it was: the old entry (whose bytes are still stored), or none.
-    if (previous) await kv.sizedPut(...entryKeyArgs, imageId, previous, sizeOf(previous), { maxTotal: Number.MAX_SAFE_INTEGER, maxCount: Number.MAX_SAFE_INTEGER });
-    else await kv.sizedDel(...entryKeyArgs, [imageId]);
+    // Roll back only our own reservation: a later upload to this id may already own the entry.
+    await kv.sizedDelIf(hash, counter, imageId, version);
+    await blobs.del([mine, ...(replaced && replaced !== mine ? [replaced] : [])]).catch(() => {});
     throw error;
   }
+  // Commit check: if a later upload took the entry meanwhile, our bytes are nobody's.
+  const current = await kv.hget(hash, imageId);
+  const stale = [replaced, versionOf(current) === version ? null : mine].filter((path): path is string => Boolean(path) && path !== imagePathFor(account, imageId, current));
+  if (stale.length) await blobs.del(stale);
   return { ok: true, value: { size: bytes.byteLength } };
 }
 
 /** One of the account's images, or 404 (also for another account's image id). */
 export async function getImage(account: string, imageId: string, kv: KV = getKV(), blobs: BlobStore = getBlobStore()): Promise<LibraryResult<StoredBlob>> {
   if (!isRecordId(imageId)) return fail(404, "Not found.");
-  if (!parseImage(await kv.hget(keys.images(account), imageId))) return fail(404, "Not found.");
-  const blob = await blobs.get(imagePath(account, imageId));
+  const raw = await kv.hget(keys.images(account), imageId);
+  if (!parseImage(raw)) return fail(404, "Not found.");
+  const blob = await blobs.get(imagePathFor(account, imageId, raw)!);
   return blob ? { ok: true, value: blob } : fail(404, "Not found.");
 }
 
 async function deleteImages(account: string, imageIds: string[], kv: KV, blobs: BlobStore): Promise<void> {
   const ids = imageIds.filter(isRecordId);
   if (!ids.length) return;
-  // Entries and total first (atomically), then the bytes.
+  const paths: string[] = [];
+  for (const id of ids) {
+    const path = imagePathFor(account, id, await kv.hget(keys.images(account), id));
+    if (path) paths.push(path);
+  }
+  // Entries and total first (atomically), then the bytes. An upload racing
+  // this sees its entry gone at its commit check and removes its own bytes.
   await kv.sizedDel(keys.images(account), keys.imageBytes(account), ids);
-  await blobs.del(ids.map((id) => imagePath(account, id)));
+  if (paths.length) await blobs.del(paths);
+}
+
+/** True at most once an hour per account: a full recount reads every entry, so it is rationed. */
+async function recountDue(account: string, kv: KV): Promise<boolean> {
+  return kv.set(`lib:${account}:imgrecount`, "1", { ttlSec: 3600, onlyIfNew: true });
 }
 
 /** Recount the account's stored image bytes from its entries (repairs drift). */

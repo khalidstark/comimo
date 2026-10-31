@@ -2,7 +2,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { FileBlobStore } from "./blob";
+import { FileBlobStore, readAll, type StoredBlob } from "./blob";
 import { FileKV } from "./kv";
 import { getImage, libraryKeys, putImage, recountImageBytes } from "./library";
 
@@ -39,9 +39,14 @@ describe("image byte quota", () => {
     const stored = await getImage(ACCOUNT, "same-id", kv, blobs);
     expect(stored.ok).toBe(true);
     // The total always equals the one entry's size: no double counting, no drift.
-    const entry = JSON.parse((await kv.hget(libraryKeys.images(ACCOUNT), "same-id"))!) as { s: number };
+    const entry = JSON.parse((await kv.hget(libraryKeys.images(ACCOUNT), "same-id"))!) as { s: number; v: string };
     expect(await total()).toBe(entry.s);
     expect(sizes).toContain(entry.s);
+    // The entry describes exactly the bytes that are kept, and nothing else is left behind.
+    const bytes = await readAll((stored as { ok: true; value: StoredBlob }).value);
+    expect(bytes.byteLength).toBe(entry.s);
+    expect(bytes[100]).toBe(sizes.indexOf(entry.s) + 1);
+    expect(await blobs.list(`a/${ACCOUNT}/i/same-id/`)).toEqual([`a/${ACCOUNT}/i/same-id/${entry.v}`]);
   });
 
   it("never lets parallel uploads past the quota, and rejects before writing the bytes", async () => {
@@ -53,6 +58,37 @@ describe("image byte quota", () => {
     expect(results.filter((result) => !result.ok).every((result) => !result.ok && result.status === 507)).toBe(true);
     expect(await total()).toBe(accepted * size);
     expect((await blobs.list(`a/${ACCOUNT}/`)).length).toBe(accepted);
+  });
+
+  it("keeps the rate-limit slots spent on refused uploads, and recounts at most once an hour", async () => {
+    vi.stubEnv("COMIMO_ACCOUNT_IMAGE_MB", "1");
+    vi.stubEnv("COMIMO_IMAGE_UPLOADS_PER_HOUR", "6");
+    const recount = vi.spyOn(kv, "sizedRecount");
+    expect((await putImage(ACCOUNT, "fill", png(1000 * 1024), kv, blobs)).ok).toBe(true);
+    const refused = [];
+    for (let i = 0; i < 5; i++) refused.push(await putImage(ACCOUNT, `over-${i}`, png(200 * 1024), kv, blobs));
+    expect(refused.map((result) => (result.ok ? 200 : result.status))).toEqual([507, 507, 507, 507, 507]);
+    // Six slots an hour: one stored and five refused leave none, even for an upload that would fit.
+    const next = await putImage(ACCOUNT, "tiny", png(16), kv, blobs);
+    expect(next.ok ? 200 : next.status).toBe(429);
+    expect(recount).toHaveBeenCalledTimes(1);
+  });
+
+  it("removes a lost race's bytes and rolls back only its own reservation when the write fails", async () => {
+    const failing = new FileBlobStore(join(dir, "blob"));
+    let calls = 0;
+    const put = failing.put.bind(failing);
+    failing.put = async (path, data, type) => {
+      calls += 1;
+      if (calls === 2) throw new Error("disk full");
+      return put(path, data, type);
+    };
+    expect((await putImage(ACCOUNT, "x", png(100), kv, failing)).ok).toBe(true);
+    await expect(putImage(ACCOUNT, "x", png(300), kv, failing)).rejects.toThrow("disk full");
+    // The failed upload removed its own entry (the old one was already replaced), so nothing is counted for x.
+    expect(await kv.hget(libraryKeys.images(ACCOUNT), "x")).toBeNull();
+    expect(await total()).toBe(0);
+    expect(await blobs.list(`a/${ACCOUNT}/i/x/`)).toEqual([]);
   });
 
   it("lets a smaller copy replace a bigger one even when full, and repairs a drifted total", async () => {
