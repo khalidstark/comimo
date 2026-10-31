@@ -84,11 +84,25 @@ function stepDetail(step: PipelineStep, status: StepStatus, state: PipelineState
     case "draw":
       return `${drawn} of ${total}`;
     case "check":
-      if (fixes > 0) return `${fixes} ${fixes === 1 ? "face" : "faces"} fixed`;
-      return status === "done" ? "Every face matched" : "Comparing with your cast";
+      return checkDetail(state, fixes, status);
     case "save":
       return status === "done" ? "Saved" : "";
   }
+}
+
+/** What the face check really did so far: SAM's counts, or practice mode. */
+function checkDetail(state: PipelineState, fixes: number, status: StepStatus): string {
+  const done = state.panels.filter((panel) => panel.status === "done");
+  const sam = done.filter((panel) => panel.method === "sam");
+  const redrawn = fixes > 0 ? ` · ${fixes} redrawn` : "";
+  if (sam.length > 0) {
+    const sought = sam.reduce((sum, panel) => sum + (panel.sought ?? 0), 0);
+    const found = sam.reduce((sum, panel) => sum + (panel.found ?? 0), 0);
+    if (sought === 0) return `SAM 3.1 checked ${sam.length} ${sam.length === 1 ? "panel" : "panels"}${redrawn}`;
+    return `SAM 3.1 found ${found} of ${sought} ${sought === 1 ? "face" : "faces"}${redrawn}`;
+  }
+  if (done.some((panel) => panel.method === "mock")) return fixes > 0 ? `Practice mode · ${fixes} pretend ${fixes === 1 ? "fix" : "fixes"}` : "Practice mode, no model";
+  return status === "done" ? "Done" : "Waiting for the first panel";
 }
 
 function captionFor(state: PipelineState, fixing: PanelProgress | undefined): string {

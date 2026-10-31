@@ -56,6 +56,12 @@ export interface PanelProgress {
   beforeUrl?: string;
   /** Names of the characters whose faces were fixed. */
   fixedNames: string[];
+  /** How the panel was checked, once drawn: SAM 3.1 or practice mode. */
+  method?: "sam" | "mock";
+  /** With SAM: cast members looked for, found and compared with their sheet. */
+  sought?: number;
+  found?: number;
+  judged?: number;
   error?: string;
 }
 
@@ -215,7 +221,7 @@ export class ComicPipeline {
   private cast: Character[] | null = null;
   private readonly references = new Map<string, Promise<WireImage | undefined>>();
   /** What each finished panel came back with, for building the Day. */
-  private readonly drawn = new Map<number, Panel["consistency"]>();
+  private readonly drawn = new Map<number, Pick<Panel, "consistency" | "figures">>();
   private readonly urls = new Set<string>();
   /** The voice note as 16 kHz mono WAV, kept so a retry doesn't convert again. */
   private wav: Blob | null = null;
@@ -439,7 +445,7 @@ export class ComicPipeline {
     for (const id of panel.characterIds) {
       const character = this.cast?.find((member) => member.id === id);
       if (!character) continue;
-      const base = { characterId: id, name: character.name, look: character.look };
+      const base = { characterId: id, name: character.name, look: character.look, role: character.role };
       const token = inline ? undefined : referenceFileTokenFor(character, this.input.style);
       if (token) {
         references.push({ ...base, fileToken: token });
@@ -545,17 +551,25 @@ export class ComicPipeline {
       throw new StepError("draw", "Couldn't keep the panels on this device. Private windows can block storage.");
     }
 
+    const { method, sam } = result.consistency;
     this.drawn.set(panel.index, {
-      checked: true,
-      driftedCharacterIds: result.consistency.driftedCharacterIds,
-      fixedCharacterIds: result.consistency.fixedCharacterIds,
-      beforeImage: before ? { kind: "blob", id: beforeId } : null,
+      consistency: {
+        checked: method === "sam" ? sam?.checked !== false : true,
+        driftedCharacterIds: result.consistency.driftedCharacterIds,
+        fixedCharacterIds: result.consistency.fixedCharacterIds,
+        beforeImage: before ? { kind: "blob", id: beforeId } : null,
+        ...(method ? { method } : {}),
+        ...(sam ? { sam } : {}),
+      },
+      ...(result.figures ? { figures: result.figures } : {}),
     });
     this.setPanel(panel.index, {
       status: "done",
       imageUrl: this.objectUrl(image),
       beforeUrl: before ? this.objectUrl(before) : undefined,
       fixedNames: result.consistency.fixedCharacterIds.map((id) => this.characterName(id)),
+      ...(method ? { method } : {}),
+      ...(sam ? { sought: sam.sought.length, found: sam.found.length, judged: sam.judged.length } : {}),
     });
   }
 
@@ -573,12 +587,13 @@ export class ComicPipeline {
         : script.panels.map((panel) => ({
             ...panel,
             image: { kind: "blob", id: `${this.dayId}-panel-${panel.index}` },
-            consistency: this.drawn.get(panel.index) ?? {
+            consistency: this.drawn.get(panel.index)?.consistency ?? {
               checked: false,
               driftedCharacterIds: [],
               fixedCharacterIds: [],
               beforeImage: null,
             },
+            ...(this.drawn.get(panel.index)?.figures ? { figures: this.drawn.get(panel.index)!.figures } : {}),
           })),
       mood: script.mood,
       heavy: script.heavy,
