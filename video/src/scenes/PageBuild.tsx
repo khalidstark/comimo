@@ -138,6 +138,7 @@ function Inset() {
 
 function PageUI() {
   const frame = useCurrentFrame();
+  const { vertical } = useLayout();
   const { fps } = useVideoConfig();
   const pageIn = settle(frame, 0, fps);
   const letter = (i: number) => pop(frame, LETTER_AT[i], fps, 240, 12);
@@ -161,7 +162,7 @@ function PageUI() {
 
       {/* SAM's evidence while zoomed in */}
       {frame >= SHEET ? (
-        <div style={{ position: "absolute", left: INSET.x - 230, top: INSET.y + 40, width: 200, transform: `scale(${sheet}) rotate(-3deg)`, transformOrigin: "100% 50%", zIndex: 4 }}>
+        <div style={{ position: "absolute", left: vertical ? INSET.x + 30 : INSET.x - 230, top: vertical ? INSET.y + INSET.size + 60 : INSET.y + 40, width: 200, transform: `scale(${sheet}) rotate(-3deg)`, transformOrigin: vertical ? "50% 0" : "100% 50%", zIndex: 4 }}>
           <div style={{ background: C.white, border: `3px solid ${C.ink}`, boxShadow: shadow(4), padding: 6 }}>
             <Img src={staticFile("art/cast/nour-sheet.webp")} style={{ width: "100%", display: "block" }} />
           </div>
@@ -182,7 +183,7 @@ export function PageBuild() {
   const frame = useCurrentFrame();
   const { width, height, vertical } = useLayout();
   const box = uiBoxFor(width, height, 640, vertical ? 470 : 560);
-  const target = fitPoint(box, PAGE.w, PAGE.h, INSET_CENTRE.x - (vertical ? 30 : 90), INSET_CENTRE.y + 10);
+  const target = fitPoint(box, PAGE.w, PAGE.h, INSET_CENTRE.x + (vertical ? 20 : -90), INSET_CENTRE.y + 10);
   const zoomTo = vertical ? 1.75 : 2.2;
   const z = map(frame, [ZOOM_IN, ZOOM_IN + 26, ZOOM_OUT, ZOOM_OUT + 28], [0, 1, 1, 0], cine);
   const scale = 1 + (zoomTo - 1) * z + map(frame, [0, ZOOM_IN], [0.03, 0]);
