@@ -1,5 +1,5 @@
 import { Art } from "@/art/Art";
-import type { FacesSummary, FixedFace, PanelArt } from "./view";
+import type { FacesSummary, FixedFace, OneOffFace, PanelArt } from "./view";
 import styles from "./comic.module.css";
 
 function Portrait({ art }: { art: PanelArt }) {
@@ -38,7 +38,8 @@ function SamLede({ summary }: { summary: Extract<FacesSummary, { kind: "sam" }> 
   } else if (summary.unfixed > 0) {
     rest = `; Muse Spark saw ${count(summary.unfixed, "face")} drift from the cast sheets, but no redraw came closer, so ${summary.unfixed === 1 ? "that panel stays" : "those panels stay"} as first drawn.`;
   } else if (summary.judged > 0) {
-    rest = `; Muse Spark compared ${summary.judged === 1 ? "it" : `all ${summary.judged}`} with the cast's reference sheets and nothing needed redrawing.`;
+    const sheets = summary.oneOffs.some((face) => face.compared > 0) ? "the cast's reference sheets (one-offs with their first panel)" : "the cast's reference sheets";
+    rest = `; Muse Spark compared ${summary.judged === 1 ? "it" : `all ${summary.judged}`} with ${sheets} and nothing needed redrawing.`;
   } else {
     rest = ", and kept the lettering off them.";
   }
@@ -47,6 +48,31 @@ function SamLede({ summary }: { summary: Extract<FacesSummary, { kind: "sam" }> 
       {found}
       {rest}
     </p>
+  );
+}
+
+/** "One-off: the cashier, drawn just for this story (first in panel 2, then checked against it in 1 later panel)." */
+function OneOffLine({ face, sam }: { face: OneOffFace; sam: boolean }) {
+  const later =
+    sam && face.compared > 0
+      ? `, and Muse Spark checked them against it in ${count(face.compared, "later panel")}`
+      : "";
+  return (
+    <li className={styles.faceItem}>
+      <span className={styles.facePortrait} aria-hidden="true" />
+      <span>
+        <span className={styles.faceName} dir="auto">
+          {face.name}
+        </span>
+        <span className={styles.faceWhere}>
+          One-off, drawn just for this story from your note. First seen in{" "}
+          <a className="link" href={`#panel-${face.first}`}>
+            panel {face.first}
+          </a>
+          , which later panels copied{later}.
+        </span>
+      </span>
+    </li>
   );
 }
 
@@ -101,6 +127,13 @@ export function FacesNote({ summary }: { summary: FacesSummary }) {
           </ul>
           <p className={styles.facesHint}>Press the pink stamp on a panel to see it before the fix.</p>
         </>
+      ) : null}
+      {summary.oneOffs.length > 0 ? (
+        <ul className={styles.facesList} aria-label="One-off characters">
+          {summary.oneOffs.map((face) => (
+            <OneOffLine key={face.characterId} face={face} sam={summary.kind === "sam"} />
+          ))}
+        </ul>
       ) : null}
     </section>
   );

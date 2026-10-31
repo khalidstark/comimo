@@ -1,4 +1,5 @@
 import type { ArtAsset } from "@/art/manifest";
+import { isOneOffId } from "@/lib/newPeople";
 import type { Panel, PanelFigures, TextDir } from "@/lib/types";
 
 /**
@@ -145,10 +146,36 @@ export type FacesSummary =
       /** Faces that drifted but no redraw got closer. */
       unfixed: number;
       fixed: FixedFace[];
+      /** One-off characters (03-06): drawn for this story only, checked against their first panel. */
+      oneOffs: OneOffFace[];
     }
-  | { kind: "practice"; fixed: FixedFace[] };
+  | { kind: "practice"; fixed: FixedFace[]; oneOffs: OneOffFace[] };
 
-export function facesSummary(panels: Panel[], fixed: FixedFace[]): FacesSummary | null {
+/** A one-off character in the faces note. */
+export interface OneOffFace {
+  characterId: string;
+  name: string;
+  /** Panel number (from 1) they first appear in: their reference for the rest of the comic. */
+  first: number;
+  /** Later panels where Muse Spark compared them with that first appearance. */
+  compared: number;
+}
+
+/** The day's one-offs, from what is stored on its panels. */
+export function oneOffFaces(panels: Panel[], nameOf: (characterId: string) => string): OneOffFace[] {
+  const faces = new Map<string, OneOffFace>();
+  for (const panel of [...panels].sort((a, b) => a.index - b.index)) {
+    for (const id of panel.characterIds) {
+      if (!isOneOffId(id)) continue;
+      const face = faces.get(id) ?? { characterId: id, name: nameOf(id), first: panel.index + 1, compared: 0 };
+      if (panel.consistency.sam?.judged.includes(id)) face.compared += 1;
+      faces.set(id, face);
+    }
+  }
+  return [...faces.values()];
+}
+
+export function facesSummary(panels: Panel[], fixed: FixedFace[], oneOffs: OneOffFace[] = []): FacesSummary | null {
   const sam = panels.filter((panel) => panel.consistency.method === "sam" && panel.consistency.sam);
   if (sam.length > 0) {
     const reports = sam.map((panel) => panel.consistency.sam!);
@@ -163,8 +190,9 @@ export function facesSummary(panels: Panel[], fixed: FixedFace[]): FacesSummary 
       compared: reports.some((r) => r.checked),
       unfixed: Math.max(0, drifted - fixedCount),
       fixed,
+      oneOffs,
     };
   }
-  if (panels.some((panel) => panel.consistency.method === "mock") || fixed.length > 0) return { kind: "practice", fixed };
+  if (panels.some((panel) => panel.consistency.method === "mock") || fixed.length > 0) return { kind: "practice", fixed, oneOffs };
   return null;
 }

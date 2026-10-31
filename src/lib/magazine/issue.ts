@@ -1,5 +1,6 @@
 import { countWord, moodWords } from "../format";
 import { MOODS, type CharacterRole, type Day, type MonthKey, type Mood } from "../types";
+import { isOneOffId } from "../newPeople";
 
 /**
  * The month as a printed issue: which pages it has, in what order, and how
@@ -207,12 +208,12 @@ export function issueMonths(days: Day[]): MonthKey[] {
   return [...new Set(issueDays(days).map((day) => monthOf(day.date)))].sort();
 }
 
-/** Everyone drawn or speaking in a day's comic. */
+/** Everyone in the cast drawn or speaking in a day's comic (one-offs belong to their one story, 03-06). */
 export function dayCastIds(day: Pick<Day, "panels">): string[] {
   const ids = new Set<string>();
   for (const panel of day.panels) {
     for (const id of panel.characterIds) ids.add(id);
     for (const line of panel.dialogue) ids.add(line.speakerId);
   }
-  return [...ids];
+  return [...ids].filter((id) => !isOneOffId(id));
 }
