@@ -3,7 +3,8 @@ import { guard, guardResponse } from "@/lib/guard";
 import { getModels, type ModelImage } from "@/lib/models";
 import { signFileId, signSheet } from "@/lib/models/fileTokens";
 import { drawReferenceSheetFromPhoto, isContentPolicyError } from "@/lib/models/meta/image";
-import { fromWire, isRecord, isText, json, jsonError, modelErrorResponse, readJson, toWire } from "@/lib/models/wire";
+import { fromWire, isRecord, isText, json, jsonError, modelErrorResponse, toWire } from "@/lib/models/wire";
+import { BODY_LIMITS, readBoundedJson } from "@/lib/requestBody";
 import { PhotoInputError, readPhotoCrop } from "@/lib/photoInput";
 import type { CharacterRole, CharacterSheetResponse } from "@/lib/types";
 
@@ -29,7 +30,10 @@ const MAX_LOOK = 600;
  * the photo, the sheet is drawn from the written look and `photoRefused` says so.
  */
 export async function POST(request: Request) {
-  const body = await readJson(request);
+  // Read with a hard byte limit: Content-Length alone can't be trusted.
+  const read = await readBoundedJson(request, BODY_LIMITS.character);
+  if (!read.ok) return read.response;
+  const body = read.value;
   if (!isRecord(body)) return jsonError(400, "Send JSON like {\"characterId\": \"...\", \"name\": \"...\", \"role\": \"friend\", \"look\": \"...\"}.");
 
   const { characterId, name, role, look, style, photo, consent } = body;

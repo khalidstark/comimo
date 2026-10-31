@@ -1,6 +1,7 @@
 import { guard, guardResponse } from "@/lib/guard";
 import { getModels } from "@/lib/models";
 import { json, jsonError, modelErrorResponse } from "@/lib/models/wire";
+import { BODY_LIMITS, readBoundedForm } from "@/lib/requestBody";
 import type { LanguageHint, TranscribeResponse } from "@/lib/types";
 
 export const maxDuration = 60;
@@ -33,12 +34,10 @@ function parseKeywords(value: FormDataEntryValue | null): string[] {
  * real model), optional `language` (auto | ar | en), optional `keywords` (JSON list)
  */
 export async function POST(request: Request) {
-  let form: FormData;
-  try {
-    form = await request.formData();
-  } catch {
-    return jsonError(415, "Send the voice note as multipart/form-data with an `audio` file.");
-  }
+  // Read with a hard byte limit: Content-Length alone can't be trusted.
+  const body = await readBoundedForm(request, BODY_LIMITS.transcribe, "Send the voice note as multipart/form-data with an `audio` file.");
+  if (!body.ok) return body.response;
+  const form = body.value;
 
   const audio = form.get("audio");
   if (!(audio instanceof Blob) || audio.size === 0) {
