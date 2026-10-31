@@ -174,6 +174,8 @@ export interface PanelFrame {
   zone: LetteringZone;
   /** A smaller panel overlaps this corner of the panel, so nothing important goes there. */
   covered?: Corner;
+  /** How much of the width and height that corner takes (fractions, with a margin). */
+  coverage?: { w: number; h: number };
 }
 
 /** The page template a comic is laid out with, and which panel is its splash. */

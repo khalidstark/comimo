@@ -177,8 +177,11 @@ function zoneLines(frame: PanelFrame, emptyBand: string): string[] {
     );
   }
   if (frame.covered) {
+    const size = frame.coverage
+      ? `the left or right ${Math.round(frame.coverage.w * 100)}% of the width and ${Math.round(frame.coverage.h * 100)}% of the height`
+      : "about a third of the width and height";
     lines.push(
-      `A smaller panel will be laid over the ${CORNER_WORDS[frame.covered]} corner (about a third of the width and height): keep faces and the main action out of that corner.`,
+      `A smaller panel will be laid over the ${CORNER_WORDS[frame.covered]} corner, covering ${size} there: keep every head, face and the main action out of that corner.`,
     );
   }
   return lines;

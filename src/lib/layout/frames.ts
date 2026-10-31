@@ -43,14 +43,33 @@ function up(value: number): number {
 export function zoneFor(text: Lettering, sizes: Measured[], aspect: number, covered?: Corner): LetteringZone {
   if (!text.caption && text.lines.length === 0) return { side: "none", size: 0 };
   const top = Math.max(...sizes.map((s) => letteringHeight(text, s.w - s.topCut, s.w) / s.h));
-  if (top <= 0.34 || aspect < 1.6) return { side: "top", size: Math.min(TOP_MAX + 0.08, Math.max(0.2, up(top))) };
+  if (top <= 0.34 || aspect < 1.6) return { side: "top", size: Math.min(TOP_MAX + 0.02, Math.max(0.2, up(top))) };
   const side = covered?.endsWith("left") ? "right" : "left";
   // A side column must stay wide enough to read on the phone page.
   const size = SIDE_SIZES.find((share) =>
-    sizes.every((s) => s.w * share >= SIDE_MIN_PX && letteringHeight(text, s.w * share, s.w) <= s.h * 0.94),
+    sizes.every((s) => s.w * share >= SIDE_MIN_PX && letteringHeight(text, s.w * share, s.w, true) <= s.h * 0.94),
   );
-  if (size === undefined || (top <= TOP_MAX && top <= size)) return { side: "top", size: Math.min(TOP_MAX + 0.08, up(top)) };
+  if (size === undefined || (top <= TOP_MAX && top <= size)) return { side: "top", size: Math.min(TOP_MAX + 0.02, up(top)) };
   return { side, size };
+}
+
+/** Extra room around a covered corner, so a face near its edge isn't half hidden. */
+const COVER_MARGIN = 0.06;
+
+/** How much of a hero its inset covers (largest over both pages), as fractions of the hero's box. */
+function coverageOf(geometries: PageGeometry[], host: number): { w: number; h: number; bottom: number } {
+  let w = 0;
+  let h = 0;
+  let bottom = 0;
+  for (const geometry of geometries) {
+    const hero = geometry.panels.find((p) => p.index === host);
+    const inset = geometry.panels.find((p) => p.inset && p.host === host);
+    if (!hero || !inset) continue;
+    w = Math.max(w, inset.box.w / hero.box.w);
+    h = Math.max(h, inset.box.h / hero.box.h);
+    bottom = Math.max(bottom, (inset.box.y + inset.box.h - hero.box.y) / hero.box.h);
+  }
+  return { w, h, bottom };
 }
 
 /**
@@ -69,10 +88,16 @@ export function panelFrames(choice: PageLayoutChoice | null, panels: StoryPanel[
       const placed = geometry.panels.find((p) => p.index === i)!;
       return measure(geometry, placed, k === 0 ? DESKTOP_PAGE_PX : PHONE_PAGE_PX);
     });
+    let zone = zoneFor(letteringOf(panel), sizes, aspects[i], covered);
+    const coverage = covered ? coverageOf([desktop, phone], i) : undefined;
+    // An inset over a top corner sits inside the empty band, so no face can end up under it.
+    if (coverage && covered?.startsWith("top") && (zone.side === "top" || zone.side === "none")) {
+      zone = { side: "top", size: Math.min(TOP_MAX + 0.02, Math.max(zone.size, up(coverage.bottom + COVER_MARGIN))) };
+    }
     return {
       aspect: aspects[i],
-      zone: zoneFor(letteringOf(panel), sizes, aspects[i], covered),
-      ...(covered ? { covered } : {}),
+      zone,
+      ...(covered && coverage ? { covered, coverage: { w: up(coverage.w + COVER_MARGIN), h: up(coverage.h + COVER_MARGIN) } } : {}),
     };
   });
 }

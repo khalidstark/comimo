@@ -195,7 +195,19 @@ describe("panel frames", () => {
     for (const frame of frames.slice(0, 5)) {
       expect(frame.zone.side).not.toBe("none");
       expect(frame.zone.size).toBeGreaterThan(0.1);
-      expect(frame.zone.size).toBeLessThanOrEqual(0.5);
+      expect(frame.zone.size).toBeLessThanOrEqual(frame.zone.side === "top" ? 0.44 : 0.5);
     }
+  });
+});
+
+describe("insets", () => {
+  it("keep the corner they cover inside the hero's empty band and tell the artist how big it is", () => {
+    const panels = story(4, 3).map((p) => ({ ...p, caption: "Then it rained." }));
+    const frames = panelFrames({ template: "inset-4", focus: 3 }, panels, "x");
+    const hero = frames[3];
+    expect(hero.covered).toBe("top-left");
+    expect(hero.coverage!.w).toBeGreaterThan(0.3);
+    expect(hero.zone.side).toBe("top");
+    expect(hero.zone.size).toBeGreaterThanOrEqual(hero.coverage!.h);
   });
 });
