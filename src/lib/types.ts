@@ -468,3 +468,25 @@ export interface PhotoLookResponse {
   /** The person cut from the photo, for drawing their sheet once; never stored. */
   crop: WireImage;
 }
+
+/* ------------------------------------------------------------------ */
+/* Monthly magazine                                                    */
+/* ------------------------------------------------------------------ */
+
+/** POST /api/cover: draw a month's magazine cover starring its main cast. */
+export interface CoverRequest {
+  month: MonthKey;
+  /** The month's comic titles, in date order (the cover concept and tagline come from these). */
+  titles: string[];
+  /** The month's main cast (at most three), the narrator first. */
+  cast: WireReference[];
+  /** Defaults to "zine". */
+  style?: ArtStyleId;
+}
+export interface CoverResponse {
+  mode: ModelMode;
+  /** Portrait cover art (about 4:5) with the top kept clear for the masthead. */
+  image: WireImage;
+  /** One short cover line, in the month's own words. */
+  tagline: string;
+}

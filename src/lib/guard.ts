@@ -25,8 +25,11 @@ import { createHash, randomBytes } from "node:crypto";
  *   COMIMO_GUARD_SALT        salt for the visitor hash (default: random per process)
  */
 
-/** `sprite`: five image calls animating one character. `photo`: one SAM and one vision call describing a reference photo. */
-export type GuardAction = "transcribe" | "script" | "panel" | "character" | "sprite" | "photo";
+/**
+ * `sprite`: five image calls animating one character. `photo`: one SAM and one vision call describing a reference photo.
+ * `cover`: one text and one image call drawing a month's magazine cover.
+ */
+export type GuardAction = "transcribe" | "script" | "panel" | "character" | "sprite" | "photo" | "cover";
 
 /**
  * Kinds of upstream call. Image and SAM calls count against the daily image
@@ -89,6 +92,8 @@ function limits() {
       sprite: comics,
       // Describing a person from a photo: a few new people an hour.
       photo: Math.max(1, Math.ceil(comics / 2)),
+      // A month's cover is drawn once; a couple more for a redraw or a second device.
+      cover: Math.max(1, Math.ceil(comics / 2)),
     } satisfies Record<GuardAction, number>,
     // Reference-sheet uploads: a few per comic (one per character), more only on stale tokens.
     uploadsPerHour: comics * 4,
@@ -224,7 +229,7 @@ export function guard(request: Request, action: GuardAction, options: { real: bo
   }
 
   sweep(now);
-  const counts = visitors.get(id) ?? { transcribe: [], script: [], panel: [], character: [], sprite: [], photo: [] };
+  const counts = visitors.get(id) ?? { transcribe: [], script: [], panel: [], character: [], sprite: [], photo: [], cover: [] };
   // Visitors counted before these actions existed lack their lists.
   counts[action] ??= [];
   const recent = counts[action].filter((t) => now - t < HOUR_MS);
@@ -234,7 +239,7 @@ export function guard(request: Request, action: GuardAction, options: { real: bo
       ok: false,
       status: 429,
       error:
-        action === "character" || action === "sprite"
+        action === "character" || action === "sprite" || action === "cover"
           ? `That's a lot of drawing for one hour. Try again in ${minutes(retryAfterSec)}.`
           : action === "photo"
             ? `That's a lot of photos for one hour. Try again in ${minutes(retryAfterSec)}.`
