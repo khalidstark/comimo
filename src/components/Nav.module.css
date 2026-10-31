@@ -45,6 +45,13 @@
   padding-block-start: 0.12em;
 }
 
+/* Account and theme, kept together at the inline-end of the top bar. */
+.corner {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2xs);
+}
+
 .themeToggle {
   display: inline-grid;
   place-items: center;
@@ -309,7 +316,7 @@
     background: none;
   }
 
-  .themeToggle {
-    margin-inline-start: var(--space-2xs);
+  .corner {
+    margin-inline-start: var(--space-xs);
   }
 }
