@@ -53,8 +53,11 @@ export interface LockoutPolicy {
 
 /** Per email: 5 free tries an hour, then one try per lock of 1, 2, 4 ... up to 60 minutes. */
 export const EMAIL_LOCKOUT: LockoutPolicy = { freeTries: 5, windowSec: 3600, baseLockSec: 60, maxLockSec: 3600 };
-/** Per IP: room for a family behind one router, then the same backoff. */
-export const IP_LOCKOUT: LockoutPolicy = { freeTries: 25, windowSec: 3600, baseLockSec: 60, maxLockSec: 3600 };
+/**
+ * Per IP: every try counts, good or bad (successes are never given back), so
+ * the allowance has room for a household or a classroom behind one router.
+ */
+export const IP_LOCKOUT: LockoutPolicy = { freeTries: 50, windowSec: 3600, baseLockSec: 60, maxLockSec: 3600 };
 
 /** Seconds left on a lock for this subject, or 0 when it may try. */
 export async function lockedFor(kv: KV, subject: string, now = Date.now()): Promise<number> {
@@ -88,14 +91,15 @@ export async function reserveAttempt(kv: KV, subject: string, policy: LockoutPol
   return { ok: false, retryAfterSec: Math.max(1, await lockedFor(kv, subject, now)) };
 }
 
-/** After a successful sign-in: forget this subject's tries and lock. */
+/**
+ * After a successful sign-in: forget the email's tries and lock. Only for
+ * the email subject: the account's owner just proved the password. A shared
+ * subject (an IP) is never cleared or given tries back, so an attacker can't
+ * reset their IP's count by signing in to an account of their own; there is
+ * deliberately no decrement anywhere in this scheme.
+ */
 export async function clearAttempts(kv: KV, subject: string): Promise<void> {
   await Promise.all([kv.del(`tries:${subject}`), kv.del(`lock:${subject}`)]);
-}
-
-/** After a successful sign-in from a shared subject (an IP): give back just this one try. */
-export async function releaseAttempt(kv: KV, subject: string): Promise<void> {
-  await kv.incr(`tries:${subject}`, { by: -1 });
 }
 
 /** "3 minutes", "1 minute". */
