@@ -4,7 +4,7 @@ import { useEffect, useId, useRef, useState } from "react";
 import { Icon } from "@/art/Icon";
 import { RecordStamp } from "@/components/RecordStamp";
 import { ART_STYLE_IDS, ART_STYLES, DEFAULT_ART_STYLE, artStyleOf, type ArtStyleId } from "@/lib/artStyles";
-import type { LanguageHint } from "@/lib/types";
+import { DEFAULT_STORY_MODE, STORY_MODES, isStoryMode, type LanguageHint, type StoryMode } from "@/lib/types";
 import { MakingComic } from "./MakingComic";
 import styles from "./record.module.css";
 import { MAX_RECORDING_MS, useRecorder, type Recorder, type RecorderProblem } from "./useRecorder";
@@ -45,6 +45,38 @@ function rememberStyle(style: ArtStyleId) {
     // Private windows can block storage; the pick still applies to this comic.
   }
 }
+
+/** How each story mode reads, shown as a one-line preview under its name. */
+const STORY_MODE_TEXT: Record<StoryMode, { label: string; preview: string }> = {
+  narrated: { label: "Narrated", preview: "“The rain started before I woke up…” Told in your voice, like a graphic novel." },
+  dialogue: { label: "Dialogue", preview: "“A test? We ate all of it.” Everyone talks in speech bubbles." },
+  both: { label: "Both", preview: "Your narration, plus the few lines that hit hardest out loud." },
+};
+
+/** The last story mode picked on this device (the default is Both). */
+const MODE_KEY = "comimo.storyMode";
+
+function storedMode(): StoryMode {
+  if (typeof window === "undefined") return DEFAULT_STORY_MODE;
+  try {
+    const value = window.localStorage.getItem(MODE_KEY);
+    return isStoryMode(value) ? value : DEFAULT_STORY_MODE;
+  } catch {
+    return DEFAULT_STORY_MODE;
+  }
+}
+
+function rememberMode(mode: StoryMode) {
+  try {
+    window.localStorage.setItem(MODE_KEY, mode);
+  } catch {
+    // Private windows can block storage; the pick still applies to this comic.
+  }
+}
+
+/** A typed day: long enough to tell, short enough for one comic book. */
+const TYPED_MIN = 20;
+const TYPED_MAX = 6000;
 
 /** Problems where the upload button becomes the main way forward. */
 const MIC_BLOCKED: RecorderProblem[] = ["denied", "unsupported", "no-mic"];
@@ -92,9 +124,21 @@ export function RecordPanel() {
   const [language, setLanguage] = useState<LanguageHint>("auto");
   // The picker only shows on the review step, which never renders on the server, so reading storage here is safe.
   const [style, setStyle] = useState<ArtStyleId>(storedStyle);
-  const [making, setMaking] = useState<{ audio: Blob; language: LanguageHint; style: ArtStyleId } | null>(null);
+  const [storyMode, setStoryMode] = useState<StoryMode>(storedMode);
+  const [typing, setTyping] = useState(false);
+  const [typed, setTyped] = useState("");
+  const [making, setMaking] = useState<{
+    audio: Blob | null;
+    text?: string;
+    language: LanguageHint;
+    style: ArtStyleId;
+    storyMode: StoryMode;
+  } | null>(null);
   const legendId = useId();
   const styleLegendId = useId();
+  const modeLegendId = useId();
+  const typedId = useId();
+  const typedHintId = useId();
   const uploadHintId = useId();
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -105,6 +149,115 @@ export function RecordPanel() {
     const file = event.target.files?.[0];
     event.target.value = "";
     if (file) recorder.acceptFile(file);
+  }
+
+  const typedText = typed.trim();
+  const typedReady = typedText.length >= TYPED_MIN;
+
+  /** Art style and story mode, picked once the day is ready to become a comic. */
+  const options = (
+    <>
+      <fieldset className={styles.languages} aria-labelledby={styleLegendId}>
+        <legend id={styleLegendId} className={styles.legend}>
+          Draw it as
+        </legend>
+        <div className={styles.chips}>
+          {ART_STYLE_IDS.map((id) => (
+            <label key={id} className={styles.chip}>
+              <input
+                type="radio"
+                name="art-style"
+                value={id}
+                checked={style === id}
+                onChange={() => {
+                  setStyle(id);
+                  rememberStyle(id);
+                }}
+              />
+              <span>
+                {ART_STYLES[id].label}
+                <span className="visually-hidden">: {ART_STYLES[id].blurb}</span>
+              </span>
+            </label>
+          ))}
+        </div>
+      </fieldset>
+      <fieldset className={`${styles.languages} ${styles.modes}`} aria-labelledby={modeLegendId}>
+        <legend id={modeLegendId} className={styles.legend}>
+          Tell it as
+        </legend>
+        <div className={styles.segments}>
+          {STORY_MODES.map((mode) => (
+            <label key={mode} className={styles.segment}>
+              <input
+                type="radio"
+                name="story-mode"
+                value={mode}
+                checked={storyMode === mode}
+                onChange={() => {
+                  setStoryMode(mode);
+                  rememberMode(mode);
+                }}
+              />
+              <span className={styles.segmentLabel}>{STORY_MODE_TEXT[mode].label}</span>
+              <span className={styles.segmentPreview}>{STORY_MODE_TEXT[mode].preview}</span>
+            </label>
+          ))}
+        </div>
+      </fieldset>
+    </>
+  );
+
+  if (typing) {
+    return (
+      <div className={`panel halftone ${styles.panel}`}>
+        <div className={styles.typed}>
+          <label htmlFor={typedId} className={styles.legend}>
+            Type your day
+          </label>
+          <textarea
+            id={typedId}
+            className={styles.typedText}
+            value={typed}
+            onChange={(event) => setTyped(event.target.value)}
+            maxLength={TYPED_MAX}
+            rows={9}
+            dir="auto"
+            aria-describedby={typedHintId}
+            placeholder="What happened today? Write it the way you'd tell a friend, in Arabic, English or both."
+          />
+          <p id={typedHintId} className={styles.uploadHint}>
+            {typedText.length < TYPED_MIN
+              ? "A few sentences is enough. Comimo works out the language from what you write."
+              : `${typed.length.toLocaleString("en")} of ${TYPED_MAX.toLocaleString("en")} characters`}
+          </p>
+          {options}
+          <div className={styles.reviewActions}>
+            <button
+              type="button"
+              className={`btn btn--accent ${styles.make}`}
+              disabled={!typedReady}
+              onClick={() => setMaking({ audio: null, text: typedText, language, style, storyMode })}
+            >
+              Make my comic
+            </button>
+            <button type="button" className="btn btn--ghost" onClick={() => setTyping(false)}>
+              Record instead
+            </button>
+          </div>
+        </div>
+        {making ? (
+          <MakingComic
+            audio={making.audio}
+            text={making.text}
+            language={making.language}
+            style={making.style}
+            storyMode={making.storyMode}
+            onClose={() => setMaking(null)}
+          />
+        ) : null}
+      </div>
+    );
   }
 
   return (
@@ -138,36 +291,12 @@ export function RecordPanel() {
           <audio className={styles.player} src={take.url} controls preload="metadata">
             Your browser can&apos;t play this voice note back, but Comimo can still use it.
           </audio>
-          <fieldset className={styles.languages} aria-labelledby={styleLegendId}>
-            <legend id={styleLegendId} className={styles.legend}>
-              Draw it as
-            </legend>
-            <div className={styles.chips}>
-              {ART_STYLE_IDS.map((id) => (
-                <label key={id} className={styles.chip}>
-                  <input
-                    type="radio"
-                    name="art-style"
-                    value={id}
-                    checked={style === id}
-                    onChange={() => {
-                      setStyle(id);
-                      rememberStyle(id);
-                    }}
-                  />
-                  <span>
-                    {ART_STYLES[id].label}
-                    <span className="visually-hidden">: {ART_STYLES[id].blurb}</span>
-                  </span>
-                </label>
-              ))}
-            </div>
-          </fieldset>
+          {options}
           <div className={styles.reviewActions}>
             <button
               type="button"
               className={`btn btn--accent ${styles.make}`}
-              onClick={() => setMaking({ audio: take.blob, language, style })}
+              onClick={() => setMaking({ audio: take.blob, language, style, storyMode })}
             >
               Make my comic
             </button>
@@ -230,10 +359,20 @@ export function RecordPanel() {
         <p id={uploadHintId} className={styles.uploadHint}>
           No mic? Any audio file up to two minutes: m4a, mp3, wav, webm or ogg.
         </p>
+        <button type="button" className="link" onClick={() => setTyping(true)} disabled={busy}>
+          Type it instead
+        </button>
       </div>
 
       {making ? (
-        <MakingComic audio={making.audio} language={making.language} style={making.style} onClose={() => setMaking(null)} />
+        <MakingComic
+          audio={making.audio}
+          text={making.text}
+          language={making.language}
+          style={making.style}
+          storyMode={making.storyMode}
+          onClose={() => setMaking(null)}
+        />
       ) : null}
     </div>
   );
