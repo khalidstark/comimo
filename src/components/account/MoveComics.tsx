@@ -59,7 +59,10 @@ export function MoveComics() {
           <h2 id="move-comics-title" className={styles.title}>
             {step.count === 1 ? "There's a comic here from before you signed in." : `There are ${step.count} comics here from before you signed in.`}
           </h2>
-          <p className={styles.text}>Move them to your account and they&apos;ll be on every device you sign in on. Your cast comes along too.</p>
+          <p className={styles.text}>
+            {step.count === 1 ? "Move it to your account and it'll be" : "Move them to your account and they'll be"} on every device you sign in on. Your
+            cast comes along too.
+          </p>
           <div className={styles.actions}>
             <button type="button" className="btn btn--accent" onClick={() => void move()}>
               Move these comics to your account
