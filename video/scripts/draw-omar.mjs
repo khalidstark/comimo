@@ -129,8 +129,11 @@ for (let y = top; y < bottom && y < PH; y++) {
     if (raster[my * best.mask.width + mx]) alpha[y * PW + x] = 255;
   }
 }
-const softAlpha = await sharp(alpha, { raw: { width: PW, height: PH, channels: 1 } }).blur(1.2).raw().toBuffer();
-await sharp(softAlpha, { raw: { width: PW, height: PH, channels: 1 } }).png().toFile(path.join(OUT, "mask.png"));
+const softAlpha = await sharp(alpha, { raw: { width: PW, height: PH, channels: 1 } }).blur(1.2).extractChannel(0).raw().toBuffer();
+// The mask as alpha (for CSS mask-image): white where SAM found him.
+const maskRgba = Buffer.alloc(PW * PH * 4, 255);
+for (let i = 0; i < PW * PH; i++) maskRgba[i * 4 + 3] = softAlpha[i];
+await sharp(maskRgba, { raw: { width: PW, height: PH, channels: 4 } }).png().toFile(path.join(OUT, "mask.png"));
 const rgb = await sharp(photo.data).removeAlpha().raw().toBuffer();
 const rgba = Buffer.alloc(PW * PH * 4);
 for (let i = 0; i < PW * PH; i++) {
