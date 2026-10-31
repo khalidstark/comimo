@@ -114,7 +114,7 @@ export function ComicBook({ pages, style, label, rtl = false, endnote }: ComicBo
     return (
       <>
         <Comic panels={pages[0].panels} page={pages[0].page} style={style} label={label} />
-        {endnote}
+        {endnote ? <div className={styles.endnote}>{endnote}</div> : null}
       </>
     );
   }
@@ -146,7 +146,7 @@ export function ComicBook({ pages, style, label, rtl = false, endnote }: ComicBo
       <div className={styles.leaves} onPointerDown={onPointerDown} onPointerUp={onPointerUp} onPointerCancel={() => (swipe.current = null)}>
         <div key={current} className={styles.leaf} data-arriving={turn ? turn.dir : undefined}>
           <Comic panels={shown.panels} page={shown.page} style={style} label={`${label}, page ${current + 1} of ${count}`} />
-          {current === count - 1 ? endnote : null}
+          {current === count - 1 && endnote ? <div className={styles.endnote}>{endnote}</div> : null}
         </div>
         {leaving && turn ? (
           <div
