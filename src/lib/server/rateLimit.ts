@@ -42,16 +42,16 @@ export async function hit(kv: KV, key: string, limit: number, windowSec: number,
 /* ---------- Sign-in lockout with backoff ---------- */
 
 export interface LockoutPolicy {
-  /** Failed tries allowed in the window before the first lock. */
+  /** Tries allowed in the window before the first lock. */
   freeTries: number;
-  /** How long failures are remembered. */
+  /** How long tries are remembered. */
   windowSec: number;
-  /** First lock; each further failure doubles it. */
+  /** First lock; each later lock doubles it. */
   baseLockSec: number;
   maxLockSec: number;
 }
 
-/** Per email: 5 free tries an hour, then 1, 2, 4 ... up to 60 minutes. */
+/** Per email: 5 free tries an hour, then one try per lock of 1, 2, 4 ... up to 60 minutes. */
 export const EMAIL_LOCKOUT: LockoutPolicy = { freeTries: 5, windowSec: 3600, baseLockSec: 60, maxLockSec: 3600 };
 /** Per IP: room for a family behind one router, then the same backoff. */
 export const IP_LOCKOUT: LockoutPolicy = { freeTries: 25, windowSec: 3600, baseLockSec: 60, maxLockSec: 3600 };
@@ -62,22 +62,40 @@ export async function lockedFor(kv: KV, subject: string, now = Date.now()): Prom
   return Number.isFinite(until) && until > now ? Math.ceil((until - now) / 1000) : 0;
 }
 
+export type Attempt = { ok: true } | { ok: false; retryAfterSec: number };
+
 /**
- * Record a failed try. Past the free tries, lock the subject for a time that
- * doubles with every further failure. Returns the new lock in seconds (0 = none).
+ * Reserve one sign-in try for a subject (an email or an IP) BEFORE the
+ * password is checked, so parallel requests can't all slip past a lock.
+ *
+ * Every try is counted with an atomic increment (serialised in the file
+ * store, INCRBY in Redis). The first `freeTries` in the window go through.
+ * After that, a try goes through only if it creates the lock itself
+ * (set-if-new): it becomes the one probe for that lock period, and the lock
+ * it wrote holds back every other try (429). Each later lock doubles, up to
+ * `maxLockSec`.
  */
-export async function recordFailure(kv: KV, subject: string, policy: LockoutPolicy, now = Date.now()): Promise<number> {
-  const failures = await kv.incr(`fail:${subject}`, { ttlSec: policy.windowSec });
-  const over = failures - policy.freeTries;
-  if (over < 0) return 0;
-  const lockSec = Math.min(policy.maxLockSec, policy.baseLockSec * 2 ** Math.min(over, 20));
-  await kv.set(`lock:${subject}`, String(now + lockSec * 1000), { ttlSec: lockSec });
-  return lockSec;
+export async function reserveAttempt(kv: KV, subject: string, policy: LockoutPolicy, now = Date.now()): Promise<Attempt> {
+  // A cheap early answer while a lock is on; safety comes from the steps below.
+  const waiting = await lockedFor(kv, subject, now);
+  if (waiting > 0) return { ok: false, retryAfterSec: waiting };
+
+  const tries = await kv.incr(`tries:${subject}`, { ttlSec: policy.windowSec });
+  if (tries <= policy.freeTries) return { ok: true };
+
+  const lockSec = Math.min(policy.maxLockSec, policy.baseLockSec * 2 ** Math.min(tries - policy.freeTries - 1, 20));
+  if (await kv.set(`lock:${subject}`, String(now + lockSec * 1000), { onlyIfNew: true, ttlSec: lockSec })) return { ok: true };
+  return { ok: false, retryAfterSec: Math.max(1, await lockedFor(kv, subject, now)) };
 }
 
-/** Forget failures after a successful sign-in. */
-export async function clearFailures(kv: KV, subject: string): Promise<void> {
-  await Promise.all([kv.del(`fail:${subject}`), kv.del(`lock:${subject}`)]);
+/** After a successful sign-in: forget this subject's tries and lock. */
+export async function clearAttempts(kv: KV, subject: string): Promise<void> {
+  await Promise.all([kv.del(`tries:${subject}`), kv.del(`lock:${subject}`)]);
+}
+
+/** After a successful sign-in from a shared subject (an IP): give back just this one try. */
+export async function releaseAttempt(kv: KV, subject: string): Promise<void> {
+  await kv.incr(`tries:${subject}`, { by: -1 });
 }
 
 /** "3 minutes", "1 minute". */

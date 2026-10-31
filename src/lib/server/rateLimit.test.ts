@@ -1,9 +1,9 @@
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { FileKV } from "./kv";
-import { clearFailures, EMAIL_LOCKOUT, hit, lockedFor, recordFailure, windowOf } from "./rateLimit";
+import { clearAttempts, EMAIL_LOCKOUT, hit, IP_LOCKOUT, lockedFor, releaseAttempt, reserveAttempt, windowOf } from "./rateLimit";
 
 let dir: string;
 let kv: FileKV;
@@ -46,31 +46,56 @@ describe("hit", () => {
   });
 });
 
-describe("sign-in lockout", () => {
-  it("allows the free tries, then locks with a doubling backoff", async () => {
+describe("sign-in tries", () => {
+  const at = (ms: number) => vi.setSystemTime(new Date(T0 + ms));
+
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    at(0);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("allows the free tries, then one try per lock with a doubling backoff", async () => {
     const subject = "login:email:abc";
-    for (let i = 0; i < EMAIL_LOCKOUT.freeTries - 1; i++) {
-      expect(await recordFailure(kv, subject, EMAIL_LOCKOUT, T0)).toBe(0);
-      expect(await lockedFor(kv, subject, T0)).toBe(0);
-    }
-    expect(await recordFailure(kv, subject, EMAIL_LOCKOUT, T0)).toBe(60);
-    expect(await lockedFor(kv, subject, T0)).toBe(60);
-    expect(await lockedFor(kv, subject, T0 + 61_000)).toBe(0);
-    expect(await recordFailure(kv, subject, EMAIL_LOCKOUT, T0 + 61_000)).toBe(120);
-    expect(await recordFailure(kv, subject, EMAIL_LOCKOUT, T0 + 200_000)).toBe(240);
+    for (let i = 0; i < EMAIL_LOCKOUT.freeTries; i++) expect(await reserveAttempt(kv, subject, EMAIL_LOCKOUT)).toEqual({ ok: true });
+    // The next try is the probe: it goes through and sets a 1 minute lock.
+    expect(await reserveAttempt(kv, subject, EMAIL_LOCKOUT)).toEqual({ ok: true });
+    expect(await lockedFor(kv, subject)).toBe(60);
+    expect(await reserveAttempt(kv, subject, EMAIL_LOCKOUT)).toEqual({ ok: false, retryAfterSec: 60 });
+    at(61_000);
+    expect(await reserveAttempt(kv, subject, EMAIL_LOCKOUT)).toEqual({ ok: true });
+    expect(await lockedFor(kv, subject)).toBe(120);
+    at(61_000 + 121_000);
+    expect(await reserveAttempt(kv, subject, EMAIL_LOCKOUT)).toEqual({ ok: true });
+    expect(await lockedFor(kv, subject)).toBe(240);
+  });
+
+  it("lets only the free tries plus one probe through a burst of parallel tries", async () => {
+    const results = await Promise.all(Array.from({ length: 30 }, () => reserveAttempt(kv, "login:email:burst", EMAIL_LOCKOUT)));
+    expect(results.filter((r) => r.ok)).toHaveLength(EMAIL_LOCKOUT.freeTries + 1);
   });
 
   it("caps the lock at an hour", async () => {
-    let lock = 0;
-    for (let i = 0; i < 20; i++) lock = await recordFailure(kv, "login:ip:x", EMAIL_LOCKOUT, T0);
-    expect(lock).toBe(3600);
+    await kv.incr("tries:login:ip:x", { by: 40, ttlSec: 3600 });
+    expect(await reserveAttempt(kv, "login:ip:x", EMAIL_LOCKOUT)).toEqual({ ok: true });
+    expect(await lockedFor(kv, "login:ip:x")).toBe(3600);
   });
 
-  it("forgets failures after a successful sign-in", async () => {
-    for (let i = 0; i < 6; i++) await recordFailure(kv, "s", EMAIL_LOCKOUT, T0);
-    expect(await lockedFor(kv, "s", T0)).toBeGreaterThan(0);
-    await clearFailures(kv, "s");
-    expect(await lockedFor(kv, "s", T0)).toBe(0);
-    expect(await recordFailure(kv, "s", EMAIL_LOCKOUT, T0)).toBe(0);
+  it("forgets tries after a successful sign-in", async () => {
+    for (let i = 0; i < 6; i++) await reserveAttempt(kv, "s", EMAIL_LOCKOUT);
+    expect(await lockedFor(kv, "s")).toBeGreaterThan(0);
+    await clearAttempts(kv, "s");
+    expect(await lockedFor(kv, "s")).toBe(0);
+    for (let i = 0; i < EMAIL_LOCKOUT.freeTries; i++) expect((await reserveAttempt(kv, "s", EMAIL_LOCKOUT)).ok).toBe(true);
+  });
+
+  it("gives back one try for a shared subject", async () => {
+    await reserveAttempt(kv, "login:ip:y", IP_LOCKOUT);
+    await reserveAttempt(kv, "login:ip:y", IP_LOCKOUT);
+    await releaseAttempt(kv, "login:ip:y");
+    expect(await kv.get("tries:login:ip:y")).toBe("1");
   });
 });
