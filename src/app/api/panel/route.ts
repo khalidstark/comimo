@@ -1,6 +1,7 @@
 import { starterCastById } from "@/fixtures/cast";
 import { artStyleOf, isArtStyleId } from "@/lib/artStyles";
 import { guard, guardResponse } from "@/lib/guard";
+import { requireSession } from "@/lib/server/session";
 import { getModels, type CharacterReference } from "@/lib/models";
 import { isTrustedSheet, signFileId, verifyFileToken } from "@/lib/models/fileTokens";
 import { isMissingFileError, isSendableImage, pickReferences } from "@/lib/models/meta/image";
@@ -142,6 +143,8 @@ function staleReference(): Response {
  * 409 with code "stale-reference": an uploaded sheet is gone; resend the images.
  */
 export async function POST(request: Request) {
+  const session = await requireSession(request);
+  if (!session.ok) return session.response;
   // Read with a hard byte limit: Content-Length alone can't be trusted.
   const read = await readBoundedJson(request, BODY_LIMITS.panel);
   if (!read.ok) return read.response;
@@ -171,7 +174,7 @@ export async function POST(request: Request) {
   const { drawPanel, checkConsistency } = models.sources;
   const source = drawPanel === "meta" || checkConsistency === "meta" ? "meta" : "mock";
   // Image and SAM calls are counted against the daily cap one by one, through the meter, as they are made.
-  const check = guard(request, "panel", { real: source === "meta" });
+  const check = await guard(request, "panel", { real: source === "meta" });
   if (!check.ok) return guardResponse(check);
 
   try {

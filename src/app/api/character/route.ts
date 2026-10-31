@@ -1,5 +1,6 @@
 import { artStyleOf, isArtStyleId } from "@/lib/artStyles";
 import { guard, guardResponse } from "@/lib/guard";
+import { requireSession } from "@/lib/server/session";
 import { getModels, type ModelImage } from "@/lib/models";
 import { signFileId, signSheet } from "@/lib/models/fileTokens";
 import { drawReferenceSheetFromPhoto, isContentPolicyError } from "@/lib/models/meta/image";
@@ -30,6 +31,8 @@ const MAX_LOOK = 600;
  * the photo, the sheet is drawn from the written look and `photoRefused` says so.
  */
 export async function POST(request: Request) {
+  const session = await requireSession(request);
+  if (!session.ok) return session.response;
   // Read with a hard byte limit: Content-Length alone can't be trusted.
   const read = await readBoundedJson(request, BODY_LIMITS.character);
   if (!read.ok) return read.response;
@@ -55,7 +58,7 @@ export async function POST(request: Request) {
   const source = models.sources.drawReferenceSheet;
   // The sheet is one image call (two if a photo is refused), counted against the daily image cap by the meter as it is sent.
   // A photo is decoded on this server, so it is counted in mock mode too.
-  const check = guard(request, "character", { real: source === "meta" || wire !== null });
+  const check = await guard(request, "character", { real: source === "meta" || wire !== null });
   if (!check.ok) return guardResponse(check);
 
   // Decoding costs CPU: once it starts, the visitor's slot is never refunded.

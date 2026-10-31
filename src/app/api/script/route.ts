@@ -1,5 +1,6 @@
 import { starterCastBriefs } from "@/fixtures/cast";
 import { guard, guardResponse } from "@/lib/guard";
+import { requireSession } from "@/lib/server/session";
 import { getModels } from "@/lib/models";
 import { isRecord, isText, json, jsonError, modelErrorResponse } from "@/lib/models/wire";
 import { BODY_LIMITS, readBoundedJson } from "@/lib/requestBody";
@@ -39,6 +40,8 @@ function parseCast(value: unknown): CastBrief[] | null {
  * JSON: { transcript: string, cast?: CastBrief[], storyMode?: StoryMode }  (cast defaults to the starter cast, storyMode to "both")
  */
 export async function POST(request: Request) {
+  const session = await requireSession(request);
+  if (!session.ok) return session.response;
   // Read with a hard byte limit: Content-Length alone can't be trusted.
   const read = await readBoundedJson(request, BODY_LIMITS.script);
   if (!read.ok) return read.response;
@@ -64,7 +67,7 @@ export async function POST(request: Request) {
   const models = getModels();
   const source = models.sources.writeScript;
   // One script is one comic: this is the call the per-visitor comic limit counts.
-  const check = guard(request, "script", { real: source === "meta" });
+  const check = await guard(request, "script", { real: source === "meta" });
   if (!check.ok) return guardResponse(check);
 
   try {

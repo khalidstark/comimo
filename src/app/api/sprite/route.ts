@@ -1,4 +1,5 @@
 import { guard, guardResponse } from "@/lib/guard";
+import { requireSession } from "@/lib/server/session";
 import { isMockMode } from "@/lib/models";
 import { isTrustedSheet } from "@/lib/models/fileTokens";
 import { isSendableImage } from "@/lib/models/meta/image";
@@ -28,6 +29,8 @@ function base64(bytes: Uint8Array): string {
  * the static portrait.
  */
 export async function POST(request: Request) {
+  const session = await requireSession(request);
+  if (!session.ok) return session.response;
   // Read with a hard byte limit: Content-Length alone can't be trusted.
   const read = await readBoundedJson(request, BODY_LIMITS.sprite);
   if (!read.ok) return read.response;
@@ -50,7 +53,7 @@ export async function POST(request: Request) {
   }
 
   // Each pose is one image call, counted against the daily image cap by the meter as it is sent.
-  const check = guard(request, "sprite", { real: true });
+  const check = await guard(request, "sprite", { real: true });
   if (!check.ok) return guardResponse(check);
 
   try {
