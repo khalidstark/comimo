@@ -1,0 +1,24 @@
+.danger {
+  max-inline-size: 40rem;
+  padding: var(--space-m);
+  display: grid;
+  gap: var(--space-s);
+  justify-items: start;
+  border-color: var(--accent);
+}
+
+.danger p {
+  margin: 0;
+}
+
+.title {
+  margin: 0;
+  font-family: var(--font-display-stack);
+  font-size: var(--step-2);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2xs);
+}
