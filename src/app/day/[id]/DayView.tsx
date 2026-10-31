@@ -5,6 +5,7 @@ import { FacesNote } from "@/components/comic/FacesNote";
 import { MoodBadge } from "@/components/comic/MoodBadge";
 import { pageView } from "@/components/comic/pageView";
 import type { FacesSummary, PanelView } from "@/components/comic/view";
+import { AlbumPanel } from "@/components/AlbumPanel";
 import { CheckInCard } from "@/components/CheckInCard";
 import { EmptyState } from "@/components/EmptyState";
 import { NewPeopleCard } from "@/components/NewPeopleCard";
@@ -87,6 +88,8 @@ export function DayView({ day, panels, faces, layouts, previous, next }: DayView
       {day.heavy && !crisis ? <CheckInCard day={day} /> : null}
 
       {!crisis && !day.sample && day.newPeople?.length ? <NewPeopleCard day={day} /> : null}
+
+      {!crisis && !day.sample && book.length > 0 ? <AlbumPanel dayId={day.id} title={day.title} /> : null}
 
       <nav className={styles.pager} aria-label="Other days">
         {previous ? (
