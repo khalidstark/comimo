@@ -186,7 +186,8 @@ export function getKV(): KV {
     if (process.env.VERCEL === "1") {
       console.warn("Comimo: UPSTASH_REDIS_REST_URL/TOKEN are not set; accounts can't be saved on Vercel's read-only disk.");
     }
-    shared = new FileKV(resolve(process.cwd(), process.env.COMIMO_DATA_DIR || ".data"));
+    // Runtime-only folder: tell Turbopack not to trace the whole project for it.
+    shared = new FileKV(resolve(/* turbopackIgnore: true */ process.cwd(), process.env.COMIMO_DATA_DIR || ".data"));
   }
   return shared;
 }

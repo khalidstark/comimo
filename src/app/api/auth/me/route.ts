@@ -1,3 +1,4 @@
+import { connection } from "next/server";
 import { authJson, logStoreError } from "@/lib/server/authHttp";
 import { sessionAccount } from "@/lib/server/session";
 
@@ -6,6 +7,8 @@ import { sessionAccount } from "@/lib/server/session";
  * { user: { name } } when signed in, { user: null } otherwise. Never cached.
  */
 export async function GET(request: Request) {
+  // Per request, never prerendered (Cache Components would otherwise try at build time).
+  await connection();
   try {
     const account = await sessionAccount(request);
     return authJson({ user: account ? { name: account.name } : null });
