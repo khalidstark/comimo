@@ -27,12 +27,12 @@ const STEPS = [
     body: "Arabic, English, or both in one sentence. Say it the way you'd tell a friend.",
   },
   {
-    art: art.how.script,
+    art: art.how.comic,
     title: "Comimo writes the script",
     body: "It picks the moments worth drawing, the lines people said, and the day's weather.",
   },
   {
-    art: art.how.draw,
+    art: art.how.book,
     title: "Your cast acts it out",
     body: "The characters you made once show up in every panel, looking like themselves.",
   },
