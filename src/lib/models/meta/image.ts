@@ -1,5 +1,6 @@
 import "server-only";
 import { createHash } from "node:crypto";
+import { drawSize } from "@/lib/layout/page";
 import type { ScriptPanel } from "@/lib/types";
 import type { CharacterReference, ModelCallContext, ModelImage, PanelOptions, SheetSubject } from "../index";
 import { MetaApiError, metaJson } from "./client";
@@ -27,8 +28,8 @@ const FILE_LIFETIME_SEC = 2_592_000;
 /** Largest reference sheet sent or uploaded (Muse Image sheets are well under 1 MB). */
 const MAX_REFERENCE_BYTES = 5 * 1024 * 1024;
 
-/** `size` sets the aspect ratio only; the generator picks the pixels. */
-const SIZES = { sheet: "1536x1024", wide: "2048x1024", standard: "1536x1024" } as const;
+/** `size` sets the aspect ratio only; the generator picks the pixels. Panels use their slot's (see drawSize). */
+const SHEET_SIZE = "1536x1024";
 
 interface ImagesBody {
   data?: { b64_json?: string; revised_prompt?: string }[];
@@ -71,7 +72,7 @@ async function requestImage(path: "/images/generations" | "/images/edits", body:
 
 export async function drawReferenceSheet(subject: SheetSubject, context?: ModelCallContext): Promise<ModelImage> {
   const prompt = sheetPrompt({ name: subject.name, look: subject.look, animal: subject.role === "pet", style: subject.style });
-  return requestImage("/images/generations", { ...baseRequest(context), size: SIZES.sheet, prompt }, context);
+  return requestImage("/images/generations", { ...baseRequest(context), size: SHEET_SIZE, prompt }, context);
 }
 
 /* ---------- Files API ---------- */
@@ -143,7 +144,7 @@ export function pickReferences(panel: ScriptPanel, references: CharacterReferenc
 export async function drawPanel(
   panel: ScriptPanel,
   references: CharacterReference[],
-  { shape, style }: PanelOptions,
+  { frame, style }: PanelOptions,
   context?: ModelCallContext,
 ): Promise<ModelImage> {
   const byId = new Map(references.map((ref) => [ref.characterId, ref]));
@@ -162,8 +163,8 @@ export async function drawPanel(
     characters.push({ name: ref.name, look: ref.look, image });
   }
 
-  const prompt = panelPrompt(panel.scene, characters, shape === "wide", style);
-  const body = { ...baseRequest(context), size: SIZES[shape], prompt };
+  const prompt = panelPrompt(panel.scene, characters, panel.shot ?? "medium", frame, style);
+  const body = { ...baseRequest(context), size: drawSize(frame.aspect), prompt };
   // Edits need at least one image; a panel with no drawn characters is plain text-to-image.
   return images.length > 0
     ? requestImage("/images/edits", { ...body, images }, context)

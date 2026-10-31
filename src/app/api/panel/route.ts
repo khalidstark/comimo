@@ -5,7 +5,9 @@ import { getModels, type CharacterReference } from "@/lib/models";
 import { isTrustedSheet, signFileId, verifyFileToken } from "@/lib/models/fileTokens";
 import { isMissingFileError, isSendableImage, pickReferences } from "@/lib/models/meta/image";
 import { fromWire, isRecord, isText, json, jsonError, modelErrorResponse, readJson, toWire } from "@/lib/models/wire";
-import type { ApiError, DialogueLine, PanelResponse, PanelShape, ScriptPanel, TextDir, UploadedReference } from "@/lib/types";
+import { isBeat, isShot } from "@/lib/layout/pickLayout";
+import { snapAspect } from "@/lib/layout/page";
+import type { ApiError, Corner, DialogueLine, LetteringZone, PanelFrame, PanelResponse, ScriptPanel, TextDir, UploadedReference } from "@/lib/types";
 
 /** Muse Image can take a minute or two with reasoning_strength "high", plus one retry. */
 export const maxDuration = 300;
@@ -18,9 +20,33 @@ function isIdList(value: unknown): value is string[] {
   return Array.isArray(value) && value.length <= MAX_CHARACTERS && value.every((id) => isText(id, 100));
 }
 
+const ZONE_SIDES: LetteringZone["side"][] = ["top", "left", "right", "none"];
+const CORNERS: Corner[] = ["top-left", "top-right", "bottom-left", "bottom-right"];
+
+/** The slot a panel is drawn for; null when it is missing or out of range. */
+function parseFrame(value: unknown): PanelFrame | null {
+  if (!isRecord(value) || !isRecord(value.zone)) return null;
+  const { aspect, covered } = value;
+  const { side, size } = value.zone;
+  if (typeof aspect !== "number" || !Number.isFinite(aspect) || aspect < 0.4 || aspect > 4) return null;
+  if (typeof side !== "string" || !ZONE_SIDES.includes(side as LetteringZone["side"])) return null;
+  if (typeof size !== "number" || !Number.isFinite(size) || size < 0 || size > 0.6) return null;
+  if (covered !== undefined && !CORNERS.includes(covered as Corner)) return null;
+  return {
+    aspect: snapAspect(aspect),
+    zone: { side: side as LetteringZone["side"], size },
+    ...(covered ? { covered: covered as Corner } : {}),
+  };
+}
+
+/** Requests from before page layouts sent a shape instead of a frame. */
+function legacyFrame(shape: unknown): PanelFrame {
+  return { aspect: shape === "wide" ? 2 : 1.5, zone: { side: "top", size: 0.33 } };
+}
+
 function parsePanel(value: unknown): ScriptPanel | null {
   if (!isRecord(value)) return null;
-  const { index, scene, caption, dialogue, characterIds } = value;
+  const { index, scene, caption, dialogue, characterIds, shot, beat, emphasis } = value;
   if (typeof index !== "number" || !Number.isInteger(index) || index < 0 || index > 20) return null;
   if (!isText(scene, 2000)) return null;
   if (caption !== undefined && typeof caption !== "string") return null;
@@ -35,7 +61,18 @@ function parsePanel(value: unknown): ScriptPanel | null {
     if (typeof dir !== "string" || !DIRS.includes(dir as TextDir)) return null;
     lines.push({ speakerId, text, dir: dir as TextDir });
   }
-  return { index, scene, caption: caption?.slice(0, 300), dialogue: lines, characterIds };
+  if (shot !== undefined && !isShot(shot)) return null;
+  if (beat !== undefined && !isBeat(beat)) return null;
+  return {
+    index,
+    scene,
+    caption: caption?.slice(0, 300),
+    dialogue: lines,
+    characterIds,
+    ...(shot ? { shot } : {}),
+    ...(beat ? { beat } : {}),
+    ...(emphasis === true ? { emphasis: true } : {}),
+  };
 }
 
 function parseReferences(value: unknown): CharacterReference[] | "stale" | "untrusted" | null {
@@ -77,7 +114,7 @@ function staleReference(): Response {
 
 /**
  * POST /api/panel
- * JSON: { panel: ScriptPanel, references?: WireReference[], shape?: "wide" | "standard", style?: ArtStyleId }
+ * JSON: { panel: ScriptPanel (with frame), references?: WireReference[], style?: ArtStyleId }
  * Draws the panel from the reference sheets of the characters in it, then
  * checks every character against their reference and redraws any that
  * drifted. Returns the final image, the before image, and tokens for any
@@ -102,7 +139,8 @@ export async function POST(request: Request) {
     references = parsed;
   }
   const inPanel = references.filter((ref) => panel.characterIds.includes(ref.characterId));
-  const shape: PanelShape = body.shape === "wide" ? "wide" : "standard";
+  const panelFrame = isRecord(body.panel) && body.panel.frame !== undefined ? parseFrame(body.panel.frame) : legacyFrame(body.shape);
+  if (!panelFrame) return jsonError(400, "`panel.frame` needs an aspect (0.4 to 4) and a lettering zone.");
   if (body.style !== undefined && !isArtStyleId(body.style)) return jsonError(400, "`style` must be one of Comimo's art styles.");
   const style = artStyleOf(body.style);
 
@@ -135,7 +173,7 @@ export async function POST(request: Request) {
 
     let drawn;
     try {
-      drawn = await models.drawPanel(panel, inPanel, { shape, style }, context);
+      drawn = await models.drawPanel(panel, inPanel, { frame: panelFrame, style }, context);
     } catch (error) {
       if (!isMissingFileError(error)) throw error;
       // Uploaded sheets expire after 30 days; the browser resends the images and gets fresh tokens.
