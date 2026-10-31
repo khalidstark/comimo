@@ -34,8 +34,9 @@ import { sessionAccount, type SessionAccount } from "@/lib/server/session";
 /**
  * `sprite`: five image calls animating one character. `photo`: one SAM and one vision call describing a reference photo.
  * `cover`: one text and one image call drawing a month's magazine cover.
+ * `caption`: one vision call suggesting captions for an album's photos (only when the owner asks).
  */
-export type GuardAction = "transcribe" | "script" | "panel" | "character" | "sprite" | "photo" | "cover";
+export type GuardAction = "transcribe" | "script" | "panel" | "character" | "sprite" | "photo" | "cover" | "caption";
 
 /**
  * Kinds of upstream call. Image and SAM calls count against the daily image
@@ -108,6 +109,8 @@ function limits() {
       photo: Math.max(1, Math.ceil(comics / 2)),
       // A month's cover is drawn once; a couple more for a redraw or a second device.
       cover: Math.max(1, Math.ceil(comics / 2)),
+      // Caption suggestions: a few albums an hour.
+      caption: Math.max(1, Math.ceil(comics / 2)),
     } satisfies Record<GuardAction, number>,
     // Reference-sheet uploads: a few per comic (one per character), more only on stale tokens.
     uploadsPerHour: comics * 4,
@@ -237,6 +240,7 @@ function limitMessage(action: GuardAction, retryAfterSec: number): string {
   const wait = minutesText(retryAfterSec);
   if (action === "character" || action === "sprite") return `That's a lot of drawing for one hour. Try again in ${wait}.`;
   if (action === "photo") return `That's a lot of photos for one hour. Try again in ${wait}.`;
+  if (action === "caption") return `That's a lot of captions for one hour. Try again in ${wait}.`;
   return `That's a lot of comics for one hour. Try again in ${wait}.`;
 }
 
