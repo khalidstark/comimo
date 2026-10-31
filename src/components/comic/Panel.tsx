@@ -1,14 +1,17 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type CSSProperties } from "react";
 import { Art } from "@/art/Art";
 import { BidiText } from "./BidiText";
 import { Bubble } from "./Bubble";
 import { FixedBadge } from "./FixedBadge";
+import type { SlotView } from "./pageView";
+import { SlotOutline } from "./SlotOutline";
 import type { PanelArt, PanelView } from "./view";
 import styles from "./comic.module.css";
+import page from "./page.module.css";
 
-const SIZES = "(min-width: 48rem) 70vw, 100vw";
+const SIZES = "(min-width: 48rem) 60vw, 100vw";
 
 function PanelImage({ art, alt }: { art: PanelArt; alt: string }) {
   if (art.kind === "art") return <Art asset={art.asset} className={styles.image} alt={alt} sizes={SIZES} />;
@@ -19,14 +22,16 @@ function PanelImage({ art, alt }: { art: PanelArt; alt: string }) {
 
 interface ComicPanelProps {
   panel: PanelView;
+  slot: SlotView;
   total: number;
 }
 
 /**
- * One panel: the art (a flip card when SAM fixed a face), the yellow caption
- * box, the speech bubbles, and the "Face fixed" stamp that flips it.
+ * One panel in its slot on the page: the art cut to the slot's shape (a flip
+ * card when SAM fixed a face), the caption and bubbles in the space the art
+ * left for them, the ink line, and the "Face fixed" stamp that flips it.
  */
-export function ComicPanel({ panel, total }: ComicPanelProps) {
+export function ComicPanel({ panel, slot, total }: ComicPanelProps) {
   const [face, setFace] = useState<"after" | "before">("after");
   const [flipped, setFlipped] = useState(false);
   const fixable = Boolean(panel.image && panel.before);
@@ -41,8 +46,12 @@ export function ComicPanel({ panel, total }: ComicPanelProps) {
   return (
     <li
       id={`panel-${number}`}
-      className={styles.frame}
+      className={`${page.slot} ${styles.frame}`}
+      style={slot.vars as CSSProperties}
       data-frame={panel.index}
+      data-inset={slot.inset || undefined}
+      data-zone={slot.zone.side}
+      data-stamp={slot.stamp}
       data-face={fixable ? face : undefined}
       data-flipped={flipped || undefined}
       tabIndex={-1}
@@ -53,27 +62,29 @@ export function ComicPanel({ panel, total }: ComicPanelProps) {
       </span>
 
       {/* The printed sheet. The cell around it stays unclipped so it can be observed and hit-tested. */}
-      <div className={`panel ${styles.sheet}`}>
-        <div className={styles.art}>
-          {fixable && panel.image && panel.before ? (
-            <div className={styles.flipper}>
-              <div className={`${styles.face} ${styles.front}`} aria-hidden={showingBefore || undefined}>
-                <PanelImage art={panel.image} alt={panel.scene} />
+      <div className={styles.sheet}>
+        <div className={styles.shape}>
+          <div className={styles.art}>
+            {fixable && panel.image && panel.before ? (
+              <div className={styles.flipper}>
+                <div className={`${styles.face} ${styles.front}`} aria-hidden={showingBefore || undefined}>
+                  <PanelImage art={panel.image} alt={panel.scene} />
+                </div>
+                <div className={`${styles.face} ${styles.back}`} aria-hidden={!showingBefore || undefined}>
+                  <PanelImage art={panel.before} alt={`Before the fix: ${panel.scene}`} />
+                  <span className={styles.beforeTag} aria-hidden="true">
+                    Before
+                  </span>
+                </div>
               </div>
-              <div className={`${styles.face} ${styles.back}`} aria-hidden={!showingBefore || undefined}>
-                <PanelImage art={panel.before} alt={`Before the fix: ${panel.scene}`} />
-                <span className={styles.beforeTag} aria-hidden="true">
-                  Before
-                </span>
-              </div>
-            </div>
-          ) : panel.image ? (
-            <PanelImage art={panel.image} alt={panel.scene} />
-          ) : (
-            <p className={styles.pencil} dir="auto">
-              {panel.scene}
-            </p>
-          )}
+            ) : panel.image ? (
+              <PanelImage art={panel.image} alt={panel.scene} />
+            ) : (
+              <p className={styles.pencil} dir="auto">
+                {panel.scene}
+              </p>
+            )}
+          </div>
         </div>
 
         <div className={styles.layer}>
@@ -86,6 +97,8 @@ export function ComicPanel({ panel, total }: ComicPanelProps) {
             <Bubble key={i} speaker={bubble.speaker} text={bubble.text} dir={bubble.dir} tail={bubble.tail} order={i} />
           ))}
         </div>
+
+        <SlotOutline slot={slot} />
 
         {fixable ? <FixedBadge names={panel.fixedNames} showingBefore={showingBefore} onToggle={toggle} /> : null}
       </div>

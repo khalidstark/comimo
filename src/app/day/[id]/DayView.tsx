@@ -3,12 +3,14 @@ import { art } from "@/art/manifest";
 import { Comic } from "@/components/comic/Comic";
 import { FacesNote } from "@/components/comic/FacesNote";
 import { MoodBadge } from "@/components/comic/MoodBadge";
+import { pageView } from "@/components/comic/pageView";
 import type { FixedFace, PanelView } from "@/components/comic/view";
 import { CheckInCard } from "@/components/CheckInCard";
 import { EmptyState } from "@/components/EmptyState";
 import { PAGE_TURN } from "@/components/PageTurn";
+import { artStyleOf } from "@/lib/artStyles";
 import { formatDay } from "@/lib/format";
-import type { Day } from "@/lib/types";
+import type { Day, PageLayoutChoice } from "@/lib/types";
 import styles from "./day.module.css";
 
 export interface DayLink {
@@ -21,6 +23,8 @@ interface DayViewProps {
   panels: PanelView[];
   /** Characters SAM fixed; null when the day was never checked (sample days). */
   faces: FixedFace[] | null;
+  /** The day's page layout: stored, or picked for it on read (see layoutChain). */
+  layout: PageLayoutChoice | null;
   previous?: DayLink;
   next?: DayLink;
 }
@@ -28,8 +32,9 @@ interface DayViewProps {
 const monthFormat = new Intl.DateTimeFormat("en-GB", { month: "long", timeZone: "UTC" });
 
 /** One day as a comic: date, title and weather, the panels, then what comes after them. */
-export function DayView({ day, panels, faces, previous, next }: DayViewProps) {
+export function DayView({ day, panels, faces, layout, previous, next }: DayViewProps) {
   const crisis = day.safety === "crisis";
+  const page = crisis || day.panels.length === 0 ? null : pageView(day.panels, day.layout ?? layout, day.id);
   const date = formatDay(day.date);
 
   return (
@@ -46,7 +51,9 @@ export function DayView({ day, panels, faces, previous, next }: DayViewProps) {
         )}
       </header>
 
-      {crisis ? null : <Comic panels={panels} label={`Comic for ${date}, ${panels.length} panels`} />}
+      {page ? (
+        <Comic panels={panels} page={page} style={artStyleOf(day.artStyle)} label={`Comic for ${date}, ${panels.length} panels`} />
+      ) : null}
 
       {!crisis && faces ? <FacesNote faces={faces} /> : null}
 

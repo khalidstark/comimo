@@ -1,9 +1,12 @@
 "use client";
 
-import { useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useLayoutEffect, useRef, useState, useSyncExternalStore, type CSSProperties } from "react";
+import type { ArtStyleId } from "@/lib/artStyles";
 import { ComicPanel } from "./Panel";
+import type { PageView } from "./pageView";
 import type { PanelView } from "./view";
 import styles from "./comic.module.css";
+import pageStyles from "./page.module.css";
 
 const REDUCED_MOTION = "(prefers-reduced-motion: reduce)";
 /** Gap between panels that come into view together, so they ink in reading order. */
@@ -13,17 +16,20 @@ const subscribeNothing = () => () => {};
 
 interface ComicProps {
   panels: PanelView[];
+  /** Where each panel sits on the page (see pageView). */
+  page: PageView;
+  style: ArtStyleId;
   label: string;
 }
 
 /**
- * The comic page. Panels are visible by default (server HTML, no JS, reduced
+ * The comic page, laid out like a manga page from the day's template. Panels are visible by default (server HTML, no JS, reduced
  * motion, print). Once mounted, panels below the fold are held back and ink in
  * one after another as they scroll into view. Panels already on screen when
  * server HTML hydrates stay put, so nothing blinks; when the comic mounts on
  * the client (a stored day, a page turn) those animate too.
  */
-export function Comic({ panels, label }: ComicProps) {
+export function Comic({ panels, page, style, label }: ComicProps) {
   const listRef = useRef<HTMLOListElement>(null);
   // False only while hydrating server HTML.
   const clientRender = useSyncExternalStore(
@@ -71,10 +77,13 @@ export function Comic({ panels, label }: ComicProps) {
   }, [animateOnScreen, panels.length]);
 
   return (
-    <ol ref={listRef} className={styles.comic} aria-label={label}>
-      {panels.map((panel) => (
-        <ComicPanel key={panel.index} panel={panel} total={panels.length} />
-      ))}
-    </ol>
+    <div className={`${pageStyles.wrap} ${styles.comic}`} data-style={style} data-template={page.template}>
+      <ol ref={listRef} className={pageStyles.page} style={page.vars as CSSProperties} aria-label={label}>
+        {panels.map((panel, i) => {
+          const slot = page.slots.find((s) => s.index === panel.index) ?? page.slots[i];
+          return slot ? <ComicPanel key={panel.index} panel={panel} slot={slot} total={panels.length} /> : null;
+        })}
+      </ol>
+    </div>
   );
 }
