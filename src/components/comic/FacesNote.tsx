@@ -32,6 +32,9 @@ function SamLede({ summary }: { summary: Extract<FacesSummary, { kind: "sam" }> 
     rest = "; it kept the lettering off them, and the face comparison was switched off for this comic.";
   } else if (fixedCount > 0) {
     rest = `; ${fixedCount} ${fixedCount === 1 ? "was" : "were"} redrawn: ${summary.fixed.map(where).join("; ")}.`;
+    if (summary.unfixed > 0) {
+      rest += ` Muse Spark still saw ${count(summary.unfixed, "face")} differ from the cast sheets after the redraws.`;
+    }
   } else if (summary.unfixed > 0) {
     rest = `; Muse Spark saw ${count(summary.unfixed, "face")} drift from the cast sheets, but no redraw came closer, so ${summary.unfixed === 1 ? "that panel stays" : "those panels stay"} as first drawn.`;
   } else if (summary.judged > 0) {
