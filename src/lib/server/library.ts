@@ -1,4 +1,5 @@
 import "server-only";
+import { isMockMode } from "@/lib/models";
 import { sniffImageType } from "@/lib/models/meta/image";
 import { getBlobStore, type BlobStore, type StoredBlob } from "./blob";
 import { randomBytes } from "node:crypto";
@@ -351,7 +352,7 @@ export async function putImage(
 ): Promise<LibraryResult<{ size: number }>> {
   if (!isRecordId(imageId)) return fail(400, "That image id isn't valid.");
   if (bytes.byteLength === 0 || bytes.byteLength > IMAGE_LIMIT) return fail(413, "That image is too big.");
-  const type = sniffImageType(bytes);
+  const type = sniffImageType(bytes) ?? (isMockMode() && isMockSvg(bytes) ? "image/svg+xml" : null);
   if (!type) return fail(400, "Only PNG, JPEG and WebP images are kept.");
   const limits = libraryLimits();
 
@@ -401,6 +402,19 @@ export async function putImage(
   const stale = [replaced, versionOf(current) === version ? null : mine].filter((path): path is string => Boolean(path) && path !== imagePathFor(account, imageId, current));
   if (stale.length) await blobs.del(stale);
   return { ok: true, value: { size: bytes.byteLength } };
+}
+
+/**
+ * Mock mode only (development, no model key): the mock models draw SVG
+ * placeholders, which are kept so mock comics sync too. Small, starting with
+ * an <svg> tag and free of scripts, handlers and external references. With
+ * the real models on, SVG is never accepted.
+ */
+export function isMockSvg(bytes: Uint8Array): boolean {
+  if (bytes.byteLength > 256 * 1024) return false;
+  const text = new TextDecoder("utf-8", { fatal: false }).decode(bytes);
+  if (!/^\s*<svg[\s>]/i.test(text)) return false;
+  return !/<script|<foreignObject|<iframe|<embed|<object|\son\w+\s*=|javascript:|href\s*=\s*["']?(?!#)|<!ENTITY|<\?xml-stylesheet/i.test(text);
 }
 
 /** One of the account's images, or 404 (also for another account's image id). */
