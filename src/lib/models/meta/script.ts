@@ -139,11 +139,13 @@ export function toComicScript(content: string, cast: CastBrief[], mode: StoryMod
   const panels = applyStoryMode(normalised, groups, mode);
   const pages: ComicPage[] = groups.map((group) => ({ panels: group }));
 
+  // A sunny or rainbow day is never heavy, whatever the flag says: no check-in card on a good day.
+  const heavy = raw.heavy && mood !== "sunny" && mood !== "rainbow";
   const questions = asArray(raw.checkInQuestions)
     .map((question) => clip(question, LIMITS.question))
     .filter(Boolean)
     .slice(0, 3);
-  if (raw.heavy && questions.length < 2) throw new ScriptShapeError("heavy day without 2 or 3 check-in questions");
+  if (heavy && questions.length < 2) throw new ScriptShapeError("heavy day without 2 or 3 check-in questions");
 
   return {
     title: clip(raw.title, LIMITS.title) || "Today",
@@ -151,8 +153,8 @@ export function toComicScript(content: string, cast: CastBrief[], mode: StoryMod
     pages,
     storyMode: mode,
     mood,
-    heavy: raw.heavy,
-    checkInQuestions: raw.heavy ? questions : [],
+    heavy,
+    checkInQuestions: heavy ? questions : [],
     safety: "ok",
   };
 }
