@@ -174,7 +174,9 @@ export async function drawPanel(
       images.push(ref.fileId ? { file_id: ref.fileId } : { image_url: dataUrl(ref.image!) });
       image = images.length;
     }
-    characters.push({ name: ref.name, look: ref.look, image });
+    // A one-off's image is an earlier panel, cut down to them unless SAM didn't find them there (box kept).
+    const oneOff = ref.oneOff ? (image === null ? "new" : ref.box ? "panel" : "cut") : undefined;
+    characters.push({ name: ref.name, look: ref.look, image, ...(oneOff ? { oneOff } : {}) });
   }
 
   const prompt = panelPrompt(panel.scene, characters, panel.shot ?? "medium", frame, style, panel.flashback === true, fixes);

@@ -15,6 +15,8 @@ import { cropFigure, locate, outputText, type Located } from "./sam";
  *    their look) and everyone else ("person"), see sam.ts;
  * 2. Muse Spark looks at each found character's cut-out next to their
  *    reference sheet and says whether it is the same character (json_schema);
+ *    a one-off character (03-06) is compared with their first appearance in
+ *    this comic instead, and isn't judged in that first panel;
  * 3. Muse Image redraws the panel when someone drifted: first an instruction
  *    edit of the panel itself ("fix only Karim"), then, if he still drifts, the
  *    whole panel again with the differences spelled out. At most 2 redraws.
@@ -94,7 +96,9 @@ async function judge(
   for (const [i, ref] of refs.entries()) {
     const crop = await cropFigure(image, located.width, located.height, located.boxes.get(ref.characterId)!);
     void saveCrop(`${label}-${ref.name.replace(/\W+/g, "_")}`, crop);
-    content.push({ type: "input_text", text: `Character ${i + 1}: ${ref.name}. Reference sheet:` });
+    // A one-off (03-06) has no sheet: their reference is how they looked in their first panel of this comic.
+    const reference = ref.oneOff ? `How ${ref.name} looked in an earlier panel of this comic${ref.box ? " (find them among the people in it)" : ""}:` : "Reference sheet:";
+    content.push({ type: "input_text", text: `Character ${i + 1}: ${ref.name}. ${reference}` });
     content.push(sheetPart(ref));
     content.push({ type: "input_text", text: `Cut-out of ${ref.name} from the panel:` });
     content.push({ type: "input_image", image_url: dataUrl(crop) });
@@ -163,7 +167,7 @@ async function redrawEdit(
   for (const verdict of wrong) {
     const ref = byId.get(verdict.characterId)!;
     images.push(ref.fileId ? { file_id: ref.fileId } : { image_url: dataUrl(ref.image!) });
-    targets.push({ name: ref.name, where: whereIs(located, ref.characterId), differences: verdict.differences, image: images.length });
+    targets.push({ name: ref.name, where: whereIs(located, ref.characterId), differences: verdict.differences, image: images.length, ...(ref.oneOff ? { oneOff: true } : {}) });
   }
   const body = { ...baseRequest(context), size: drawSize(options.frame.aspect), prompt: redrawPrompt(targets, options.style), images };
   return requestImage("/images/edits", body, context);

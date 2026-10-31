@@ -11,6 +11,7 @@ import type {
   ScriptPanel,
   StoryMode,
   Transcript,
+  UnitBox,
 } from "@/lib/types";
 import type { ArtStyleId } from "@/lib/artStyles";
 import type { UsageMeter } from "@/lib/guard";
@@ -49,6 +50,13 @@ export interface CharacterReference {
   fileId?: string;
   /** "pet" characters are found and judged as animals. Missing from older clients. */
   role?: CharacterRole;
+  /**
+   * A one-off character (03-06): drawn for one story only, with no sheet. Their
+   * `image`, when there is one, is a cut-out of the panel they first appeared in.
+   */
+  oneOff?: boolean;
+  /** One-offs only: where they are in `image` (a whole earlier panel) until it is cut out (see oneOff.ts). */
+  box?: UnitBox;
 }
 
 /** Who a reference sheet is drawn for. */
