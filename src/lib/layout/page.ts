@@ -13,6 +13,7 @@ import {
   type Quad,
   type Rect,
 } from "./geometry";
+import { PHONE_PAGE_PX, letteringHeight, type Lettering } from "./lettering";
 import { PAGE_WIDTH as W, type CellSlot, type TemplateVariant } from "./templates";
 
 /**
@@ -30,6 +31,8 @@ export interface PanelMeta {
   index: number;
   shot?: Shot;
   beat?: Beat;
+  caption?: string;
+  dialogue?: readonly { text: string }[];
 }
 
 export interface PlacedPanel {
@@ -160,17 +163,31 @@ function singleCost(aspect: number, focus: boolean): number {
   return aspect >= 1.7 ? 0 : (1.7 - aspect) * 3 + 2;
 }
 
-/** Cost of 2 or 3 small beats side by side; Infinity when one would be too thin or the row too short. */
-function rowCost(aspects: number[]): number {
+const PHONE_UNIT_PX = PHONE_PAGE_PX / W;
+
+/** True when a panel's caption and bubbles fit in the top half of a phone panel this size (units). */
+function lettersFit(text: Lettering | undefined, width: number, height: number): boolean {
+  if (!text || (!text.caption && text.lines.length === 0)) return true;
+  const px = width * PHONE_UNIT_PX;
+  return letteringHeight(text, px, px) <= 0.55 * height * PHONE_UNIT_PX;
+}
+
+/**
+ * Cost of 2 or 3 small beats side by side; Infinity when one would be too
+ * thin or the row too short. A panel whose lettering wouldn't fit makes the
+ * row costly, so wordy panels get a row of their own on the phone.
+ */
+function rowCost(aspects: number[], texts: (Lettering | undefined)[]): number {
   const sum = aspects.reduce((a, b) => a + b, 0);
   const height = W / sum;
   const minWidth = aspects.length === 2 ? PAIR_MIN_WIDTH : TRIO_MIN_WIDTH;
   if ((Math.min(...aspects) / sum) * W < minWidth || height < ROW_MIN_HEIGHT) return Infinity;
-  return aspects.length === 2 ? 0.4 + Math.abs(height - 6.5) * 0.15 : 1.2 + Math.abs(height - 5.5) * 0.15;
+  const crowded = aspects.filter((a, i) => !lettersFit(texts[i], (a / sum) * W, height)).length;
+  return (aspects.length === 2 ? 0.4 + Math.abs(height - 6.5) * 0.15 : 1.2 + Math.abs(height - 5.5) * 0.15) + crowded * 5;
 }
 
 /** Split the panels (insets aside) into phone rows: the splash alone, small beats in pairs or threes. */
-function planRows(order: number[], aspects: number[], focus: number): number[][] {
+function planRows(order: number[], aspects: number[], focus: number, texts: (Lettering | undefined)[]): number[][] {
   const n = order.length;
   const cost = new Array<number>(n + 1).fill(Infinity);
   const choice = new Array<number>(n + 1).fill(1);
@@ -183,7 +200,7 @@ function planRows(order: number[], aspects: number[], focus: number): number[][]
       if (i < size) continue;
       const items = order.slice(i - size, i);
       if (items.includes(focus)) continue;
-      const grouped = cost[i - size] + rowCost(items.map((item) => aspects[item]));
+      const grouped = cost[i - size] + rowCost(items.map((item) => aspects[item]), items.map((item) => texts[item]));
       if (grouped < cost[i]) {
         cost[i] = grouped;
         choice[i] = size;
@@ -219,7 +236,11 @@ export function phoneGeometry(variant: TemplateVariant, metas: PanelMeta[], seed
   const m = PHONE.margin;
 
   // Rows and their heights, sized so each image keeps its aspect ratio after gutters.
-  const rows: PhoneRow[] = planRows(order, aspects, focus).map((items) => {
+  const texts = variant.slots.map((_, i): Lettering | undefined => {
+    const meta = metas.find((m) => m.index === i);
+    return meta ? { caption: meta.caption || undefined, lines: (meta.dialogue ?? []).map((line) => line.text) } : undefined;
+  });
+  const rows: PhoneRow[] = planRows(order, aspects, focus, texts).map((items) => {
     const bleed = items.includes(focus);
     const width = bleed ? W : W - 2 * m;
     if (items.length === 1) return { items, height: width / aspects[items[0]] + g, bleed };
