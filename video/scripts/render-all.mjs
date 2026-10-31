@@ -83,8 +83,12 @@ function vtt() {
     const s = String(Math.floor(ms / 1000) % 60).padStart(2, "0");
     return `${h}:${m}:${s}.${String(ms % 1000).padStart(3, "0")}`;
   };
-  const cues = SCENES.flatMap((scene, i) => scene.captions.map((c) => `${stamp(starts[i] + c.from)} --> ${stamp(starts[i] + c.to)}\n${c.text}`));
-  return `WEBVTT\n\n${cues.join("\n\n")}\n`;
+  const cues = SCENES.flatMap((scene, i) => scene.captions.map((c) => ({ from: starts[i] + c.from, to: starts[i] + c.to, text: c.text })));
+  // Scenes overlap during transitions: end each cue where the next begins, so only one shows.
+  cues.forEach((cue, i) => {
+    if (cues[i + 1]) cue.to = Math.min(cue.to, cues[i + 1].from);
+  });
+  return `WEBVTT\n\n${cues.map((c) => `${stamp(c.from)} --> ${stamp(c.to)}\n${c.text}`).join("\n\n")}\n`;
 }
 
 if (has("video")) {
