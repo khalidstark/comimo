@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { FileKV } from "./kv";
-import { clientIp, ipTag, isSameOrigin } from "./request";
+import { authSetupProblem, clientIp, ipTag, isSameOrigin } from "./request";
 import {
   createSession,
   destroySession,
@@ -148,6 +148,14 @@ describe("clientIp", () => {
     process.env.VERCEL = "1";
     expect(clientIp(post({ "x-vercel-forwarded-for": "5.6.7.8, 10.0.0.1", "x-forwarded-for": "9.9.9.9" }))).toBe("5.6.7.8");
     expect(ipTag(post({ "x-vercel-forwarded-for": "5.6.7.8" }))).toMatch(/^[0-9a-f]{32}$/);
+  });
+
+  it("keeps sign-in closed in production without a trusted IP source", () => {
+    expect(authSetupProblem({ NODE_ENV: "production" })).toMatch(/COMIMO_TRUSTED_IP_HEADER/);
+    expect(authSetupProblem({ NODE_ENV: "production", COMIMO_TRUSTED_IP_HEADER: "  " })).not.toBeNull();
+    expect(authSetupProblem({ NODE_ENV: "production", VERCEL: "1" })).toBeNull();
+    expect(authSetupProblem({ NODE_ENV: "production", COMIMO_TRUSTED_IP_HEADER: "cf-connecting-ip" })).toBeNull();
+    expect(authSetupProblem({ NODE_ENV: "development" })).toBeNull();
   });
 
   it("trusts a configured proxy header elsewhere", () => {
