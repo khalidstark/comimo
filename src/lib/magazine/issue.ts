@@ -106,7 +106,7 @@ export function spreadOf(page: number, twoUp: boolean): number {
 /* ---------- The month in words ---------- */
 
 /** How many days each character is in, most first (ties keep cast order). */
-export function castAppearances(days: Pick<IssueDayInfo, "castIds">[], cast: CastInfo[]): { member: CastInfo; days: number }[] {
+export function castAppearances<T extends CastInfo>(days: Pick<IssueDayInfo, "castIds">[], cast: T[]): { member: T; days: number }[] {
   const counts = new Map<string, number>();
   for (const day of days) for (const id of new Set(day.castIds)) counts.set(id, (counts.get(id) ?? 0) + 1);
   return cast
@@ -117,7 +117,7 @@ export function castAppearances(days: Pick<IssueDayInfo, "castIds">[], cast: Cas
 }
 
 /** The month's main cast for the cover: the most-seen characters, the narrator first when they appear at all. */
-export function mainCast(days: Pick<IssueDayInfo, "castIds">[], cast: CastInfo[], limit = 3): CastInfo[] {
+export function mainCast<T extends CastInfo>(days: Pick<IssueDayInfo, "castIds">[], cast: T[], limit = 3): T[] {
   const ranked = castAppearances(days, cast).map((entry) => entry.member);
   const self = ranked.filter((member) => member.role === "self").slice(0, 1);
   const others = ranked.filter((member) => !self.includes(member));
@@ -148,7 +148,7 @@ export function monthInWords(days: IssueDayInfo[], cast: CastInfo[]): string[] {
   if (days.length === 0) return [];
   const lines = [`${capitalise(countWord(days.length))} day${days.length === 1 ? "" : "s"}.`];
 
-  const weather = weatherCounts(days).slice(0, 3);
+  const weather = weatherCounts(days);
   if (weather.length === 1) {
     lines.push(days.length === 1 ? `${moodWords[weather[0].mood]}.` : `Every one of them ${moodWords[weather[0].mood].toLowerCase()}.`);
   } else {
