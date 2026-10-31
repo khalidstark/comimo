@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { FileKV } from "./kv";
-import { clearAttempts, EMAIL_LOCKOUT, hit, IP_LOCKOUT, lockedFor, releaseAttempt, reserveAttempt, windowOf } from "./rateLimit";
+import { clearAttempts, EMAIL_LOCKOUT, hit, IP_LOCKOUT, lockedFor, reserveAttempt, windowOf } from "./rateLimit";
 
 let dir: string;
 let kv: FileKV;
@@ -92,10 +92,23 @@ describe("sign-in tries", () => {
     for (let i = 0; i < EMAIL_LOCKOUT.freeTries; i++) expect((await reserveAttempt(kv, "s", EMAIL_LOCKOUT)).ok).toBe(true);
   });
 
-  it("gives back one try for a shared subject", async () => {
-    await reserveAttempt(kv, "login:ip:y", IP_LOCKOUT);
-    await reserveAttempt(kv, "login:ip:y", IP_LOCKOUT);
-    await releaseAttempt(kv, "login:ip:y");
-    expect(await kv.get("tries:login:ip:y")).toBe("1");
+  it("never gives tries back to an IP: successes count, and clearing an email leaves the IP alone", async () => {
+    for (let i = 0; i < 3; i++) await reserveAttempt(kv, "login:ip:y", IP_LOCKOUT);
+    await reserveAttempt(kv, "login:email:z", EMAIL_LOCKOUT);
+    await clearAttempts(kv, "login:email:z");
+    expect(await kv.get("tries:login:ip:y")).toBe("3");
+    expect(await kv.get("tries:login:email:z")).toBeNull();
+  });
+
+  it("never drives a counter below zero or leaves one without an expiry", async () => {
+    // Clearing a subject that was never tried, or twice, creates nothing.
+    await clearAttempts(kv, "login:email:none");
+    await clearAttempts(kv, "login:email:none");
+    expect(await kv.get("tries:login:email:none")).toBeNull();
+    // Tries always start at 1 and expire with the window.
+    expect(await reserveAttempt(kv, "login:email:fresh", EMAIL_LOCKOUT)).toEqual({ ok: true });
+    expect(await kv.get("tries:login:email:fresh")).toBe("1");
+    at(EMAIL_LOCKOUT.windowSec * 1000 + 1);
+    expect(await kv.get("tries:login:email:fresh")).toBeNull();
   });
 });

@@ -2,7 +2,7 @@ import { checkCredentials, checkEmail, isProblem, PASSWORD_MAX } from "@/lib/ser
 import { authError, authJson, logStoreError, readAuthBody, storeDown } from "@/lib/server/authHttp";
 import { setSessionCookie } from "@/lib/server/cookie";
 import { getKV } from "@/lib/server/kv";
-import { type Attempt, clearAttempts, EMAIL_LOCKOUT, IP_LOCKOUT, minutesText, releaseAttempt, reserveAttempt } from "@/lib/server/rateLimit";
+import { type Attempt, clearAttempts, EMAIL_LOCKOUT, IP_LOCKOUT, minutesText, reserveAttempt } from "@/lib/server/rateLimit";
 import { hashTag, ipTag } from "@/lib/server/request";
 import { createSession } from "@/lib/server/session";
 
@@ -47,7 +47,8 @@ export async function POST(request: Request) {
     const account = await checkCredentials(email.email, password, kv);
     if (!account) return authError(401, WRONG);
 
-    await Promise.all([clearAttempts(kv, emailSubject), ipSubject ? releaseAttempt(kv, ipSubject) : null]);
+    // The email's tries are forgiven; the IP's are not (no decrement exists to abuse).
+    await clearAttempts(kv, emailSubject);
     await setSessionCookie(await createSession(account, kv));
     return authJson({ user: { name: account.name } });
   } catch (error) {
