@@ -163,7 +163,7 @@ export async function drawPanel(
     characters.push({ name: ref.name, look: ref.look, image });
   }
 
-  const prompt = panelPrompt(panel.scene, characters, panel.shot ?? "medium", frame, style);
+  const prompt = panelPrompt(panel.scene, characters, panel.shot ?? "medium", frame, style, panel.flashback === true);
   const body = { ...baseRequest(context), size: drawSize(frame.aspect), prompt };
   // Edits need at least one image; a panel with no drawn characters is plain text-to-image.
   return images.length > 0

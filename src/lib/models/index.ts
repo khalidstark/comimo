@@ -7,6 +7,7 @@ import type {
   ModelMode,
   PanelFrame,
   ScriptPanel,
+  StoryMode,
   Transcript,
 } from "@/lib/types";
 import type { ArtStyleId } from "@/lib/artStyles";
@@ -78,6 +79,12 @@ export interface ModelCallContext {
   meter?: UsageMeter;
 }
 
+/** How the script is written. */
+export interface ScriptOptions {
+  /** Defaults to DEFAULT_STORY_MODE. */
+  storyMode?: StoryMode;
+}
+
 export type ModelMethod = "transcribe" | "writeScript" | "drawReferenceSheet" | "drawPanel" | "checkConsistency";
 
 export interface ComicModels {
@@ -90,7 +97,7 @@ export interface ComicModels {
   /** Voice note to text, Arabic, English or mixed. */
   transcribe(audio: AudioInput, context?: ModelCallContext): Promise<Transcript>;
   /** Transcript to a comic script with mood, heavy-day and safety flags. */
-  writeScript(transcript: string, cast: CastBrief[], context?: ModelCallContext): Promise<ComicScript>;
+  writeScript(transcript: string, cast: CastBrief[], context?: ModelCallContext, options?: ScriptOptions): Promise<ComicScript>;
   /** Draw a character's reference sheet in a style: front and three-quarter views, full body, plain background. */
   drawReferenceSheet(subject: SheetSubject, context?: ModelCallContext): Promise<ModelImage>;
   /** Upload a reference sheet once so panels can point at it by id. Null when uploads aren't available. */
