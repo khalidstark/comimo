@@ -2,7 +2,7 @@ import { checkCredentials, checkEmail, isProblem, PASSWORD_MAX } from "@/lib/ser
 import { authError, authJson, logStoreError, readAuthBody, storeDown } from "@/lib/server/authHttp";
 import { setSessionCookie } from "@/lib/server/cookie";
 import { getKV } from "@/lib/server/kv";
-import { type Attempt, clearAttempts, EMAIL_LOCKOUT, IP_LOCKOUT, minutesText, reserveAttempt } from "@/lib/server/rateLimit";
+import { clearAttempts, loginSubjects, minutesText, reserveAttempt, slowdownMs } from "@/lib/server/rateLimit";
 import { hashTag, ipTag } from "@/lib/server/request";
 import { createSession } from "@/lib/server/session";
 
@@ -29,26 +29,29 @@ export async function POST(request: Request) {
   if (password.length > PASSWORD_MAX) return authError(401, WRONG);
 
   const kv = getKV();
-  const emailSubject = `login:email:${hashTag("email", email.email)}`;
-  // No trusted IP (not on Vercel, no COMIMO_TRUSTED_IP_HEADER): skip the per-IP lock, the per-email one still holds.
-  const ip = ipTag(request);
-  const ipSubject = ip ? `login:ip:${ip}` : null;
+  // The trusted IP, or the shared global bucket when none is known (not on Vercel,
+  // no COMIMO_TRUSTED_IP_HEADER), then the email.
+  const [network, byEmail] = loginSubjects(hashTag("email", email.email), ipTag(request));
   try {
     // Reserve the try before checking the password, so parallel guesses can't race past a lock.
-    const byIp: Attempt = ipSubject ? await reserveAttempt(kv, ipSubject, IP_LOCKOUT) : { ok: true };
-    const byEmail = byIp.ok ? await reserveAttempt(kv, emailSubject, EMAIL_LOCKOUT) : null;
-    const blocked = !byIp.ok ? byIp : byEmail && !byEmail.ok ? byEmail : null;
-    if (blocked) {
-      return authError(429, `Too many tries. Wait ${minutesText(blocked.retryAfterSec)}, then try again.`, {
-        retryAfterSec: blocked.retryAfterSec,
-      });
+    let delayMs = 0;
+    for (const { subject, policy, shared } of [network, byEmail]) {
+      const attempt = await reserveAttempt(kv, subject, policy);
+      if (!attempt.ok) {
+        return authError(429, `Too many tries. Wait ${minutesText(attempt.retryAfterSec)}, then try again.`, {
+          retryAfterSec: attempt.retryAfterSec,
+        });
+      }
+      if (shared) delayMs = slowdownMs(attempt.tries);
     }
+    // Shared bucket under load: answer a little slower with every try, so spraying gets expensive.
+    if (delayMs > 0) await new Promise((done) => setTimeout(done, delayMs));
 
     const account = await checkCredentials(email.email, password, kv);
     if (!account) return authError(401, WRONG);
 
-    // The email's tries are forgiven; the IP's are not (no decrement exists to abuse).
-    await clearAttempts(kv, emailSubject);
+    // The email's tries are forgiven; the network's are not (no decrement exists to abuse).
+    await clearAttempts(kv, byEmail.subject);
     await setSessionCookie(await createSession(account, kv));
     return authJson({ user: { name: account.name } });
   } catch (error) {

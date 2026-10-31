@@ -2,22 +2,19 @@ import { checkEmail, checkName, checkNewPassword, createAccount, isProblem } fro
 import { authError, authJson, logStoreError, readAuthBody, storeDown } from "@/lib/server/authHttp";
 import { setSessionCookie } from "@/lib/server/cookie";
 import { getKV } from "@/lib/server/kv";
-import { hit, minutesText } from "@/lib/server/rateLimit";
+import { hit, minutesText, signupBuckets, type Hit } from "@/lib/server/rateLimit";
 import { ipTag } from "@/lib/server/request";
 import { createSession } from "@/lib/server/session";
-
-function envInt(name: string, fallback: number): number {
-  const value = Number.parseInt(process.env[name] ?? "", 10);
-  return Number.isFinite(value) && value > 0 ? value : fallback;
-}
 
 /**
  * POST /api/auth/signup
  * JSON: { name, email, password }
  * Creates the account (no email verification, by the user's choice), signs it
- * in and answers { user: { name } }. Sign-ups are capped per IP
- * (COMIMO_SIGNUPS_PER_IP_HOUR, default 5; COMIMO_SIGNUPS_PER_IP_DAY, default 20)
- * so nobody can mint accounts to get around the per-account limits.
+ * in and answers { user: { name } }. Sign-ups are capped per trusted IP
+ * (COMIMO_SIGNUPS_PER_IP_HOUR, default 5; COMIMO_SIGNUPS_PER_IP_DAY, default 20),
+ * or globally when no trusted IP is known (COMIMO_SIGNUPS_GLOBAL_HOUR, default 30;
+ * COMIMO_SIGNUPS_GLOBAL_DAY, default 150), so nobody can mint accounts to get
+ * around the per-account limits.
  */
 export async function POST(request: Request) {
   const read = await readAuthBody(request);
@@ -32,20 +29,18 @@ export async function POST(request: Request) {
 
   const kv = getKV();
   try {
-    // Per-IP caps need a trusted IP (Vercel, or COMIMO_TRUSTED_IP_HEADER). Without one they are
-    // skipped instead of sharing one bucket that a single visitor could fill for everyone;
-    // the per-account and global daily caps still bound the spending.
-    const ip = ipTag(request);
-    if (ip) {
-      const hourly = await hit(kv, `signup:ip:${ip}:hour`, envInt("COMIMO_SIGNUPS_PER_IP_HOUR", 5), 3600);
-      if (!hourly.ok) {
-        return authError(429, `Lots of new accounts from here. Try again in ${minutesText(hourly.retryAfterSec)}.`, { retryAfterSec: hourly.retryAfterSec });
+    // Per trusted IP (Vercel, or COMIMO_TRUSTED_IP_HEADER), or conservative global
+    // buckets when no trusted IP is known: account creation always hits a ceiling.
+    const taken: Extract<Hit, { ok: true }>[] = [];
+    for (const bucket of signupBuckets(ipTag(request))) {
+      const slot = await hit(kv, bucket.key, bucket.limit, bucket.windowSec);
+      if (!slot.ok) {
+        await Promise.all(taken.map((earlier) => earlier.undo()));
+        return authError(429, `Lots of new accounts right now. Try again in ${minutesText(slot.retryAfterSec)}.`, {
+          retryAfterSec: slot.retryAfterSec,
+        });
       }
-      const daily = await hit(kv, `signup:ip:${ip}:day`, envInt("COMIMO_SIGNUPS_PER_IP_DAY", 20), 86_400);
-      if (!daily.ok) {
-        await hourly.undo();
-        return authError(429, "Lots of new accounts from here today. Try again tomorrow.", { retryAfterSec: daily.retryAfterSec });
-      }
+      taken.push(slot);
     }
 
     const account = await createAccount({ name: name.name, email: email.email, password: password.password }, kv);

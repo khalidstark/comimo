@@ -3,7 +3,20 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { FileKV } from "./kv";
-import { clearAttempts, EMAIL_LOCKOUT, hit, IP_LOCKOUT, lockedFor, reserveAttempt, windowOf } from "./rateLimit";
+import {
+  clearAttempts,
+  EMAIL_LOCKOUT,
+  GLOBAL_LOCKOUT,
+  GLOBAL_SLOWDOWN,
+  hit,
+  IP_LOCKOUT,
+  lockedFor,
+  loginSubjects,
+  reserveAttempt,
+  signupBuckets,
+  slowdownMs,
+  windowOf,
+} from "./rateLimit";
 
 let dir: string;
 let kv: FileKV;
@@ -60,16 +73,16 @@ describe("sign-in tries", () => {
 
   it("allows the free tries, then one try per lock with a doubling backoff", async () => {
     const subject = "login:email:abc";
-    for (let i = 0; i < EMAIL_LOCKOUT.freeTries; i++) expect(await reserveAttempt(kv, subject, EMAIL_LOCKOUT)).toEqual({ ok: true });
+    for (let i = 0; i < EMAIL_LOCKOUT.freeTries; i++) expect(await reserveAttempt(kv, subject, EMAIL_LOCKOUT)).toMatchObject({ ok: true });
     // The next try is the probe: it goes through and sets a 1 minute lock.
-    expect(await reserveAttempt(kv, subject, EMAIL_LOCKOUT)).toEqual({ ok: true });
+    expect(await reserveAttempt(kv, subject, EMAIL_LOCKOUT)).toMatchObject({ ok: true });
     expect(await lockedFor(kv, subject)).toBe(60);
     expect(await reserveAttempt(kv, subject, EMAIL_LOCKOUT)).toEqual({ ok: false, retryAfterSec: 60 });
     at(61_000);
-    expect(await reserveAttempt(kv, subject, EMAIL_LOCKOUT)).toEqual({ ok: true });
+    expect(await reserveAttempt(kv, subject, EMAIL_LOCKOUT)).toMatchObject({ ok: true });
     expect(await lockedFor(kv, subject)).toBe(120);
     at(61_000 + 121_000);
-    expect(await reserveAttempt(kv, subject, EMAIL_LOCKOUT)).toEqual({ ok: true });
+    expect(await reserveAttempt(kv, subject, EMAIL_LOCKOUT)).toMatchObject({ ok: true });
     expect(await lockedFor(kv, subject)).toBe(240);
   });
 
@@ -80,7 +93,7 @@ describe("sign-in tries", () => {
 
   it("caps the lock at an hour", async () => {
     await kv.incr("tries:login:ip:x", { by: 40, ttlSec: 3600 });
-    expect(await reserveAttempt(kv, "login:ip:x", EMAIL_LOCKOUT)).toEqual({ ok: true });
+    expect(await reserveAttempt(kv, "login:ip:x", EMAIL_LOCKOUT)).toMatchObject({ ok: true });
     expect(await lockedFor(kv, "login:ip:x")).toBe(3600);
   });
 
@@ -106,9 +119,39 @@ describe("sign-in tries", () => {
     await clearAttempts(kv, "login:email:none");
     expect(await kv.get("tries:login:email:none")).toBeNull();
     // Tries always start at 1 and expire with the window.
-    expect(await reserveAttempt(kv, "login:email:fresh", EMAIL_LOCKOUT)).toEqual({ ok: true });
+    expect(await reserveAttempt(kv, "login:email:fresh", EMAIL_LOCKOUT)).toMatchObject({ ok: true });
     expect(await kv.get("tries:login:email:fresh")).toBe("1");
     at(EMAIL_LOCKOUT.windowSec * 1000 + 1);
     expect(await kv.get("tries:login:email:fresh")).toBeNull();
+  });
+});
+
+describe("without a trusted client IP", () => {
+  it("counts sign-ins against one global bucket with a high ceiling", async () => {
+    const [network, email] = loginSubjects("e1", null);
+    expect(network).toMatchObject({ subject: "login:global", policy: GLOBAL_LOCKOUT, shared: true });
+    expect(email).toMatchObject({ subject: "login:email:e1", policy: EMAIL_LOCKOUT });
+    expect(loginSubjects("e1", "ip1")[0]).toMatchObject({ subject: "login:ip:ip1", policy: IP_LOCKOUT, shared: false });
+
+    // Spraying many emails still fills the global bucket and gets refused.
+    const policy = { ...GLOBAL_LOCKOUT, freeTries: 10 };
+    const results = await Promise.all(Array.from({ length: 15 }, () => reserveAttempt(kv, "login:global", policy)));
+    expect(results.filter((r) => r.ok)).toHaveLength(11);
+  });
+
+  it("slows the shared bucket down progressively, capped", () => {
+    expect(slowdownMs(1)).toBe(0);
+    expect(slowdownMs(GLOBAL_SLOWDOWN.afterTries)).toBe(0);
+    expect(slowdownMs(GLOBAL_SLOWDOWN.afterTries + 5)).toBe(5 * GLOBAL_SLOWDOWN.stepMs);
+    expect(slowdownMs(1_000_000)).toBe(GLOBAL_SLOWDOWN.maxMs);
+  });
+
+  it("caps sign-ups with global buckets, and per IP when the IP is trusted", async () => {
+    expect(signupBuckets(null, {}).map((b) => b.key)).toEqual(["signup:global:hour", "signup:global:day"]);
+    expect(signupBuckets("ip1", {}).map((b) => b.key)).toEqual(["signup:ip:ip1:hour", "signup:ip:ip1:day"]);
+    const [hour] = signupBuckets(null, { COMIMO_SIGNUPS_GLOBAL_HOUR: "3" });
+    let allowed = 0;
+    for (let i = 0; i < 6; i++) if ((await hit(kv, hour.key, hour.limit, hour.windowSec, T0)).ok) allowed++;
+    expect(allowed).toBe(3);
   });
 });
