@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { FileBlobStore, readAll, type StoredBlob } from "./blob";
 import { FileKV } from "./kv";
-import { getImage, libraryKeys, putImage, recountImageBytes } from "./library";
+import { getImage, isMockSvg, libraryKeys, putImage, recountImageBytes } from "./library";
 
 const ACCOUNT = "33333333-3333-4333-8333-333333333333";
 let dir: string;
@@ -103,5 +103,25 @@ describe("image byte quota", () => {
     expect(await total()).toBe(300 * 1024);
     await kv.set(libraryKeys.imageBytes(ACCOUNT), "-999");
     expect(await recountImageBytes(ACCOUNT, kv)).toBe(300 * 1024);
+  });
+});
+
+describe("mock SVG placeholders", () => {
+  const svg = (body: string) => new TextEncoder().encode(`<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10">${body}</svg>`);
+
+  it("keeps script-free SVG only while the mock models are on", async () => {
+    vi.stubEnv("COMIMO_MOCK", "1");
+    expect((await putImage(ACCOUNT, "mock-panel", svg('<rect width="10" height="10" fill="#fc0"/><text>Panel 1</text>'), kv, blobs)).ok).toBe(true);
+    vi.stubEnv("COMIMO_MOCK", "0");
+    vi.stubEnv("MODEL_API_KEY", "test-key-not-real");
+    const refused = await putImage(ACCOUNT, "real-panel", svg("<rect/>"), kv, blobs);
+    expect(refused.ok ? 200 : refused.status).toBe(400);
+  });
+
+  it("refuses SVG that could run or load anything", () => {
+    for (const bad of ["<script>alert(1)</script>", '<rect onload="x()"/>', '<a href="https://evil.example"><text>x</text></a>', "<foreignObject><div/></foreignObject>", '<image href="data:x"/>']) {
+      expect(isMockSvg(svg(bad))).toBe(false);
+    }
+    expect(isMockSvg(new TextEncoder().encode("<html><svg></svg></html>"))).toBe(false);
   });
 });

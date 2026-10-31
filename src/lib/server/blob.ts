@@ -52,7 +52,8 @@ function checkPrefix(prefix: string): string {
   return prefix;
 }
 
-const ALLOWED_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
+/** SVG only ever comes from the mock models in development (see isMockSvg in library.ts). */
+const ALLOWED_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/svg+xml"]);
 
 function checkType(contentType: string): string {
   if (!ALLOWED_TYPES.has(contentType)) throw new Error("Bad blob type");
