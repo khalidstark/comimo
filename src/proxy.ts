@@ -5,7 +5,7 @@ import { sessionCookieName } from "@/lib/server/cookieName";
 /**
  * Two checks before a page renders:
  *
- * - /record: an optimistic sign-in check. With no session cookie at all, a
+ * - /record and /welcome: an optimistic sign-in check. With no session cookie at all, a
  *   visitor who taps Record goes to the quick sign-up and comes straight back
  *   after. This only looks at the cookie's presence; the API routes check the
  *   session itself, and the page re-checks it for stale cookies.
@@ -61,5 +61,5 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/record", "/album/:id"],
+  matcher: ["/record", "/welcome", "/album/:id"],
 };
