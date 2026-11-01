@@ -1,5 +1,6 @@
 import { artAt } from "@/art/manifest";
 import { starterCast, starterCastById } from "@/fixtures/cast";
+import { PERSONALITY_MAX } from "./aboutYou";
 import { ALIAS_LIMITS, namesOf, normalizeName, parseAliases } from "./names";
 import { ANIMATIONS } from "@/art/sprites";
 import { getCharacter, getImage, getMeta, listCast, newId, putImage, saveCharacter, setMeta } from "./store";
@@ -333,7 +334,7 @@ export interface CharacterDraft {
 export type DraftField = keyof CharacterDraft;
 export type DraftErrors = Partial<Record<DraftField, string>>;
 
-export const LIMITS = { name: 32, aliases: 200, roleLabel: 24, look: 400, personality: 300, line: 90 } as const;
+export const LIMITS = { name: 32, aliases: 200, roleLabel: 24, look: 400, personality: PERSONALITY_MAX, line: 90 } as const;
 const MIN_LOOK = 12;
 
 /** Letters from any script, marks, digits, spaces and a little punctuation names use (O'Neil, Al-Sayed, Jr.). */
