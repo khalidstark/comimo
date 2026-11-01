@@ -71,7 +71,7 @@ export default function Home() {
                 <Magnetic className={styles.magnet}>
                   <RecordStamp href="/record" label="Record" ariaLabel="Record today's voice note" />
                 </Magnetic>
-                <StartNudge className={styles.seeDemo} />
+                <StartNudge className={`btn ${styles.startLink}`} />
                 <a href="#demo" className={styles.seeDemo}>
                   See a real day
                 </a>

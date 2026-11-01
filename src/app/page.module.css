@@ -135,6 +135,19 @@
   translate: 0 -0.15em;
 }
 
+/* Sign-up for visitors: a real button, so it never reads as "scroll down". */
+.startLink {
+  background: var(--highlight);
+  color: var(--on-highlight);
+  border-color: var(--ink);
+  box-shadow: 3px 3px 0 var(--accent);
+}
+
+.startLink::after {
+  content: "→";
+  font-size: 1.1em;
+}
+
 .seeDemo:focus-visible {
   outline-color: var(--highlight);
 }
