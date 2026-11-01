@@ -7,6 +7,7 @@ describe("safeNext", () => {
     expect(safeNext("/record")).toBe("/record");
     expect(safeNext("/cast")).toBe("/cast");
     expect(safeNext("/welcome")).toBe("/welcome");
+    expect(safeNext("/account")).toBe("/account");
     expect(safeNext("/welcome/x")).toBe("/");
     expect(safeNext("/month")).toBe("/month");
     expect(safeNext("/day/2026-10-31-ab12")).toBe("/day/2026-10-31-ab12");

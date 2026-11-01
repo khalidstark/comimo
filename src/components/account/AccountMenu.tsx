@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useId, useRef, useState } from "react";
 import { Icon } from "@/art/Icon";
+import { safeNext } from "@/lib/safeNext";
 import { PAGE_TURN } from "../PageTurn";
 import { signOut, useAccount } from "./useAccount";
 import styles from "./AccountMenu.module.css";
@@ -15,7 +16,7 @@ function initial(name: string): string {
 
 /**
  * The account corner of the nav: "Sign in" when signed out; the person's name
- * with a small menu (My comics, Sign out) when signed in. A disclosure, not
+ * with a small menu (My comics, About you, Account, Sign out) when signed in. A disclosure, not
  * an ARIA menu: it holds a link and a button, reached with Tab, closed with
  * Escape or a click outside.
  */
@@ -99,6 +100,19 @@ export function AccountMenu() {
             <Link href="/month" className={styles.item} transitionTypes={PAGE_TURN} onClick={() => setOpen(false)}>
               <Icon name="bookOpen" size="1.2em" />
               My comics
+            </Link>
+          </li>
+          <li>
+            <Link
+              href={`/welcome?next=${encodeURIComponent(safeNext(pathname, "/record"))}`}
+              className={styles.item}
+              transitionTypes={PAGE_TURN}
+              onClick={() => setOpen(false)}
+            >
+              <span className={styles.itemAvatar} aria-hidden="true">
+                {initial(account.name)}
+              </span>
+              About you
             </Link>
           </li>
           <li>
