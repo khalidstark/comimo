@@ -1,0 +1,605 @@
+/* About you: the sign-up page's comic layout carried on. A panel with Mimo
+   (or, once drawn, the user's own sheet) beside a printed card with one
+   question at a time. Phones: a short art strip above the card. */
+
+.main {
+  padding-block: var(--space-m) calc(var(--tabbar-h) + var(--space-l));
+}
+
+@media (min-width: 48rem) {
+  .main {
+    padding-block: var(--space-xl) var(--space-2xl);
+  }
+}
+
+.loading {
+  padding-block: var(--space-2xl);
+  text-align: center;
+  color: var(--ink-soft);
+}
+
+.layout {
+  display: grid;
+  gap: var(--space-m);
+  max-inline-size: 64rem;
+  margin-inline: auto;
+}
+
+@media (min-width: 48rem) {
+  .layout {
+    grid-template-columns: 0.9fr 1.1fr;
+    align-items: start;
+    gap: var(--space-xl);
+  }
+}
+
+/* ---------- The art panel ---------- */
+.artPanel {
+  --dot-color: color-mix(in srgb, var(--accent) 30%, transparent);
+  --dot-angle: 200deg;
+  position: relative;
+  display: grid;
+  place-items: end center;
+  margin: 0;
+  padding: var(--space-m) var(--space-s) 0;
+  overflow: hidden;
+  background-color: var(--calm-wash);
+  min-block-size: 9.5rem;
+  rotate: -1.2deg;
+}
+
+.art {
+  inline-size: min(100%, 16rem);
+  block-size: auto;
+  translate: 0 4%;
+}
+
+.sheet {
+  inline-size: 100%;
+  block-size: auto;
+  aspect-ratio: 3 / 2;
+  object-fit: contain;
+  margin-block-end: var(--space-s);
+  background: var(--surface);
+  border: var(--panel-border-thin) solid var(--line);
+  border-radius: 6px;
+  animation: sheet-in var(--dur-panel) var(--ease-pop) both;
+}
+
+@keyframes sheet-in {
+  from {
+    opacity: 0;
+    scale: 0.92;
+    rotate: -3deg;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sheet {
+    animation: none;
+  }
+}
+
+.bubble {
+  position: absolute;
+  inset-block-start: var(--space-s);
+  inset-inline-end: var(--space-s);
+  max-inline-size: 15ch;
+  font-size: var(--step--1);
+  rotate: 3deg;
+}
+
+/* Phones: a short strip, so the question starts high on the screen. */
+@media (max-width: 47.999rem) {
+  .artPanel {
+    grid-template-columns: auto 1fr;
+    place-items: end start;
+    max-block-size: 9.5rem;
+  }
+
+  .art {
+    inline-size: 7.5rem;
+    translate: 0 6%;
+  }
+
+  .sheet {
+    inline-size: 10.5rem;
+    margin-block-end: var(--space-xs);
+  }
+
+  .bubble {
+    position: static;
+    align-self: center;
+    justify-self: center;
+    margin-block-end: var(--space-m);
+  }
+}
+
+@media (min-width: 48rem) {
+  .artPanel {
+    position: sticky;
+    inset-block-start: calc(var(--topbar-h) + var(--space-m));
+    min-block-size: 26rem;
+    padding: var(--space-xl) var(--space-l) 0;
+  }
+
+  .art {
+    inline-size: min(100%, 20rem);
+  }
+
+  .sheet {
+    margin-block-end: var(--space-l);
+  }
+
+  .bubble {
+    inset-block-start: var(--space-l);
+    font-size: var(--step-0);
+  }
+}
+
+/* ---------- The card ---------- */
+.card {
+  display: grid;
+  gap: var(--space-xs);
+  padding: var(--space-m) var(--space-m) var(--space-l);
+  min-inline-size: 0;
+}
+
+@media (min-width: 48rem) {
+  .card {
+    padding: var(--space-l) var(--space-xl) var(--space-xl);
+  }
+}
+
+.top {
+  display: flex;
+  justify-content: space-between;
+  align-items: start;
+  gap: var(--space-s);
+  margin-block-start: calc(var(--space-m) * -1 - 0.9rem);
+}
+
+@media (min-width: 48rem) {
+  .top {
+    margin-block-start: calc(var(--space-l) * -1 - 0.9rem);
+  }
+}
+
+.kicker {
+  rotate: -2deg;
+}
+
+.textButton,
+.skip {
+  min-block-size: 2.75rem;
+  padding: 0 var(--space-3xs);
+  border: 0;
+  background: none;
+  color: var(--ink-soft);
+  font: inherit;
+  font-size: var(--step--1);
+  font-weight: 600;
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 0.2em;
+  cursor: pointer;
+}
+
+.textButton {
+  margin-block-start: 0.9rem;
+}
+
+.skip {
+  justify-self: center;
+}
+
+.textButton:hover,
+.skip:hover {
+  color: var(--accent-text);
+}
+
+/* Progress: four ink dots, the current one a stretched pink pill. */
+.dots {
+  display: flex;
+  gap: var(--space-2xs);
+  margin: var(--space-2xs) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.dot,
+.dotNow,
+.dotDone {
+  block-size: 0.8rem;
+  inline-size: 0.8rem;
+  border: var(--panel-border-thin) solid var(--line);
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  transition: inline-size var(--dur-panel) var(--ease-cine);
+}
+
+.dotDone {
+  background: var(--ink);
+}
+
+.dotNow {
+  inline-size: 2.2rem;
+  background: var(--accent);
+}
+
+.title {
+  font-size: var(--step-3);
+  line-height: 1.05;
+}
+
+.title:focus {
+  outline: none;
+}
+
+.lede {
+  color: var(--ink-soft);
+  line-height: 1.45;
+}
+
+.stepBody {
+  display: grid;
+  gap: var(--space-s);
+}
+
+.group {
+  display: grid;
+  gap: var(--space-2xs);
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-inline-size: 0;
+}
+
+.field {
+  display: grid;
+  gap: var(--space-3xs);
+}
+
+.label {
+  padding: 0;
+  font-weight: 700;
+}
+
+.optional,
+.hint {
+  color: var(--ink-soft);
+  font-size: var(--step--1);
+  font-weight: 500;
+}
+
+.field input,
+.addRow input {
+  inline-size: 100%;
+  min-block-size: 3rem;
+  padding: var(--space-2xs) var(--space-xs);
+  border: var(--panel-border-thin) solid var(--line);
+  border-radius: 10px;
+  background: var(--paper);
+  color: var(--ink);
+  font-size: var(--step-0);
+}
+
+.field input:focus-visible,
+.addRow input:focus-visible {
+  outline: 3px solid var(--highlight);
+  outline-offset: 1px;
+}
+
+.field [aria-invalid="true"] {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 35%, transparent);
+}
+
+.addRow {
+  display: flex;
+  gap: var(--space-2xs);
+}
+
+.addRow input {
+  flex: 1;
+  min-inline-size: 0;
+}
+
+/* ---------- Chips (multi-select checkboxes and radios) ---------- */
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2xs);
+}
+
+.chip {
+  position: relative;
+  cursor: pointer;
+}
+
+.chip input {
+  position: absolute;
+  opacity: 0;
+  inset: 0;
+  margin: 0;
+  cursor: pointer;
+}
+
+.chip span,
+.ownChip {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: 2.75rem;
+  padding: 0.3em 0.85em 0.35em;
+  border: var(--panel-border-thin) solid var(--line);
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  font-family: var(--font-display-stack);
+  font-size: var(--step--1);
+  font-weight: 700;
+  transition:
+    background var(--dur-quick),
+    transform var(--dur-quick) var(--ease-pop);
+}
+
+.chip input:checked + span,
+.ownChip {
+  background: var(--ink);
+  color: var(--paper);
+  transform: rotate(-2deg);
+}
+
+.chip:nth-child(even) input:checked + span {
+  background: var(--accent);
+  color: var(--on-accent);
+  transform: rotate(2deg);
+}
+
+.chip input:focus-visible + span {
+  outline: 3px solid var(--highlight);
+  outline-offset: 3px;
+}
+
+.chip input:disabled + span {
+  opacity: 0.6;
+}
+
+.ownChip {
+  gap: var(--space-3xs);
+  padding-inline-end: 0.3em;
+}
+
+.ownRemove {
+  display: grid;
+  place-items: center;
+  inline-size: 2rem;
+  block-size: 2rem;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: color-mix(in srgb, var(--paper) 22%, transparent);
+  color: inherit;
+  font-size: 1.2rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.ownRemove:focus-visible {
+  outline: 3px solid var(--highlight);
+}
+
+@media (min-width: 48rem) {
+  .chip span,
+  .ownChip {
+    font-size: var(--step-0);
+    padding-inline: 1.05em;
+  }
+}
+
+/* ---------- Manner: chips with a one-line hint ---------- */
+.mannerGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2xs);
+}
+
+@media (min-width: 64rem) {
+  .mannerGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.manner {
+  position: relative;
+  display: grid;
+  cursor: pointer;
+}
+
+.manner input {
+  position: absolute;
+  opacity: 0;
+  inset: 0;
+  margin: 0;
+  cursor: pointer;
+}
+
+.mannerCard {
+  display: grid;
+  align-content: start;
+  gap: 0.15rem;
+  min-block-size: 4.25rem;
+  padding: var(--space-2xs) var(--space-xs);
+  border: var(--panel-border-thin) solid var(--line);
+  border-radius: 12px 14px 11px 13px;
+  background: var(--surface);
+  transition:
+    background var(--dur-quick),
+    transform var(--dur-quick) var(--ease-pop),
+    box-shadow var(--dur-quick);
+}
+
+.mannerLabel {
+  font-family: var(--font-display-stack);
+  font-weight: 800;
+  font-size: var(--step-0);
+  line-height: 1.15;
+}
+
+.mannerHint {
+  color: var(--ink-soft);
+  font-size: 0.8rem;
+  line-height: 1.3;
+}
+
+.manner input:checked + .mannerCard {
+  background: var(--highlight);
+  color: var(--on-highlight);
+  box-shadow: var(--shadow-small);
+  transform: rotate(-1.2deg);
+}
+
+.manner:nth-child(even) input:checked + .mannerCard {
+  transform: rotate(1.2deg);
+}
+
+.manner input:checked + .mannerCard .mannerHint {
+  color: var(--on-highlight);
+}
+
+.manner input:focus-visible + .mannerCard {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* ---------- Photo step ---------- */
+.privacy {
+  padding: var(--space-2xs) var(--space-s);
+  border: var(--panel-border-thin) dashed color-mix(in srgb, var(--ink) 45%, transparent);
+  border-radius: var(--radius-panel);
+  background: var(--calm-wash);
+  font-size: var(--step--1);
+  line-height: 1.45;
+}
+
+.consent {
+  display: flex;
+  gap: var(--space-2xs);
+  align-items: start;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.consent input {
+  flex: none;
+  inline-size: 1.35rem;
+  block-size: 1.35rem;
+  margin-block-start: 0.1em;
+  accent-color: var(--accent);
+}
+
+.pickers {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+  gap: var(--space-2xs);
+}
+
+.picker {
+  position: relative;
+}
+
+.picker:focus-within {
+  outline: 3px solid var(--highlight);
+  outline-offset: 2px;
+}
+
+.progress:empty {
+  display: none;
+}
+
+.found {
+  display: grid;
+  grid-template-columns: 5.5rem 1fr;
+  gap: var(--space-s);
+  align-items: center;
+}
+
+.crop {
+  inline-size: 5.5rem;
+  aspect-ratio: 3 / 4;
+  object-fit: cover;
+  border: var(--panel-border-thin) solid var(--line);
+  border-radius: 10px;
+  rotate: -2deg;
+}
+
+.working,
+.background {
+  display: flex;
+  gap: var(--space-2xs);
+  align-items: center;
+  color: var(--ink-soft);
+  font-weight: 600;
+}
+
+.background {
+  font-size: var(--step--1);
+}
+
+.spinner {
+  flex: none;
+  inline-size: 1.2rem;
+  block-size: 1.2rem;
+  border: 3px solid color-mix(in srgb, var(--ink) 25%, transparent);
+  border-block-start-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.9s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    rotate: 1turn;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spinner {
+    animation-duration: 3s;
+  }
+}
+
+.done {
+  padding: var(--space-2xs) var(--space-s);
+  border: var(--panel-border-thin) solid var(--line);
+  border-radius: var(--radius-panel);
+  background: var(--highlight);
+  color: var(--on-highlight);
+  font-weight: 700;
+  rotate: -0.5deg;
+}
+
+.clash {
+  display: grid;
+  gap: var(--space-2xs);
+  justify-items: start;
+  padding: var(--space-xs) var(--space-s);
+  border: var(--panel-border-thin) solid var(--line);
+  border-radius: var(--radius-panel);
+  background: color-mix(in srgb, var(--accent) 12%, var(--surface));
+}
+
+.error {
+  color: var(--accent-text);
+  font-size: var(--step--1);
+  font-weight: 600;
+}
+
+/* ---------- Actions ---------- */
+.actions {
+  display: flex;
+  gap: var(--space-2xs);
+  margin-block-start: var(--space-2xs);
+}
+
+.primary {
+  flex: 1;
+  font-size: var(--step-1);
+}
