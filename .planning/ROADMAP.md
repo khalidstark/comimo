@@ -78,6 +78,7 @@ Plans:
 Plans:
 - [x] 03.2-01: Quick accounts (email + password, no verification), sessions, per-account shared limits, guest try-out
 - [x] 03.2-02: Cloud comics and cast per account, photo album with QR code on the last page
+- [ ] 03.2-03: About you after sign-up (photo, interests, how you are with people); the user becomes the main character
 
 ### Phase 4: Magazine and Art
 **Goal**: The monthly comic book, the real Muse-generated art across the site, and demo content that makes the site impressive even without recording
