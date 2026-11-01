@@ -193,8 +193,13 @@ async function previousTemplate(): Promise<string | null> {
 
 /* ---------- Cast ---------- */
 
-function toBrief({ id, name, aliases, role, look, personality }: Character): CastBrief {
-  return { id, name, role, look, personality, ...(aliases?.length ? { aliases } : {}) };
+function toBrief({ id, name, aliases, role, look, personality, about }: Character): CastBrief {
+  const brief: CastBrief = { id, name, role, look, personality, ...(aliases?.length ? { aliases } : {}) };
+  if (role === "self" && about) {
+    const { interests, ownInterests, manner, pronouns } = about;
+    brief.about = { interests, ownInterests, manner, ...(pronouns ? { pronouns } : {}) };
+  }
+  return brief;
 }
 
 /** The names a panel's characters and speakers had when it was made (ISS-007), one-offs included. */

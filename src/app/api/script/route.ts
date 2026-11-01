@@ -5,6 +5,7 @@ import { getModels } from "@/lib/models";
 import { isRecord, isText, json, jsonError, modelErrorResponse } from "@/lib/models/wire";
 import { BODY_LIMITS, readBoundedJson } from "@/lib/requestBody";
 import { ALIAS_LIMITS } from "@/lib/names";
+import { cleanAbout } from "@/lib/aboutYou";
 import type { CastBrief, CharacterRole, ScriptResponse } from "@/lib/types";
 import { DEFAULT_STORY_MODE, isStoryMode } from "@/lib/types";
 
@@ -24,13 +25,15 @@ function parseCast(value: unknown): CastBrief[] | null {
   const cast: CastBrief[] = [];
   for (const item of value) {
     if (!isRecord(item)) return null;
-    const { id, name, aliases, role, look, personality } = item;
+    const { id, name, aliases, role, look, personality, about } = item;
     if (!isText(id, 100) || !isText(name, 100)) return null;
     if (typeof role !== "string" || !ROLES.includes(role as CharacterRole)) return null;
     if (typeof look !== "string" || look.length > 2000) return null;
     if (typeof personality !== "string" || personality.length > 2000) return null;
     if (aliases !== undefined && !isAliasList(aliases)) return null;
-    cast.push({ id, name, role: role as CharacterRole, look, personality, ...(aliases?.length ? { aliases } : {}) });
+    // About-you answers only count for the speaker, and only the known choices get through.
+    const answers = role === "self" && about !== undefined ? cleanAbout(about) : null;
+    cast.push({ id, name, role: role as CharacterRole, look, personality, ...(aliases?.length ? { aliases } : {}), ...(answers ? { about: answers } : {}) });
   }
   return cast;
 }

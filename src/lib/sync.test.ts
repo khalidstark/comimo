@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { blobIdsIn, imagesToPush, planMeta, planRecords } from "./sync";
+import { blobIdsIn, imagesToPush, isSyncedMetaKey, planMeta, planRecords } from "./sync";
 
 const T = (h: number) => `2026-10-31T${String(h).padStart(2, "0")}:00:00.000Z`;
 
@@ -53,5 +53,17 @@ describe("settings, images and refs", () => {
   it("finds every blob a record points at", () => {
     const day = { panels: [{ image: { kind: "blob", id: "d-panel-0" }, consistency: { beforeImage: { kind: "blob", id: "d-panel-0-before" } } }, { image: { kind: "art", path: "x" } }] };
     expect([...blobIdsIn(day)].sort()).toEqual(["d-panel-0", "d-panel-0-before"]);
+  });
+});
+
+describe("synced settings", () => {
+  it("keeps the About-you flag with the account, on both sides", async () => {
+    const server = await import("./server/library");
+    for (const key of ["aboutYou:asked", "starterCastSeeded", "newPeople:never", "cover:2026-11"]) {
+      expect(isSyncedMetaKey(key)).toBe(true);
+      expect(server.isSyncedMetaKey(key)).toBe(true);
+    }
+    expect(isSyncedMetaKey("aboutYou:other")).toBe(false);
+    expect(server.isSyncedMetaKey("aboutYou:other")).toBe(false);
   });
 });
