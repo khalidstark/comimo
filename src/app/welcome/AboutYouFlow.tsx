@@ -97,7 +97,10 @@ export function AboutYouFlow() {
   const rawNext = safeNext(new URLSearchParams(search).get("next"), "/record");
   const next = rawNext === "/welcome" ? "/record" : rawNext;
 
-  const [loaded, setLoaded] = useState<{ self: Character | null; others: Character[] } | null>(null);
+  const [loaded, setLoaded] = useState<{
+    self: Character | null;
+    others: Character[];
+  } | null>(null);
   const [step, setStep] = useState<Step>("photo");
   const [style, setStyle] = useState<ArtStyleId>(DEFAULT_ART_STYLE);
   const [consent, setConsent] = useState(false);
@@ -111,7 +114,11 @@ export function AboutYouFlow() {
   const [aliases, setAliases] = useState("");
   const [pronouns, setPronouns] = useState<Pronouns | null>(null);
   const [stepError, setStepError] = useState<string | null>(null);
-  const [nameErrors, setNameErrors] = useState<{ name?: string; aliases?: string; clash?: Character }>({});
+  const [nameErrors, setNameErrors] = useState<{
+    name?: string;
+    aliases?: string;
+    clash?: Character;
+  }>({});
   const [finishing, setFinishing] = useState<string | null>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
   const firstRender = useRef(true);
@@ -125,7 +132,10 @@ export function AboutYouFlow() {
     let cancelled = false;
     void loadSelf().then(({ self, cast }) => {
       if (cancelled) return;
-      setLoaded({ self, others: cast.filter((member) => member.id !== self?.id) });
+      setLoaded({
+        self,
+        others: cast.filter((member) => member.id !== self?.id),
+      });
       setStyle(storedStyle());
       if (self?.about) {
         setInterests(self.about.interests);
@@ -150,7 +160,10 @@ export function AboutYouFlow() {
   }, [account, loaded]);
 
   // Their drawn sheet (now or from before), as an object URL.
-  const shownSheet = loaded?.self && hasOwnFace(loaded.self) ? (referenceSheetFor(loaded.self, style) ?? Object.values(loaded.self.referenceSheets ?? {})[0] ?? null) : null;
+  const shownSheet =
+    loaded?.self && hasOwnFace(loaded.self)
+      ? (referenceSheetFor(loaded.self, style) ?? Object.values(loaded.self.referenceSheets ?? {})[0] ?? null)
+      : null;
   const shownBlob = shownSheet?.image.kind === "blob" ? shownSheet.image.id : null;
   useEffect(() => {
     if (!shownBlob) return;
@@ -191,11 +204,18 @@ export function AboutYouFlow() {
   /** The name and other names, checked like the cast form (no clash with anyone else in the cast). */
   function checkName(): { name?: string; aliases?: string; clash?: Character } {
     if (!loaded) return {};
-    const draft = { ...draftFrom(loaded.self ?? undefined), name, aliases, role: "self" as const, roleLabel: "You" };
+    const draft = {
+      ...draftFrom(loaded.self ?? undefined),
+      name,
+      aliases,
+      role: "self" as const,
+      roleLabel: "You",
+    };
     const errors = validateDraft(draft, loaded.others);
     // A clash with an invented starter character can be solved by taking them out.
     const wanted = [name, ...parseAliases(aliases, name)].map(normalizeName).filter(Boolean);
-    const clash = errors.name || errors.aliases ? loaded.others.find((m) => m.starter && namesOf(m).some((n) => wanted.includes(n))) : undefined;
+    const clash =
+      errors.name || errors.aliases ? loaded.others.find((m) => m.starter && namesOf(m).some((n) => wanted.includes(n))) : undefined;
     return { name: errors.name, aliases: errors.aliases, clash };
   }
 
@@ -210,7 +230,10 @@ export function AboutYouFlow() {
   async function pickPhoto(file: File | undefined) {
     if (!file || busyDrawing) return;
     if (!consent) {
-      setDrawing({ phase: "error", message: "Tick the box first: it's you in the photo and Comimo may draw you from it." });
+      setDrawing({
+        phase: "error",
+        message: "Tick the box first: it's you in the photo and Comimo may draw you from it.",
+      });
       return;
     }
     controller.current = new AbortController();
@@ -279,10 +302,21 @@ export function AboutYouFlow() {
 
   async function removeStarter(member: Character) {
     if (!(await deleteCharacter(member.id))) {
-      setNameErrors((current) => ({ ...current, clash: undefined, name: `Couldn't take ${member.name} out right now. Try another name.` }));
+      setNameErrors((current) => ({
+        ...current,
+        clash: undefined,
+        name: `Couldn't take ${member.name} out right now. Try another name.`,
+      }));
       return;
     }
-    setLoaded((current) => (current ? { ...current, others: current.others.filter((m) => m.id !== member.id) } : current));
+    setLoaded((current) =>
+      current
+        ? {
+            ...current,
+            others: current.others.filter((m) => m.id !== member.id),
+          }
+        : current,
+    );
     setNameErrors({});
   }
 
@@ -359,7 +393,10 @@ export function AboutYouFlow() {
         hasFace={ownFace}
         onPick={(file) => void pickPhoto(file)}
         onNeedConsent={() =>
-          setDrawing({ phase: "error", message: "Tick the box first: it's you in the photo and Comimo may draw you from it." })
+          setDrawing({
+            phase: "error",
+            message: "Tick the box first: it's you in the photo and Comimo may draw you from it.",
+          })
         }
       />
     );
@@ -415,7 +452,12 @@ export function AboutYouFlow() {
               maxLength={OWN_INTEREST_LENGTH + 4}
               aria-describedby={stepError ? `${id}-step-error` : undefined}
             />
-            <button type="button" className="btn btn--ghost" onClick={addOwnInterest} aria-disabled={ownInterests.length >= OWN_INTERESTS_MAX || undefined}>
+            <button
+              type="button"
+              className="btn btn--ghost"
+              onClick={addOwnInterest}
+              aria-disabled={ownInterests.length >= OWN_INTERESTS_MAX || undefined}
+            >
               Add
             </button>
           </div>
@@ -495,8 +537,8 @@ export function AboutYouFlow() {
         {nameErrors.clash ? (
           <div className={styles.clash}>
             <p>
-              <bdi>{nameErrors.clash.name}</bdi> is from the starter cast Comimo made up. Take them out so the name is yours?
-              Comics you already made keep them.
+              <bdi>{nameErrors.clash.name}</bdi> is from the starter cast Comimo made up. Take them out so the name is yours? Comics you
+              already made keep them.
             </p>
             <button type="button" className="btn btn--ink" onClick={() => void removeStarter(nameErrors.clash!)}>
               Take <bdi>{nameErrors.clash.name}</bdi> out of my cast
@@ -591,16 +633,24 @@ export function AboutYouFlow() {
           </p>
         ) : null}
 
-        <div className={styles.actions}>
-          {index > 0 ? (
-            <button type="button" className="btn btn--ghost" onClick={() => go(STEPS[index - 1])}>
-              Back
+        {/* On the photo step the pickers are the way forward until a drawing has started. */}
+        {step === "photo" && !ownFace && !busyDrawing && drawing.phase !== "done" ? null : (
+          <div className={styles.actions}>
+            {index > 0 ? (
+              <button type="button" className="btn btn--ghost" onClick={() => go(STEPS[index - 1])}>
+                Back
+              </button>
+            ) : null}
+            <button
+              type="button"
+              className={`btn btn--accent ${styles.primary}`}
+              onClick={primary}
+              aria-disabled={finishing ? true : undefined}
+            >
+              {finishing ?? (last ? "Start my comic book" : "Next")}
             </button>
-          ) : null}
-          <button type="button" className={`btn btn--accent ${styles.primary}`} onClick={primary} aria-disabled={finishing ? true : undefined}>
-            {finishing ?? (last ? "Start my comic book" : "Next")}
-          </button>
-        </div>
+          </div>
+        )}
         <button type="button" className={styles.skip} onClick={skip} aria-disabled={finishing ? true : undefined}>
           {step === "photo" ? (ownFace ? "Keep my drawing" : "Skip for now") : last ? "Skip and finish" : "Skip this step"}
         </button>
@@ -663,8 +713,8 @@ function PhotoStep({ id, style, onStyle, consent, onConsent, drawing, hasFace, o
   return (
     <div className={styles.stepBody}>
       <p id={`${id}-privacy`} className={styles.privacy}>
-        <strong>Your photo isn&apos;t kept.</strong> It&apos;s shrunk on this device, used once to draw you, then thrown away.
-        Only the drawing is saved.
+        <strong>Your photo isn&apos;t kept.</strong> It&apos;s shrunk on this device, used once to draw you, then thrown away. Only the
+        drawing is saved.
       </p>
 
       <fieldset className={styles.group}>
