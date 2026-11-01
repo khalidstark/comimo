@@ -5,6 +5,7 @@ import type { ScriptPanel } from "@/lib/types";
 import type { CharacterReference, ModelCallContext, ModelImage, PanelOptions, SheetSubject } from "../index";
 import { MetaApiError, metaJson } from "./client";
 import { panelPrompt, photoSheetPrompt, sheetPrompt, type PanelCharacter } from "./prompts";
+import { QUIET_SCENE, softenScene } from "./soften";
 
 /**
  * Muse Image: reference sheets (POST /v1/images/generations) and panels drawn
@@ -179,12 +180,29 @@ export async function drawPanel(
     characters.push({ name: ref.name, look: ref.look, image, ...(oneOff ? { oneOff } : {}) });
   }
 
-  const prompt = panelPrompt(panel.scene, characters, panel.shot ?? "medium", frame, style, panel.flashback === true, fixes);
-  const body = { ...baseRequest(context), size: drawSize(frame.aspect), prompt };
-  // Edits need at least one image; a panel with no drawn characters is plain text-to-image.
-  return images.length > 0
-    ? requestImage("/images/edits", { ...body, images }, context)
-    : requestImage("/images/generations", body, context);
+  const draw = (scene: string) => {
+    const prompt = panelPrompt(scene, characters, panel.shot ?? "medium", frame, style, panel.flashback === true, fixes);
+    const body = { ...baseRequest(context), size: drawSize(frame.aspect), prompt };
+    // Edits need at least one image; a panel with no drawn characters is plain text-to-image.
+    return images.length > 0
+      ? requestImage("/images/edits", { ...body, images }, context)
+      : requestImage("/images/generations", body, context);
+  };
+
+  // A refused scene would be refused again on retry: Spark softens it once, then a quiet scene is the last try.
+  try {
+    return await draw(panel.scene);
+  } catch (error) {
+    if (!isContentPolicyError(error)) throw error;
+  }
+  const gentler = await softenScene(panel.scene, context).catch(() => QUIET_SCENE);
+  try {
+    return await draw(gentler);
+  } catch (error) {
+    if (!isContentPolicyError(error) || gentler === QUIET_SCENE) throw error;
+  }
+  console.warn("Comimo: the softened scene was refused too; drawing a quiet scene");
+  return draw(QUIET_SCENE);
 }
 
 /** The real type from the file's first bytes: PNG, JPEG or WebP, else null. */
