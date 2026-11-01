@@ -32,7 +32,7 @@ export type RecordKind = "days" | "cast";
 /** Ids the app makes: UUIDs, starter ids ("nour"), sample ids ("sample-teta"), image ids ("<day>-panel-3"). */
 const RECORD_ID = /^[A-Za-z0-9][A-Za-z0-9_.:-]{0,99}$/;
 /** Settings that follow the account; everything else in the device's `meta` store stays on the device. */
-const META_KEY = /^(cover:\d{4}-(0[1-9]|1[0-2])|starterCastSeeded|newPeople:never)$/;
+const META_KEY = /^(cover:\d{4}-(0[1-9]|1[0-2])|starterCastSeeded|newPeople:never|aboutYou:asked)$/;
 
 export function isRecordId(id: unknown): id is string {
   return typeof id === "string" && RECORD_ID.test(id);
