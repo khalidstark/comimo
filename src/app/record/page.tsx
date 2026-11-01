@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Icon } from "@/art/Icon";
+import { AboutYouPrompt } from "@/components/account/AboutYouPrompt";
 import { RequireAccount } from "@/components/account/RequireAccount";
 import { PAGE_TURN, PageTurn } from "@/components/PageTurn";
 import { RecordPanel } from "./RecordPanel";
@@ -26,6 +27,8 @@ export default function RecordPage() {
             Talk the way you&apos;d tell a friend. Arabic, English, or both in one sentence is fine.
           </p>
         </header>
+
+        <AboutYouPrompt />
 
         <div className={styles.layout}>
           <RecordPanel />
