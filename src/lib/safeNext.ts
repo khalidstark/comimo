@@ -8,7 +8,7 @@
  * rebuilt from the normalised pathname alone, never the raw input.
  */
 
-const PAGES = new Set(["/", "/record", "/cast", "/month", "/welcome"]);
+const PAGES = new Set(["/", "/record", "/cast", "/month", "/welcome", "/account"]);
 const DAY = /^\/day\/[A-Za-z0-9_-]{1,80}$/;
 const BASE = "https://comimo.invalid";
 
