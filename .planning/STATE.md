@@ -10,9 +10,9 @@ See: .planning/PROJECT.md (updated 2026-10-30)
 ## Current Position
 
 Phase: 3.2 of 5 (Accounts and Cloud)
-Plan: 2 of 2 in current phase
-Status: Phase complete
-Last activity: 2026-10-31 — Completed 03.2-02: comics, cast and images synced per account; photo albums with QR codes; account deletion
+Plan: 3 of 3 in current phase (03.2-03 awaiting user check)
+Status: In progress
+Last activity: 2026-11-01 — Merged 03.2-03 About you (photo, interests, manner chips; user becomes the self character); policy-refused panels redraw from a softened scene
 
 Progress: █████████░ 88% (15 of 17 plans)
 
@@ -70,6 +70,8 @@ Recent decisions affecting current work:
 - 03.2-02: Comics, cast, synced settings and images live with the account (/api/me/*, Upstash + private Vercel Blob; .data locally); IndexedDB is a per-account offline cache synced each page load, newest stamp wins. Pre-account comics are offered "Move these comics to your account".
 - 03.2-02: Photo albums per day: up to 20 EXIF-free photos or an https link, 128-bit link id, public by link (noindex), QR on the comic's last page and in the magazine; Muse Spark captions only when the owner asks.
 - 03.2-02: Account deletion removes everything behind a deleting mark (resumable via next sign-in or /api/maintenance/deletions).
+- 03.2-03: After sign-up, /welcome asks for a photo (drawn via the existing photo flow, never stored), interests, manner chips and names; answers fill the self character (id kept) and Character.about, which the script uses for the speaker's voice.
+- 2026-11-01: A content-policy refusal on a panel retries once from a Spark-softened scene, then a quiet scene (src/lib/models/meta/soften.ts).
 - 03-06: A one-off's later panels use their first panel (signed via PanelResponse.imageToken, cut to their SAM box on the server) as the reference, and the face judge compares against it. One-offs are left out of the magazine cast.
 
 ### Deferred Issues
@@ -81,7 +83,7 @@ Recent decisions affecting current work:
 - REMIND USER (they said yes, do later): create a **Private** Vercel Blob store and accept Upstash Redis terms in the Vercel dashboard; set NEXT_PUBLIC_SITE_URL, COMIMO_GUARD_SALT and optionally COMIMO_MAINTENANCE_SECRET (+ cron). Needed for 03.2 in production and for 05-01 deploy.
 - Vercel caps request bodies at 4.5 MB: photos are shrunk in the browser, but a comic image over 4.5 MB can't sync on Vercel.
 
-- Credits arrived ($150) and the key works. Free credits: Meta may use submitted content, so test with invented days. 03-04 spent about $0.36, 03-03 about $0.80, 03-06 about $0.27, 03.2-02 about $0.01 (captions) (total about $3.18).
+- Credits arrived ($150) and the key works. Free credits: Meta may use submitted content, so test with invented days. 03-04 spent about $0.36, 03-03 about $0.80, 03-06 about $0.27, 03.2-02 about $0.01 (captions) (total about $3.34 after 03.2-03).
 - Billing spend alert was set to $500; user asked to lower it to $140.
 
 ## Session Continuity
