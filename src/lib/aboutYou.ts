@@ -118,9 +118,10 @@ export function cleanAbout(value: unknown): Pick<AboutYou, "interests" | "ownInt
   };
 }
 
-export function interestLabels(about: Pick<AboutYou, "interests" | "ownInterests">): string[] {
-  const labels = knownIds(about.interests, INTEREST_IDS).map((id) => INTERESTS[INTEREST_IDS.get(id)!].label.toLowerCase());
-  return [...labels, ...cleanOwnInterests(about.ownInterests)];
+/** Interests as words in a sentence ("football"), or as chips ("Football") with `asChips`. */
+export function interestLabels(about: Pick<AboutYou, "interests" | "ownInterests">, asChips = false): string[] {
+  const labels = knownIds(about.interests, INTEREST_IDS).map((id) => INTERESTS[INTEREST_IDS.get(id)!].label);
+  return [...(asChips ? labels : labels.map((label) => label.toLowerCase())), ...cleanOwnInterests(about.ownInterests)];
 }
 
 export function mannerChoices(about: Pick<AboutYou, "manner">): MannerChoice[] {
