@@ -3,6 +3,7 @@ import { ART_STYLES, type ArtStyleId } from "@/lib/artStyles";
 import { BEATS, MOODS, SHOTS, type CastBrief, type PanelFrame, type Shot } from "@/lib/types";
 import { MAX_PAGES, PANELS_PER_PAGE, type StoryMode } from "@/lib/types";
 import { NEW_PERSON_IDS } from "@/lib/newPeople";
+import { interestLabels, mannerChoices } from "@/lib/aboutYou";
 
 /**
  * Prompt and JSON schema for the comic script (Muse Spark, structured output).
@@ -32,6 +33,7 @@ Pages
 
 Characters
 - Use only the characters in CAST, by id. The speaker is the cast member whose role is "self".
+- The speaker may come with "withPeople" (how they are with people), "interests" and "pronouns". Write the speaker's dialogue and narration in that voice: a sarcastic speaker gets dry, sarcastic lines, a quiet one says little and keeps it short, a loud one reacts big, a caring one checks on people, and so on, while every line still means what the note says. Interests are background only: they may colour a thought, a comparison or an object already in the scene, but never add an event, a place, a conversation or a person the note doesn't mention. In scene descriptions refer to the speaker by name and their pronouns.
 - Someone who takes part in the day but is not in CAST is a new person (see Names): list them in newPeople and use their new id like a cast id. Never invent people who weren't there, and never name or draw real public figures.
 - At most 3 characters per panel. List characterIds left to right as they stand in the picture.
 - Every speaker in a panel's dialogue must be in that panel's characterIds.
@@ -68,9 +70,19 @@ export function storyModeBlock(mode: StoryMode): string {
   return STORY_MODE_RULES[mode];
 }
 
-/** The cast as the model sees it: who they are and how they talk, not how they look. */
+/** The cast as the model sees it: who they are and how they talk, not how they look. The speaker also brings their About-you answers. */
 export function castBlock(cast: CastBrief[]): string {
-  const members = cast.map(({ id, name, role, personality }) => ({ id, name, role, personality }));
+  const members = cast.map(({ id, name, role, personality, about }) => {
+    const member: Record<string, unknown> = { id, name, role, personality };
+    if (role === "self" && about) {
+      const withPeople = mannerChoices(about).map((m) => `${m.trait}: ${m.voice}`);
+      const interests = interestLabels(about);
+      if (withPeople.length) member.withPeople = withPeople;
+      if (interests.length) member.interests = interests;
+      if (about.pronouns) member.pronouns = about.pronouns;
+    }
+    return member;
+  });
   return `CAST\n${JSON.stringify(members, null, 2)}`;
 }
 

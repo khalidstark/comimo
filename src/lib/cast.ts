@@ -1,5 +1,6 @@
 import { artAt } from "@/art/manifest";
 import { starterCast, starterCastById } from "@/fixtures/cast";
+import { PERSONALITY_MAX, applyAboutYou, findSelf, type AboutAnswers } from "./aboutYou";
 import { ALIAS_LIMITS, namesOf, normalizeName, parseAliases } from "./names";
 import { ANIMATIONS } from "@/art/sprites";
 import { getCharacter, getImage, getMeta, listCast, newId, putImage, saveCharacter, setMeta } from "./store";
@@ -132,12 +133,17 @@ export function drawReferenceSheetFromPhoto(
   return requestSheet(character, style, signal, photo);
 }
 
-async function requestSheet(
+/**
+ * Draw a sheet and keep its image on this device, without saving the
+ * character: About you draws the user from their photo before the rest of
+ * their answers are in.
+ */
+export async function drawSheet(
   character: Character,
   style: ArtStyleId,
-  signal?: AbortSignal,
   photo?: WireImage,
-): Promise<{ character: Character; photoRefused: boolean }> {
+  signal?: AbortSignal,
+): Promise<{ sheet: ReferenceSheet; photoRefused: boolean }> {
   const body: CharacterSheetRequest = {
     characterId: character.id,
     name: character.name,
@@ -171,12 +177,22 @@ async function requestSheet(
   const sheet: ReferenceSheet = { image };
   if (result.sheetToken) sheet.sheetToken = result.sheetToken;
   if (result.fileToken) sheet.file = { token: result.fileToken, sheet: referenceKey(image) };
+  return { sheet, photoRefused: result.photoRefused === true };
+}
+
+async function requestSheet(
+  character: Character,
+  style: ArtStyleId,
+  signal?: AbortSignal,
+  photo?: WireImage,
+): Promise<{ character: Character; photoRefused: boolean }> {
+  const { sheet, photoRefused } = await drawSheet(character, style, photo, signal);
   const drawn = await updateStoredCharacter(character, (current) => ({
     ...current,
     referenceSheets: { ...current.referenceSheets, [style]: sheet },
   }));
   if (!drawn) throw new SheetError("Couldn't save the sheet on this device. Private windows can block storage.");
-  return { character: drawn, photoRefused: result.photoRefused === true };
+  return { character: drawn, photoRefused };
 }
 
 /**
@@ -187,6 +203,40 @@ async function requestSheet(
 async function updateStoredCharacter(character: Character, change: (current: Character) => Character): Promise<Character | null> {
   const stored = await getCharacter(character.id);
   const next = change(stored ? withStarterAliases(stored) : character);
+  return (await saveCharacter(next)) ? next : null;
+}
+
+/* ---------- You (About you) ---------- */
+
+/** Set once the user finished or dismissed About you, so /record asks only once. Follows the account. */
+export const ABOUT_ASKED_KEY = "aboutYou:asked";
+
+/** The user's own character from the cast, or null when there is none (they removed it). */
+export async function loadSelf(): Promise<{ self: Character | null; cast: Character[] }> {
+  const cast = await loadCast();
+  return { self: findSelf(cast), cast };
+}
+
+/**
+ * Save the user's About-you answers onto their self character (the stored
+ * copy, so a sheet saved a moment ago isn't lost). With no self in the cast,
+ * a new one starts from the starter stand-in's look under a new id.
+ * Null when storage refused.
+ */
+export async function saveSelf(answers: AboutAnswers): Promise<Character | null> {
+  const { self } = await loadSelf();
+  const base: Character = self
+    ? withStarterAliases((await getCharacter(self.id)) ?? self)
+    : {
+        ...starterCastById.nour,
+        id: newId(),
+        referenceSheets: {},
+        spriteSheet: null,
+        portrait: { kind: "art", path: "empty.cast" },
+        starter: false,
+        createdAt: new Date().toISOString(),
+      };
+  const next = applyAboutYou(base, answers);
   return (await saveCharacter(next)) ? next : null;
 }
 
@@ -333,7 +383,7 @@ export interface CharacterDraft {
 export type DraftField = keyof CharacterDraft;
 export type DraftErrors = Partial<Record<DraftField, string>>;
 
-export const LIMITS = { name: 32, aliases: 200, roleLabel: 24, look: 400, personality: 300, line: 90 } as const;
+export const LIMITS = { name: 32, aliases: 200, roleLabel: 24, look: 400, personality: PERSONALITY_MAX, line: 90 } as const;
 const MIN_LOOK = 12;
 
 /** Letters from any script, marks, digits, spaces and a little punctuation names use (O'Neil, Al-Sayed, Jr.). */

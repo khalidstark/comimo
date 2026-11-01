@@ -98,7 +98,9 @@ export function AuthForm({ mode }: { mode: Mode }) {
       const result = (await response.json().catch(() => null)) as { error?: string; field?: Field } | null;
       if (response.ok) {
         // A full load, so the nav and every page start from the new session.
-        window.location.replace(next);
+        // New accounts tell Comimo about themselves first, then go on to where they were headed.
+        const after = mode === "signup" && next !== "/welcome" ? `/welcome?next=${encodeURIComponent(next)}` : next;
+        window.location.replace(after);
         return;
       }
       const message = result?.error || `Something went wrong (${response.status}). Try again.`;

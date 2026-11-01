@@ -117,5 +117,5 @@ export function blobIdsIn(value: unknown, found = new Set<string>(), depth = 0):
 
 /** Settings that follow the account (everything else in `meta` stays on the device). */
 export function isSyncedMetaKey(key: string): boolean {
-  return /^(cover:\d{4}-(0[1-9]|1[0-2])|starterCastSeeded|newPeople:never)$/.test(key);
+  return /^(cover:\d{4}-(0[1-9]|1[0-2])|starterCastSeeded|newPeople:never|aboutYou:asked)$/.test(key);
 }

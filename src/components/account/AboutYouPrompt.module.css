@@ -1,0 +1,44 @@
+/* A one-time card on /record for accounts that never answered About you. */
+.card {
+  --dot-color: color-mix(in srgb, var(--highlight) 45%, transparent);
+  display: grid;
+  gap: var(--space-2xs);
+  justify-items: start;
+  margin-block-end: var(--space-m);
+  padding: var(--space-m);
+  background: color-mix(in srgb, var(--highlight) 18%, var(--surface));
+  rotate: -0.6deg;
+}
+
+.kicker {
+  rotate: -3deg;
+  margin-block-start: calc(var(--space-m) * -1 - 0.9rem);
+}
+
+.title {
+  font-size: var(--step-2);
+  line-height: 1.1;
+}
+
+.body {
+  max-inline-size: 52ch;
+  color: var(--ink-soft);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2xs);
+  margin-block-start: var(--space-2xs);
+}
+
+.nudge {
+  margin-block-end: var(--space-s);
+  padding: var(--space-2xs) var(--space-s);
+  border: var(--panel-border-thin) dashed var(--line);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--highlight) 30%, var(--surface));
+  font-weight: 600;
+  inline-size: fit-content;
+  max-inline-size: 100%;
+}

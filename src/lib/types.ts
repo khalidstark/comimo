@@ -96,6 +96,12 @@ export interface Character {
   referenceSheets?: Partial<Record<ArtStyleId, ReferenceSheet>>;
   /** Animated sprite sheet (idle, blink, talk, wave); null until drawn. */
   spriteSheet: SpriteSheet | null;
+  /**
+   * What the user told Comimo about themselves in "About you" (self only):
+   * the raw choices, kept so they can be shown and edited as chips. The
+   * `personality` above is written from them.
+   */
+  about?: AboutYou;
   /** True for the invented starter cast that ships with the app. */
   starter: boolean;
   createdAt: string;
@@ -123,8 +129,27 @@ export interface ReferenceFile {
   sheet: string;
 }
 
+/** How the script refers to the user in scene descriptions (narration stays first person). */
+export const PRONOUNS = ["he", "she", "they"] as const;
+export type Pronouns = (typeof PRONOUNS)[number];
+
+/** The user's answers in "About you" (src/lib/aboutYou.ts has the choices and limits). */
+export interface AboutYou {
+  /** Picked interest ids, e.g. "football" (see INTERESTS). */
+  interests: string[];
+  /** Up to 3 interests typed in by the user. */
+  ownInterests: string[];
+  /** How they are with people, by id, e.g. "sarcastic" (see MANNERS). */
+  manner: string[];
+  pronouns?: Pronouns;
+  answeredAt: string;
+}
+
 /** The part of a character the script model needs. */
-export type CastBrief = Pick<Character, "id" | "name" | "role" | "look" | "personality" | "aliases">;
+export type CastBrief = Pick<Character, "id" | "name" | "role" | "look" | "personality" | "aliases"> & {
+  /** The user's About-you answers (self only), so their lines sound like them. */
+  about?: Pick<AboutYou, "interests" | "ownInterests" | "manner" | "pronouns">;
+};
 
 /* ------------------------------------------------------------------ */
 /* Days and panels                                                     */
