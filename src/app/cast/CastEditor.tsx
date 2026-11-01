@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useId, useRef, useState, type CSSProperties, type FormEvent } from "react";
 import { Art } from "@/art/Art";
 import { Icon } from "@/art/Icon";
@@ -8,6 +9,7 @@ import { BidiText } from "@/components/comic/BidiText";
 import { Sprite } from "@/components/Sprite";
 import { useTalkWhenShown } from "@/components/useTalkWhenShown";
 import { PhotoLook } from "@/components/PhotoLook";
+import { hasOwnFace, interestLabels, mannerChoices } from "@/lib/aboutYou";
 import { ART_STYLE_IDS, ART_STYLES, DEFAULT_ART_STYLE, type ArtStyleId } from "@/lib/artStyles";
 import { firstStrongDir } from "@/lib/bidi";
 import {
@@ -313,6 +315,7 @@ function CastCard({ member, tilt, status, onAnimate, confirming, onEdit, onAskRe
             ))}
           </p>
         ) : null}
+        {member.role === "self" ? <AboutYouNote member={member} /> : null}
         {member.line ? (
           <p ref={bubbleRef} className={`bubble ${styles.line}`} dir={firstStrongDir(member.line) ?? "auto"}>
             <BidiText text={member.line} />
@@ -360,6 +363,38 @@ function CastCard({ member, tilt, status, onAnimate, confirming, onEdit, onAskRe
         )}
       </div>
     </li>
+  );
+}
+
+/* ---------- You ---------- */
+
+/** On the user's own card: their About-you chips, a nudge while they have a stand-in look, and the way back into the steps. */
+function AboutYouNote({ member }: { member: Character }) {
+  const about = member.about;
+  const chips = about ? [...mannerChoices(about).map((m) => m.label), ...interestLabels(about)] : [];
+  const standIn = !hasOwnFace(member);
+  return (
+    <div className={styles.about}>
+      {chips.length > 0 ? (
+        <ul className={styles.aboutChips} aria-label="About you">
+          {chips.map((chip) => (
+            <li key={chip} className="chip">
+              <bdi>{chip}</bdi>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+      {standIn ? (
+        <p className={styles.nudge}>
+          {member.starter
+            ? "Your comics still use a stand-in look. Add a photo and Comimo draws you instead."
+            : "You aren't drawn from a photo yet. Add one and Comimo draws you from it."}
+        </p>
+      ) : null}
+      <Link href="/welcome?next=/cast" className={standIn ? "btn btn--accent" : styles.aboutLink}>
+        {standIn ? "Add my photo" : about ? "Edit about you" : "Tell Comimo about you"}
+      </Link>
+    </div>
   );
 }
 

@@ -355,3 +355,39 @@
   object-fit: cover;
   object-position: 22% 50%;
 }
+
+/* The user's own card: About-you chips and the way back into the steps */
+.about {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-2xs);
+}
+
+.aboutChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3xs);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.nudge {
+  padding: var(--space-2xs) var(--space-xs);
+  border: var(--panel-border-thin) dashed var(--line);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--highlight) 35%, var(--surface));
+  font-size: var(--step--1);
+  font-weight: 600;
+}
+
+.aboutLink {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: 2.75rem;
+  color: var(--accent-text);
+  font-family: var(--font-display-stack);
+  font-weight: 700;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 0.2em;
+}
