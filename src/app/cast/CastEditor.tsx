@@ -315,12 +315,13 @@ function CastCard({ member, tilt, status, onAnimate, confirming, onEdit, onAskRe
             ))}
           </p>
         ) : null}
-        {member.role === "self" ? <AboutYouNote member={member} /> : null}
         {member.line ? (
           <p ref={bubbleRef} className={`bubble ${styles.line}`} dir={firstStrongDir(member.line) ?? "auto"}>
             <BidiText text={member.line} />
           </p>
         ) : null}
+
+        {member.role === "self" ? <AboutYouNote member={member} /> : null}
 
         <ReferenceSheets member={member} onDrawn={onSheetDrawn} />
 
@@ -371,7 +372,7 @@ function CastCard({ member, tilt, status, onAnimate, confirming, onEdit, onAskRe
 /** On the user's own card: their About-you chips, a nudge while they have a stand-in look, and the way back into the steps. */
 function AboutYouNote({ member }: { member: Character }) {
   const about = member.about;
-  const chips = about ? [...mannerChoices(about).map((m) => m.label), ...interestLabels(about)] : [];
+  const chips = about ? [...mannerChoices(about).map((m) => m.label), ...interestLabels(about, true)] : [];
   const standIn = !hasOwnFace(member);
   return (
     <div className={styles.about}>
