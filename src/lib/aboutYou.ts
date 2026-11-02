@@ -216,6 +216,9 @@ export function applyAboutYou(self: Character, answers: AboutAnswers): Character
     next.spriteSheet = null;
     next.portrait = { kind: "art", path: "empty.cast" };
     next.starter = false;
+    // Outfits were drawn from the old face: the new photo's clothes are their clothes now.
+    delete next.outfits;
+    delete next.outfitId;
   }
   if (answers.about) {
     next.about = answers.about;

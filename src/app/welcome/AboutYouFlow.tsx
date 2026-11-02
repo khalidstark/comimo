@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { Art } from "@/art/Art";
@@ -16,7 +17,8 @@ import {
   type DrawnFace,
 } from "@/lib/aboutYou";
 import { ART_STYLE_IDS, ART_STYLES, DEFAULT_ART_STYLE, artStyleOf, type ArtStyleId } from "@/lib/artStyles";
-import { ABOUT_ASKED_KEY, SheetError, draftFrom, drawSheet, loadSelf, referenceSheetFor, saveSelf, validateDraft } from "@/lib/cast";
+import { ABOUT_ASKED_KEY, SheetError, draftFrom, drawSheet, loadSelf, referenceSheetFor, saveSelf, updateStoredCharacter, validateDraft } from "@/lib/cast";
+import { withCharacterCost } from "@/lib/wardrobe";
 import { namesOf, normalizeName, parseAliases } from "@/lib/names";
 import { PhotoError, describePhoto, preparePhoto } from "@/lib/photo";
 import { deleteCharacter, getImage, setMeta } from "@/lib/store";
@@ -253,9 +255,10 @@ export function AboutYouFlow() {
           role: "self",
           look,
         };
-        const { sheet, photoRefused } = await drawSheet(subject, style, crop, signal);
+        const { sheet, photoRefused, cost } = await drawSheet(subject, style, crop, signal);
         const face: DrawnFace = { look, style, sheet };
-        const saved = await saveSelf({ ...who, face });
+        const you = await saveSelf({ ...who, face });
+        const saved = you && cost ? ((await updateStoredCharacter(you, (current) => withCharacterCost(current, cost))) ?? you) : you;
         if (!saved) throw new SheetError("Couldn't keep your drawing on this device. Private windows can block storage.");
         setLoaded((current) => (current ? { ...current, self: saved } : current));
         // Same image id as before when redrawn: show the new one.
@@ -391,6 +394,7 @@ export function AboutYouFlow() {
         }}
         drawing={drawing}
         hasFace={ownFace}
+        selfId={loaded?.self?.id ?? null}
         onPick={(file) => void pickPhoto(file)}
         onNeedConsent={() =>
           setDrawing({
@@ -688,11 +692,13 @@ interface PhotoStepProps {
   onConsent: (value: boolean) => void;
   drawing: Drawing;
   hasFace: boolean;
+  /** The self character, once saved: "Change clothes" opens their wardrobe. */
+  selfId: string | null;
   onPick: (file: File | undefined) => void;
   onNeedConsent: () => void;
 }
 
-function PhotoStep({ id, style, onStyle, consent, onConsent, drawing, hasFace, onPick, onNeedConsent }: PhotoStepProps) {
+function PhotoStep({ id, style, onStyle, consent, onConsent, drawing, hasFace, selfId, onPick, onNeedConsent }: PhotoStepProps) {
   const busy = drawing.phase === "finding" || drawing.phase === "drawing";
 
   function onChange(event: React.ChangeEvent<HTMLInputElement>) {
@@ -774,6 +780,15 @@ function PhotoStep({ id, style, onStyle, consent, onConsent, drawing, hasFace, o
       {drawing.phase === "error" ? (
         <p className={styles.error} role="alert">
           {drawing.message}
+        </p>
+      ) : null}
+      {(drawing.phase === "done" || (drawing.phase === "idle" && hasFace)) && selfId ? (
+        <p className={styles.hint}>
+          Wearing something else today?{" "}
+          <Link className="link" href={`/cast?wardrobe=${encodeURIComponent(selfId)}`}>
+            Change clothes
+          </Link>{" "}
+          any time from your cast card, with a photo or a few words.
         </p>
       ) : null}
     </div>

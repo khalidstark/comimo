@@ -118,6 +118,17 @@ export const COST_HEADER = "X-Comimo-Cost";
 /** The request header naming the comic (day id) a model call is for, so the server ledger can file it. */
 export const DAY_HEADER = "X-Comimo-Day";
 
+/** The cost a metered route answered with (X-Comimo-Cost), or null without one. */
+export function costFromResponse(response: Response): CostRecord | null {
+  const header = response.headers.get(COST_HEADER);
+  if (!header) return null;
+  try {
+    return parseCost(JSON.parse(header));
+  } catch {
+    return null;
+  }
+}
+
 /**
  * "about $0.07" for people: whole cents from a cent up, "less than a cent"
  * below, "nothing" for zero.
