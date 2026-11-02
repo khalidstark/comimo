@@ -5,6 +5,7 @@ import { Icon } from "@/art/Icon";
 import { RecordStamp } from "@/components/RecordStamp";
 import { ART_STYLE_IDS, ART_STYLES, DEFAULT_ART_STYLE, artStyleOf, type ArtStyleId } from "@/lib/artStyles";
 import { DEFAULT_STORY_MODE, STORY_MODES, isStoryMode, type LanguageHint, type StoryMode } from "@/lib/types";
+import { DayPhotos } from "./DayPhotos";
 import { MakingComic } from "./MakingComic";
 import styles from "./record.module.css";
 import { MAX_RECORDING_MS, useRecorder, type Recorder, type RecorderProblem } from "./useRecorder";
@@ -127,12 +128,15 @@ export function RecordPanel() {
   const [storyMode, setStoryMode] = useState<StoryMode>(storedMode);
   const [typing, setTyping] = useState(false);
   const [typed, setTyped] = useState("");
+  /** Photos of the day, kept in memory until the comic is made (today's outfit, then the album). */
+  const [photos, setPhotos] = useState<File[]>([]);
   const [making, setMaking] = useState<{
     audio: Blob | null;
     text?: string;
     language: LanguageHint;
     style: ArtStyleId;
     storyMode: StoryMode;
+    photos: File[];
   } | null>(null);
   const legendId = useId();
   const styleLegendId = useId();
@@ -205,6 +209,7 @@ export function RecordPanel() {
           ))}
         </div>
       </fieldset>
+      <DayPhotos photos={photos} onChange={setPhotos} />
     </>
   );
 
@@ -237,7 +242,7 @@ export function RecordPanel() {
               type="button"
               className={`btn btn--accent ${styles.make}`}
               disabled={!typedReady}
-              onClick={() => setMaking({ audio: null, text: typedText, language, style, storyMode })}
+              onClick={() => setMaking({ audio: null, text: typedText, language, style, storyMode, photos })}
             >
               Make my comic
             </button>
@@ -253,6 +258,7 @@ export function RecordPanel() {
             language={making.language}
             style={making.style}
             storyMode={making.storyMode}
+            photos={making.photos}
             onClose={() => setMaking(null)}
           />
         ) : null}
@@ -296,7 +302,7 @@ export function RecordPanel() {
             <button
               type="button"
               className={`btn btn--accent ${styles.make}`}
-              onClick={() => setMaking({ audio: take.blob, language, style, storyMode })}
+              onClick={() => setMaking({ audio: take.blob, language, style, storyMode, photos })}
             >
               Make my comic
             </button>
@@ -371,6 +377,7 @@ export function RecordPanel() {
           language={making.language}
           style={making.style}
           storyMode={making.storyMode}
+          photos={making.photos}
           onClose={() => setMaking(null)}
         />
       ) : null}

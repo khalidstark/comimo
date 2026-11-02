@@ -10,6 +10,7 @@ import { pageView, type SlotView } from "@/components/comic/pageView";
 import { NewFacesStep } from "@/components/NewFacesStep";
 import { SlotOutline } from "@/components/comic/SlotOutline";
 import pageStyles from "@/components/comic/page.module.css";
+import { aboutUsd } from "@/lib/costs";
 import { formatDay, moodWords } from "@/lib/format";
 import { splitPages } from "@/lib/layout/comicPages";
 import {
@@ -39,6 +40,7 @@ const SKETCH_STORY = Array.from({ length: SKETCH_FRAMES }, (_, index) => ({
 
 const STEP_LABELS: Record<PipelineStep, string> = {
   listen: "Listening",
+  dress: "Finding your outfit",
   write: "Writing the script",
   meet: "New faces",
   draw: "Drawing the panels",
@@ -83,6 +85,8 @@ function stepDetail(step: PipelineStep, status: StepStatus, state: PipelineState
       const pages = state.pages?.length ?? 1;
       return pages > 1 ? `${pages} pages, ${total} panels` : `${total} panels`;
     }
+    case "dress":
+      return dressDetail(state);
     case "meet":
       return meetDetail(state);
     case "draw":
@@ -92,6 +96,15 @@ function stepDetail(step: PipelineStep, status: StepStatus, state: PipelineState
     case "save":
       return status === "done" ? "Saved" : "";
   }
+}
+
+/** "You, from photo 2" style: who today's photos dressed. */
+function dressDetail(state: PipelineState): string {
+  const dressed = state.dressed;
+  if (!dressed) return "Reading your photos";
+  if (dressed.note) return dressed.note;
+  if (dressed.names.length > 0) return `Dressed ${dressed.names.join(", ")}`;
+  return dressed.people > 0 ? "No one from your cast in them" : "No people in the photos";
 }
 
 /** "2 to meet", then "Omar joined · 1 one-off". */
@@ -142,6 +155,7 @@ function captionFor(state: PipelineState, fixing: PanelProgress | undefined): st
     return `${what.charAt(0).toUpperCase()}${what.slice(1)} of ${onPage.length}…`;
   }
   if (steps.write === "active") return "Writing the script…";
+  if (steps.dress === "active" && steps.listen === "done") return "Finding your outfit in today's photos…";
   return "Listening to your day…";
 }
 
@@ -153,6 +167,8 @@ interface MakingComicProps {
   language: LanguageHint;
   style: ArtStyleId;
   storyMode: StoryMode;
+  /** Photos of the day, for today's outfit and the album. */
+  photos?: File[];
   /** Called after the screen is cancelled and closed. */
   onClose: () => void;
 }
@@ -162,8 +178,8 @@ interface MakingComicProps {
  * finishes. Panels are pencilled from the script, inked when drawn, and a
  * panel whose face was fixed flips from before to after.
  */
-export function MakingComic({ audio, text, language, style, storyMode, onClose }: MakingComicProps) {
-  const [pipeline] = useState(() => new ComicPipeline({ audio, text, language, style, storyMode }));
+export function MakingComic({ audio, text, language, style, storyMode, photos, onClose }: MakingComicProps) {
+  const [pipeline] = useState(() => new ComicPipeline({ audio, text, language, style, storyMode, ...(photos?.length ? { photos } : {}) }));
   const state = useSyncExternalStore(pipeline.subscribe, pipeline.getSnapshot, pipeline.getSnapshot);
   const [settled, setSettled] = useState<ReadonlySet<number>>(() => new Set());
   const dialogRef = useRef<HTMLDialogElement>(null);
@@ -181,7 +197,12 @@ export function MakingComic({ audio, text, language, style, storyMode, onClose }
   );
   const finished = status === "done" && state.dayId !== null && !fixing;
   // "New faces" is a step only on comics that met someone new.
-  const steps = PIPELINE_STEPS.filter((step) => step !== "meet" || state.meeting !== null || state.faces !== null || state.steps.meet === "active");
+  // "Finding your outfit" only when photos came with the day.
+  const steps = PIPELINE_STEPS.filter(
+    (step) =>
+      (step !== "meet" || state.meeting !== null || state.faces !== null || state.steps.meet === "active") &&
+      (step !== "dress" || Boolean(photos?.length)),
+  );
   const failedStep = state.error?.step;
 
   // Coming back to /record after the comic opened: the run is over, so drop the screen.
@@ -397,6 +418,17 @@ export function MakingComic({ audio, text, language, style, storyMode, onClose }
                 );
               })}
             </ol>
+
+            {state.cost.usd > 0 ? (
+              <p className={styles.cost}>
+                {status === "done" ? "This comic cost" : "Model calls so far:"} {aboutUsd(state.cost.usd)}
+              </p>
+            ) : null}
+            {state.album && state.album.added > 0 ? (
+              <p className={styles.cost}>
+                {state.album.added === 1 ? "Your photo is" : `${state.album.added} photos are`} in this day&apos;s album.
+              </p>
+            ) : null}
 
             {finished ? (
               <Link href={`/day/${state.dayId}`} className="btn btn--accent" transitionTypes={PAGE_TURN}>

@@ -1,7 +1,12 @@
 import { artAt } from "@/art/manifest";
 import type { ArtStyleId } from "./artStyles";
 import { AudioConvertError, toWav } from "./audio/toWav";
-import { animateCharacter, drawReferenceSheet, loadCast, referenceFileTokenFor, referenceSheetFor, withReferenceFile } from "./cast";
+import { animateCharacter, drawSheetForComic, loadCast, referenceFileTokenFor, referenceSheetFor, updateStoredCharacter, wornFileTokenFor, wornSheetFor, withWornFile } from "./cast";
+import { albumApi, preparePhoto as prepareAlbumPhoto, rememberAlbum } from "./albumClient";
+import { DAY_HEADER, addCosts, costFromResponse, emptyCost, type ComicCost, type CostRecord } from "./costs";
+import { MODEL_IDS } from "./models/meta/pricing";
+import { preparePhoto } from "./photo";
+import { drawOutfitInStyle, lookFor, wearingFor, withCharacterCost, withOutfitSheet } from "./wardrobe";
 import { layoutPages, localPanels, pageLayoutChain } from "./layout/comicPages";
 import { panelFrames } from "./layout/frames";
 import { detectLanguages } from "./languages";
@@ -16,6 +21,7 @@ import type {
   ComicPage,
   ComicScript,
   Day,
+  DayOutfit,
   ImageRef,
   LanguageHint,
   NewPerson,
@@ -27,6 +33,8 @@ import type {
   ScriptRequest,
   ScriptResponse,
   StoryMode,
+  TodayOutfitRequest,
+  TodayOutfitResponse,
   TranscribeResponse,
   Transcript,
   UnitBox,
@@ -44,7 +52,7 @@ import type {
  * (useSyncExternalStore).
  */
 
-export const PIPELINE_STEPS = ["listen", "write", "meet", "draw", "check", "save"] as const;
+export const PIPELINE_STEPS = ["listen", "dress", "write", "meet", "draw", "check", "save"] as const;
 export type PipelineStep = (typeof PIPELINE_STEPS)[number];
 export type StepStatus = "waiting" | "active" | "done" | "skipped" | "error";
 
@@ -93,6 +101,15 @@ export interface PipelineState {
   meeting: NewPerson[] | null;
   /** Once settled: who joined the cast and who is a one-off in this story. */
   faces: { joined: string[]; oneOffs: string[] } | null;
+  /**
+   * Today's outfits (03.2-04), once the attached photos were read: who was
+   * dressed from them (by name) and how many people were in the photos.
+   */
+  dressed: { names: string[]; people: number; note?: string } | null;
+  /** What the comic has cost so far (every model request, retries included). */
+  cost: CostRecord;
+  /** The day's photos once they are in its album (or why not). */
+  album: { added: number; failed: number } | null;
 }
 
 export interface PipelineInput {
@@ -105,8 +122,17 @@ export interface PipelineInput {
   storyMode: StoryMode;
   /** The comic's art style; panels use each character's sheet in this style. */
   style: ArtStyleId;
+  /**
+   * Photos from the day (at most 6), attached before making the comic: the
+   * narrator and their cast are dressed as in them, then they go into the
+   * day's photo album. Kept in memory only.
+   */
+  photos?: File[];
 }
 
+/** Photos of the day read for today's outfit, and the size they are sent at. */
+export const MAX_DAY_PHOTOS = 6;
+const DAY_PHOTO_SIDE = 1024;
 /** Panels drawn at the same time (across all pages). */
 const PANEL_CONCURRENCY = 2;
 /** A typed day is cut to what /api/script accepts. */
@@ -139,7 +165,7 @@ export function localIsoDate(date = new Date()): string {
 
 /* ---------- Requests ---------- */
 
-async function request<T>(step: PipelineStep, url: string, init: RequestInit): Promise<T> {
+async function request<T>(step: PipelineStep, url: string, init: RequestInit, onAnswer?: (response: Response) => void): Promise<T> {
   let response: Response;
   try {
     response = await fetch(url, init);
@@ -147,6 +173,8 @@ async function request<T>(step: PipelineStep, url: string, init: RequestInit): P
     if (isAbort(error)) throw error;
     throw new StepError(step, "Couldn't reach Comimo. Check your connection and try again.");
   }
+  // Failed answers can have cost something too (a panel that drew but failed its check).
+  onAnswer?.(response);
   let body: unknown = null;
   try {
     body = await response.json();
@@ -193,8 +221,10 @@ async function previousTemplate(): Promise<string | null> {
 
 /* ---------- Cast ---------- */
 
-function toBrief({ id, name, aliases, role, look, personality, about }: Character): CastBrief {
-  const brief: CastBrief = { id, name, role, look, personality, ...(aliases?.length ? { aliases } : {}) };
+/** What the script model gets: their look in today's clothes (the day's photos, else the outfit they wear). */
+function toBrief(character: Character, dayOutfits: DayOutfit[]): CastBrief {
+  const { id, name, aliases, role, personality, about } = character;
+  const brief: CastBrief = { id, name, role, look: lookFor(character, dayOutfits), personality, ...(aliases?.length ? { aliases } : {}) };
   if (role === "self" && about) {
     const { interests, ownInterests, manner, pronouns } = about;
     brief.about = { interests, ownInterests, manner, ...(pronouns ? { pronouns } : {}) };
@@ -226,7 +256,7 @@ function firstAppearances(script: ComicScript): Map<string, number> {
 function initialState(): PipelineState {
   return {
     status: "idle",
-    steps: { listen: "waiting", write: "waiting", meet: "waiting", draw: "waiting", check: "waiting", save: "waiting" },
+    steps: { listen: "waiting", dress: "waiting", write: "waiting", meet: "waiting", draw: "waiting", check: "waiting", save: "waiting" },
     error: null,
     transcript: null,
     script: null,
@@ -236,6 +266,9 @@ function initialState(): PipelineState {
     dayId: null,
     meeting: null,
     faces: null,
+    dressed: null,
+    cost: emptyCost(),
+    album: null,
   };
 }
 
@@ -272,6 +305,12 @@ export class ComicPipeline {
   private readonly appearances = new Map<string, Appearance>();
   /** Settles when a one-off's first panel is done (or failed), so later panels can wait for it. */
   private readonly appeared = new Map<string, Promise<void>>();
+  /** What people wear today, from the attached photos (03.2-04); their panels use these sheets. */
+  private dayOutfits: DayOutfit[] = [];
+  /** Today's outfits being worked out, alongside listening (never fails the run). */
+  private dressing: Promise<void> | null = null;
+  /** False once any answer came from the real models. */
+  private allMock = true;
 
   constructor(private readonly input: PipelineInput) {
     this.typed = !input.audio && Boolean(input.text?.trim());
@@ -295,6 +334,21 @@ export class ComicPipeline {
 
   private setPanel(index: number, patch: Partial<PanelProgress>) {
     this.set({ panels: this.state.panels.map((panel) => (panel.index === index ? { ...panel, ...patch } : panel)) });
+  }
+
+  /** Add a request's cost (from its X-Comimo-Cost header, or given) to the comic's. */
+  private addCost(cost: CostRecord | null) {
+    if (cost && (cost.usd > 0 || Object.keys(cost.calls).length > 0)) this.set({ cost: addCosts(this.state.cost, cost) });
+  }
+
+  /** Every model request of this comic: filed under its day on the server, its cost added here. */
+  private call<T>(step: PipelineStep, url: string, init: RequestInit): Promise<T> {
+    const headers = new Headers(init.headers);
+    headers.set(DAY_HEADER, this.dayId);
+    return request<T>(step, url, { ...init, headers }, (response) => {
+      if (response.headers.get("X-Comimo-Mode") === "meta") this.allMock = false;
+      this.addCost(costFromResponse(response));
+    });
   }
 
   private characterName(id: string): string {
@@ -329,9 +383,23 @@ export class ComicPipeline {
     for (const key of PIPELINE_STEPS) if (steps[key] === "error" || steps[key] === "active") steps[key] = "waiting";
     this.set({ status: "running", error: null, steps });
 
+    // Today's outfit is worked out from the photos while the note is heard; the script waits for it.
+    if (!this.input.photos?.length) {
+      if (this.state.steps.dress === "waiting") this.setStep("dress", "skipped");
+    } else if (!this.dressing) {
+      const dressing = this.dress(signal);
+      this.dressing = dressing;
+      dressing.catch(() => {
+        if (this.dressing === dressing) this.dressing = null;
+      });
+    }
+
     try {
       step = "listen";
       const transcript = this.state.transcript ?? (await this.transcribe(signal));
+
+      step = "dress";
+      if (this.dressing) await this.dressing;
 
       step = "write";
       const written = this.state.script ?? (await this.writeScript(transcript, signal));
@@ -426,7 +494,7 @@ export class ComicPipeline {
     // Names first, then the other names they go by, within the transcriber's 20.
     const names = [...this.cast.map((member) => member.name), ...this.cast.flatMap((member) => member.aliases ?? [])];
     form.append("keywords", JSON.stringify([...new Set(names)].slice(0, 20)));
-    const { transcript } = await request<TranscribeResponse>("listen", "/api/transcribe", {
+    const { transcript } = await this.call<TranscribeResponse>("listen", "/api/transcribe", {
       method: "POST",
       body: form,
       signal,
@@ -435,17 +503,121 @@ export class ComicPipeline {
     return transcript;
   }
 
+  /**
+   * Today's outfit (03.2-04): the attached photos (shrunk to 1024 px here)
+   * go to /api/outfit/today with the narrator's and a few cast members'
+   * usual sheets; whoever it recognises gets a sheet in today's clothes,
+   * kept with this day. Anything that goes wrong is skipped quietly: the
+   * comic is drawn in the clothes they'd wear anyway.
+   */
+  private async dress(signal: AbortSignal): Promise<void> {
+    const photos = (this.input.photos ?? []).slice(0, MAX_DAY_PHOTOS);
+    const { dress } = this.state.steps;
+    if (photos.length === 0 || dress === "done" || dress === "skipped") return;
+    this.setStep("dress", "active");
+    try {
+      this.cast ??= await loadCast();
+      const people = this.dressCandidates();
+      if (people.length === 0) {
+        this.set({ dressed: { names: [], people: 0, note: "No one in your cast to dress" }, steps: { ...this.state.steps, dress: "skipped" } });
+        return;
+      }
+      // A photo this browser can't open (HEIC outside Safari) is left out; the rest still count.
+      const prepared = await Promise.all(
+        photos.map(async (file, index) => {
+          try {
+            return { index, wire: await blobToWire(await preparePhoto(file, DAY_PHOTO_SIDE)) };
+          } catch {
+            return null;
+          }
+        }),
+      );
+      const usable = prepared.flatMap((photo) => photo ?? []);
+      if (usable.length === 0) {
+        this.set({ dressed: { names: [], people: 0, note: "This browser couldn't open the photos" }, steps: { ...this.state.steps, dress: "skipped" } });
+        return;
+      }
+      const wires = usable.map((photo) => photo.wire);
+      const send = async (inline: boolean) => {
+        const body: TodayOutfitRequest = {
+          photos: wires,
+          references: await Promise.all(people.map((member) => this.usualReference(member, signal, inline))),
+          style: this.input.style,
+        };
+        return this.call<TodayOutfitResponse>("dress", "/api/outfit/today", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+          signal,
+        });
+      };
+      let result: TodayOutfitResponse;
+      try {
+        result = await send(false);
+      } catch (error) {
+        if (!(error instanceof StepError && error.code === "stale-reference")) throw error;
+        result = await send(true);
+      }
+      const outfits: DayOutfit[] = [];
+      for (const found of result.outfits) {
+        const imageId = `${this.dayId}-outfit-${found.characterId}-${this.input.style}`;
+        if (!(await putImage(imageId, wireToBlob(found.image)))) continue;
+        const sheet: DayOutfit["sheets"][ArtStyleId] = { image: { kind: "blob", id: imageId } };
+        if (found.sheetToken) sheet.sheetToken = found.sheetToken;
+        if (found.fileToken) sheet.file = { token: found.fileToken, sheet: `blob:${imageId}` };
+        outfits.push({ characterId: found.characterId, label: found.label, clothes: found.clothes, look: found.look, sheets: { [this.input.style]: sheet }, photo: usable[found.photo]?.index ?? found.photo });
+      }
+      this.dayOutfits = outfits;
+      this.references.clear();
+      this.set({
+        dressed: { names: outfits.map((outfit) => this.characterName(outfit.characterId)), people: result.people },
+        steps: { ...this.state.steps, dress: "done" },
+      });
+    } catch (error) {
+      if (signal.aborted || isAbort(error)) {
+        if (this.state.steps.dress === "active") this.setStep("dress", "waiting");
+        throw error;
+      }
+      if (!(error instanceof StepError)) console.error("Comimo: today's outfit failed", error);
+      const note = error instanceof StepError ? "Couldn't read the photos this time" : "Skipped";
+      this.set({ dressed: { names: [], people: 0, note }, steps: { ...this.state.steps, dress: "skipped" } });
+    }
+  }
+
+  /** Who today's photos are checked for: the narrator first, then up to three cast members drawn in this style (people, not pets). */
+  private dressCandidates(): Character[] {
+    const style = this.input.style;
+    const drawn = (this.cast ?? []).filter((member) => member.role !== "pet" && referenceSheetFor(member, style));
+    const self = drawn.filter((member) => member.role === "self").slice(0, 1);
+    const others = drawn
+      .filter((member) => member.role !== "self")
+      .sort((a, b) => (b.updatedAt ?? b.createdAt).localeCompare(a.updatedAt ?? a.createdAt))
+      .slice(0, 3);
+    return [...self, ...others];
+  }
+
+  /** A character with their usual sheet (today's clothes are an edit of it): its uploaded token, else the image. */
+  private async usualReference(member: Character, signal: AbortSignal, inline: boolean): Promise<WireReference> {
+    const style = this.input.style;
+    const sheet = referenceSheetFor(member, style);
+    const base: WireReference = { characterId: member.id, name: member.name, look: member.look, role: member.role };
+    const token = inline ? undefined : referenceFileTokenFor(member, style);
+    if (token) return { ...base, fileToken: token };
+    const image = await loadReference(sheet?.image ?? null, signal);
+    return { ...base, ...(image ? { image, ...(sheet?.sheetToken ? { sheetToken: sheet.sheetToken } : {}) } : {}) };
+  }
+
   private async writeScript(transcript: Transcript, signal: AbortSignal): Promise<ComicScript> {
     this.setStep("write", "active");
     this.cast ??= await loadCast();
     // An emptied cast is left out, so the server falls back to the starter cast instead of refusing the request.
-    const cast = this.cast.slice(0, 20).map(toBrief);
+    const cast = this.cast.slice(0, 20).map((member) => toBrief(member, this.dayOutfits));
     const body: ScriptRequest = {
       transcript: transcript.text,
       ...(cast.length > 0 ? { cast } : {}),
       storyMode: this.input.storyMode,
     };
-    const { script } = await request<ScriptResponse>("write", "/api/script", {
+    const { script } = await this.call<ScriptResponse>("write", "/api/script", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
@@ -541,7 +713,8 @@ export class ComicPipeline {
     let pending = this.references.get(characterId);
     if (!pending) {
       const character = this.cast?.find((member) => member.id === characterId);
-      pending = loadReference(character ? (referenceSheetFor(character, this.input.style)?.image ?? null) : null, signal);
+      // The sheet in today's clothes: the day's photos, else the outfit they wear, else their usual sheet.
+      pending = loadReference(character ? (wornSheetFor(character, this.input.style, this.dayOutfits).sheet?.image ?? null) : null, signal);
       this.references.set(characterId, pending);
       // Don't cache a failure caused by cancelling.
       pending.catch(() => this.references.delete(characterId));
@@ -560,8 +733,17 @@ export class ComicPipeline {
     }
     const character = this.cast?.find((member) => member.id === characterId);
     const { style } = this.input;
-    if (!character || (token ?? undefined) === referenceFileTokenFor(character, style)) return;
-    const updated = withReferenceFile(character, style, token);
+    if (!character || (token ?? undefined) === wornFileTokenFor(character, style, this.dayOutfits)) return;
+    const wear = wearingFor(character, this.dayOutfits);
+    if (wear.kind === "day" && wear.outfit.sheets[style]) {
+      // A day outfit's sheet lives on the day: keep its token here, saved with the day.
+      const sheet = { ...wear.outfit.sheets[style]! };
+      if (token) sheet.file = { token, sheet: `blob:${sheet.image.kind === "blob" ? sheet.image.id : ""}` };
+      else delete sheet.file;
+      this.dayOutfits = this.dayOutfits.map((o) => (o.characterId === characterId ? { ...o, sheets: { ...o.sheets, [style]: sheet } } : o));
+      return;
+    }
+    const updated = withWornFile(character, style, token, this.dayOutfits);
     this.cast = this.cast!.map((member) => (member.id === characterId ? updated : member));
     // Best effort: without it the next comic just uploads the sheet again.
     await saveCharacter(updated);
@@ -578,15 +760,16 @@ export class ComicPipeline {
       }
       const character = this.cast?.find((member) => member.id === id);
       if (!character) continue;
-      const base = { characterId: id, name: character.name, look: character.look, role: character.role };
-      const token = inline ? undefined : referenceFileTokenFor(character, this.input.style);
+      // Their look and sheet in today's clothes (03.2-04), so the panel and the face check agree on them.
+      const base = { characterId: id, name: character.name, look: lookFor(character, this.dayOutfits), role: character.role };
+      const token = inline ? undefined : wornFileTokenFor(character, this.input.style, this.dayOutfits);
       if (token) {
         references.push({ ...base, fileToken: token });
         continue;
       }
       const image = await this.referenceFor(id, signal);
       // Drawn sheets carry the server's signature; shipped starter sheets are recognised by the server.
-      const sheetToken = referenceSheetFor(character, this.input.style)?.sheetToken;
+      const sheetToken = wornSheetFor(character, this.input.style, this.dayOutfits).sheet?.sheetToken;
       references.push({ ...base, ...(image ? { image, ...(sheetToken ? { sheetToken } : {}) } : {}) });
     }
     return references;
@@ -635,10 +818,41 @@ export class ComicPipeline {
     await Promise.all(
       missing.map(async (member) => {
         try {
-          const drawn = await drawReferenceSheet(member, this.input.style, signal);
+          const { character: drawn, cost } = await drawSheetForComic(member, this.input.style, this.dayId, signal);
+          this.addCost(cost);
           this.cast = (this.cast ?? []).map((m) => (m.id === drawn.id ? drawn : m));
           this.references.delete(drawn.id);
           void animateCharacter(drawn);
+        } catch (error) {
+          if (signal.aborted || isAbort(error)) throw error;
+        }
+      }),
+    );
+    await this.ensureOutfitSheets(ids, signal);
+  }
+
+  /**
+   * Wardrobe (03.2-04): someone wearing an outfit that isn't drawn in this
+   * comic's style yet gets it drawn now, from their usual sheet in the style
+   * (one image), and kept on the outfit. If it fails, they are drawn in their
+   * usual clothes.
+   */
+  private async ensureOutfitSheets(ids: Set<string>, signal: AbortSignal) {
+    const { style } = this.input;
+    const needing = (this.cast ?? []).flatMap((member) => {
+      if (!ids.has(member.id)) return [];
+      const worn = wornSheetFor(member, style, this.dayOutfits);
+      return worn.wearing.kind === "outfit" && worn.missing && worn.base ? [{ member, outfit: worn.wearing.outfit, base: worn.base }] : [];
+    });
+    await Promise.all(
+      needing.map(async ({ member, outfit, base }) => {
+        try {
+          const { sheet, cost } = await drawOutfitInStyle(member, outfit, base, style, `${member.id}-outfit-${outfit.id}-${style}`, signal, this.dayId);
+          this.addCost(cost);
+          const saved = await updateStoredCharacter(member, (current) => withCharacterCost(withOutfitSheet(current, outfit.id, style, sheet), cost));
+          const next = saved ?? withOutfitSheet(member, outfit.id, style, sheet);
+          this.cast = (this.cast ?? []).map((m) => (m.id === next.id ? next : m));
+          this.references.delete(member.id);
         } catch (error) {
           if (signal.aborted || isAbort(error)) throw error;
         }
@@ -701,7 +915,7 @@ export class ComicPipeline {
         references: await this.referencesFor(panel, signal, inline),
         style: this.input.style,
       };
-      return request<PanelResponse>("draw", "/api/panel", {
+      return this.call<PanelResponse>("draw", "/api/panel", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
@@ -800,12 +1014,50 @@ export class ComicPipeline {
     day.panels = day.panels.map((panel) => ({ ...panel, names: nameSnapshot(panel, cast, oneOffs) }));
     if (oneOffs.length > 0) day.oneOffs = oneOffs;
     if (!crisis && script.newPeople?.length) day.newPeople = script.newPeople;
+    // Today's clothes (03.2-04) and what the whole comic cost, retries and redraws included.
+    if (!crisis && this.dayOutfits.length > 0) day.outfits = this.dayOutfits;
+    day.cost = this.comicCost();
 
     // Read it back: only route to the day once it is really on the device.
     const saved = (await saveDay(day)) && (await getDay(day.id));
     if (!saved) {
       throw new StepError("save", "Couldn't keep this day on this device. Private windows can block storage.");
     }
+    if (!crisis) await this.fileDayPhotos(day);
     this.set({ dayId: day.id, steps: { ...this.state.steps, save: "done" } });
+  }
+
+  /** The comic's cost as stored on the Day. */
+  private comicCost(): ComicCost {
+    return {
+      ...this.state.cost,
+      models: { ...MODEL_IDS },
+      ...(this.allMock ? { mock: true } : {}),
+      createdAt: new Date().toISOString(),
+    };
+  }
+
+  /**
+   * The photos attached for today's outfit go into the day's photo album
+   * (made if needed), under the album's own rules (re-encoded without EXIF on
+   * the server, private link), so they aren't uploaded twice. Best effort:
+   * the comic is saved either way.
+   */
+  private async fileDayPhotos(day: Day) {
+    const photos = (this.input.photos ?? []).slice(0, MAX_DAY_PHOTOS);
+    if (photos.length === 0 || this.state.album) return;
+    let added = 0;
+    try {
+      const album = await albumApi.create(day.id, day.title);
+      if (!album.ok) throw new Error(album.error);
+      for (const file of photos) {
+        const sent = await albumApi.addPhoto(album.value.id, await prepareAlbumPhoto(file));
+        if (sent.ok) added += 1;
+      }
+      await rememberAlbum(day.id, album.value.id);
+    } catch {
+      // The album can be filled later from the day's page.
+    }
+    this.set({ album: { added, failed: photos.length - added } });
   }
 }

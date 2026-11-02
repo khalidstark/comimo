@@ -566,6 +566,15 @@
   counter-reset: none;
 }
 
+/* What the comic has cost so far, and where the photos went: small print under the steps */
+.cost {
+  margin: 0;
+  color: var(--ink-soft);
+  font-family: var(--font-lettering-stack);
+  font-size: var(--step--1);
+  font-weight: 600;
+}
+
 .step {
   display: grid;
   grid-template-columns: auto 1fr auto;

@@ -164,6 +164,12 @@ export async function drawReferenceSheet(character: Character, style: ArtStyleId
   return (await requestSheet(character, style, signal, undefined, dayId)).character;
 }
 
+/** drawReferenceSheet for a comic being made: filed under that comic, and its cost handed back for the day. */
+export async function drawSheetForComic(character: Character, style: ArtStyleId, dayId: string, signal?: AbortSignal): Promise<{ character: Character; cost: CostRecord | null }> {
+  const { character: drawn, cost } = await requestSheet(character, style, signal, undefined, dayId);
+  return { character: drawn, cost };
+}
+
 /**
  * Draw the character's sheet with the person cut from their photo as the
  * reference. The photo goes in this one request and is never stored: the
@@ -233,14 +239,14 @@ async function requestSheet(
   signal?: AbortSignal,
   photo?: WireImage,
   dayId?: string,
-): Promise<{ character: Character; photoRefused: boolean }> {
+): Promise<{ character: Character; photoRefused: boolean; cost: CostRecord | null }> {
   const { sheet, photoRefused, cost } = await drawSheet(character, style, photo, signal, dayId);
   // Outfit sheets in this style were edits of the old sheet: they are drawn again from the new one when needed.
   const drawn = await updateStoredCharacter(character, (current) =>
     withCharacterCost(afterBaseRedraw({ ...current, referenceSheets: { ...current.referenceSheets, [style]: sheet } }, style), cost),
   );
   if (!drawn) throw new SheetError("Couldn't save the sheet on this device. Private windows can block storage.");
-  return { character: drawn, photoRefused };
+  return { character: drawn, photoRefused, cost };
 }
 
 /**
