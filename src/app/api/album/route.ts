@@ -1,3 +1,4 @@
+import { connection } from "next/server";
 import { readBoundedJson } from "@/lib/requestBody";
 import { albumForDay, createAlbum } from "@/lib/server/album";
 import { albumFailure, albumJson } from "@/lib/server/albumHttp";
@@ -8,6 +9,8 @@ import { requireSession } from "@/lib/server/session";
  * POST /api/album { dayId, title, link? } — start the album for a day (or get the one it has).
  */
 export async function GET(request: Request) {
+  // Per request, never prerendered (Cache Components would otherwise answer from build time).
+  await connection();
   const session = await requireSession(request);
   if (!session.ok) return session.response;
   const day = new URL(request.url).searchParams.get("day") ?? "";

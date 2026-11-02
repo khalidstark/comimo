@@ -1,3 +1,4 @@
+import { connection } from "next/server";
 import { roundUsd, type MyCosts } from "@/lib/costs";
 import { ledgerOf, summarizeAccount } from "@/lib/server/costs";
 import { requireSession } from "@/lib/server/session";
@@ -7,6 +8,8 @@ import { requireSession } from "@/lib/server/session";
  * cost ledger (deleted days included). Only ever the caller's account.
  */
 export async function GET(request: Request) {
+  // Per request, never prerendered (Cache Components would otherwise answer from build time).
+  await connection();
   const session = await requireSession(request);
   if (!session.ok) return session.response;
   try {
