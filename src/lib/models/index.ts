@@ -15,6 +15,7 @@ import type {
 } from "@/lib/types";
 import type { ArtStyleId } from "@/lib/artStyles";
 import type { UsageMeter } from "@/lib/guard";
+import type { CostStep } from "@/lib/costs";
 import { metaModels } from "./meta";
 import { mockModels } from "./mock";
 
@@ -101,8 +102,10 @@ export interface ModelCallContext {
   visitorId?: string;
   /** The incoming request's signal, so a closed tab stops the upstream call. */
   signal?: AbortSignal;
-  /** The spending meter: call `beforeCall` right before each request to Meta. */
+  /** The spending meter: call `beforeCall` right before each request to Meta, `charge` after each billed answer. */
   meter?: UsageMeter;
+  /** The cost step this call's money goes to, when not the route's own (the face check, redraws). */
+  costStep?: CostStep;
 }
 
 /** How the script is written. */

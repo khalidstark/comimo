@@ -3,6 +3,7 @@ import { detectLanguages } from "@/lib/languages";
 import type { LanguageHint, Transcript } from "@/lib/types";
 import { ModelInputError, type AudioInput, type ModelCallContext } from "../index";
 import { MetaApiError, metaJson } from "./client";
+import { MODEL_IDS, chargeTranscribe, usdText } from "./pricing";
 
 /**
  * Muse Voice Transcribe: POST /v1/asr/transcribe, multipart with a JSON
@@ -11,9 +12,7 @@ import { MetaApiError, metaJson } from "./client";
  * (src/lib/audio/toWav.ts). Docs: dev.meta.ai/docs/api-reference/voice/transcribe
  */
 
-const MODEL = "muse-voice-transcribe-1.0";
-/** $0.18 per audio hour, billed in whole seconds (dev.meta.ai/docs/pricing-rate-limits). */
-const PRICE_PER_SECOND = 0.18 / 3600;
+const MODEL = MODEL_IDS.transcribe;
 const MAX_SECONDS = 10 * 60;
 const MIN_SECONDS = 0.3;
 
@@ -108,7 +107,7 @@ export async function transcribe(audio: AudioInput, context: ModelCallContext = 
   }
 
   const seconds = Math.ceil((body.audioDurationMs ?? wav.seconds * 1000) / 1000);
-  console.info(`Comimo: transcribed ${seconds} s of audio (~$${(seconds * PRICE_PER_SECOND).toFixed(4)})`);
+  console.info(`Comimo: transcribed ${seconds} s of audio (~${usdText(chargeTranscribe(context, seconds))})`);
 
   const text = tidy(body.transcript);
   if (!text) {

@@ -1,5 +1,5 @@
 import { starterCastBriefs } from "@/fixtures/cast";
-import { guard, guardResponse } from "@/lib/guard";
+import { guard, guardResponse, withCost } from "@/lib/guard";
 import { requireSession } from "@/lib/server/session";
 import { getModels } from "@/lib/models";
 import { isRecord, isText, json, jsonError, modelErrorResponse } from "@/lib/models/wire";
@@ -75,10 +75,10 @@ export async function POST(request: Request) {
 
   try {
     const script = await models.writeScript(body.transcript, cast, { visitorId: check.visitorId, signal: request.signal, meter: check.meter }, { storyMode });
-    return json<ScriptResponse>({ mode: source, script }, source);
+    return withCost(json<ScriptResponse>({ mode: source, script }, source), check.meter);
   } catch (error) {
     // Refund only when nothing billable reached Meta; an abort or timeout after sending still counts.
     check.refundIfUnbilled();
-    return modelErrorResponse(error);
+    return withCost(modelErrorResponse(error), check.meter);
   }
 }

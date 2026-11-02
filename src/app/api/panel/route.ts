@@ -1,6 +1,6 @@
 import { starterCastById } from "@/fixtures/cast";
 import { artStyleOf, isArtStyleId } from "@/lib/artStyles";
-import { guard, guardResponse } from "@/lib/guard";
+import { guard, guardResponse, withCost } from "@/lib/guard";
 import { requireSession } from "@/lib/server/session";
 import { getModels, type CharacterReference } from "@/lib/models";
 import { isTrustedSheet, signFileId, signSheet, verifyFileToken } from "@/lib/models/fileTokens";
@@ -188,6 +188,7 @@ export async function POST(request: Request) {
   const check = await guard(request, "panel", { real: source === "meta" });
   if (!check.ok) return guardResponse(check);
 
+  check.meter.tag({ style, panel: panel.index });
   try {
     const context = { visitorId: check.visitorId, signal: request.signal, meter: check.meter };
 
@@ -214,11 +215,11 @@ export async function POST(request: Request) {
     } catch (error) {
       if (!isMissingFileError(error)) throw error;
       // Uploaded sheets expire after 30 days; the browser resends the images and gets fresh tokens.
-      return staleReference();
+      return withCost(staleReference(), check.meter);
     }
     const checked = await models.checkConsistency(drawn, inPanel, { panel, frame: panelFrame, style }, context);
     const { driftedCharacterIds, fixedCharacterIds, fixedImage, method, sam, figures } = checked;
-    return json<PanelResponse>(
+    return withCost(json<PanelResponse>(
       {
         mode: source,
         image: toWire(fixedImage ?? drawn),
@@ -235,10 +236,10 @@ export async function POST(request: Request) {
         ...(inPanel.some((ref) => ref.oneOff) ? { imageToken: signSheet((fixedImage ?? drawn).data) ?? undefined } : {}),
       },
       source,
-    );
+    ), check.meter);
   } catch (error) {
     // Refund only when nothing billable reached Meta; an abort or timeout after sending still counts.
     check.refundIfUnbilled();
-    return modelErrorResponse(error);
+    return withCost(modelErrorResponse(error), check.meter);
   }
 }

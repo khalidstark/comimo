@@ -6,6 +6,7 @@ import type { SamReport } from "@/lib/types";
 import type { CharacterReference, ConsistencyOptions, ConsistencyResult, ModelCallContext, ModelImage } from "../index";
 import { MetaApiError, metaJson } from "./client";
 import { baseRequest, dataUrl, drawPanel, isSendableImage, requestImage } from "./image";
+import { MODEL_IDS, chargeSpark } from "./pricing";
 import { JUDGE_PROMPT, judgeSchema, redrawPrompt, type RedrawTarget } from "./prompts";
 import { cropFigure, locate, outputText, type Located } from "./sam";
 
@@ -26,9 +27,7 @@ import { cropFigure, locate, outputText, type Located } from "./sam";
  * boxes) and skips the judge and redraws, for when latency matters more.
  */
 
-const JUDGE_MODEL = "muse-spark-1.3";
-/** Standard Spark prices per token, for the log line. */
-const PRICE = { input: 1.25e-6, output: 4.25e-6 };
+const JUDGE_MODEL = MODEL_IDS.spark;
 /** A "not the same" verdict below this confidence is ignored. */
 const DRIFT_CONFIDENCE = 0.6;
 const MAX_REDRAWS = 2;
@@ -119,9 +118,7 @@ async function judge(
     signal: context?.signal,
     onSend: () => context?.meter?.beforeCall("text"),
   });
-  const input = body.usage?.input_tokens ?? 0;
-  const output = body.usage?.output_tokens ?? 0;
-  console.info(`Comimo: face judge (${refs.length}) used ${input} in, ${output} out (~$${(input * PRICE.input + output * PRICE.output).toFixed(4)})`);
+  chargeSpark(context, body.usage, `face judge (${refs.length})`);
   let parsed: { characters?: { sameCharacter?: unknown; differences?: unknown; confidence?: unknown }[] };
   try {
     parsed = JSON.parse(outputText(body)) as typeof parsed;
@@ -187,8 +184,11 @@ export async function checkConsistency(
   image: ModelImage,
   references: CharacterReference[],
   options: ConsistencyOptions,
-  context?: ModelCallContext,
+  callContext?: ModelCallContext,
 ): Promise<ConsistencyResult> {
+  // The first look (SAM and the judge) is the face check's cost; every redraw and its re-check is the redraws'.
+  const context: ModelCallContext | undefined = callContext && { ...callContext, costStep: "faceCheck" };
+  const redrawing: ModelCallContext | undefined = callContext && { ...callContext, costStep: "redraws" };
   const started = Date.now();
   const label = `panel${options.panel.index}`;
   const byId = new Map(references.map((ref) => [ref.characterId, ref]));
@@ -237,12 +237,12 @@ export async function checkConsistency(
     try {
       next =
         redraws === 1
-          ? await redrawEdit(current.image, current.located, still, byId, options, context)
+          ? await redrawEdit(current.image, current.located, still, byId, options, redrawing)
           : await drawPanel(
               options.panel,
               references,
               { frame: options.frame, style: options.style, fixes: still.map((v) => `${byId.get(v.characterId)?.name}: ${v.differences.join("; ")}.`) },
-              context,
+              redrawing,
             );
     } catch (error) {
       if (context?.signal?.aborted) throw error;
@@ -253,12 +253,12 @@ export async function checkConsistency(
     let nextLocated: Located;
     let wrong: Verdict[];
     try {
-      nextLocated = await locate(next, references, context);
+      nextLocated = await locate(next, references, redrawing);
       // An edit only touched the drifted characters; a full redraw is checked whole.
       const recheck = (redraws === 1 ? still.map((v) => byId.get(v.characterId)!) : judgeable).filter(
         (ref) => hasSheet(ref) && nextLocated.boxes.has(ref.characterId),
       );
-      wrong = drifted(recheck.length > 0 ? await judge(next, nextLocated, recheck, context, `${label}-redraw${redraws}`) : []);
+      wrong = drifted(recheck.length > 0 ? await judge(next, nextLocated, recheck, redrawing, `${label}-redraw${redraws}`) : []);
     } catch (error) {
       if (context?.signal?.aborted) throw error;
       // A redraw that can't be checked isn't used.

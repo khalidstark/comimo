@@ -3,6 +3,7 @@ import { ART_STYLES, type ArtStyleId } from "@/lib/artStyles";
 import type { CharacterReference, ModelCallContext, ModelImage } from "../index";
 import { MetaApiError, metaJson } from "./client";
 import { baseRequest, dataUrl, isSendableImage, requestImage } from "./image";
+import { MODEL_IDS, chargeSpark } from "./pricing";
 
 /**
  * The monthly magazine cover. Muse Spark reads the month's comic titles and
@@ -12,8 +13,7 @@ import { baseRequest, dataUrl, isSendableImage, requestImage } from "./image";
  * Two calls: about $0.002 for the concept and $0.01 for the art.
  */
 
-const SPARK_MODEL = "muse-spark-1.3";
-const PRICE = { input: 1.25e-6, output: 4.25e-6 };
+const SPARK_MODEL = MODEL_IDS.spark;
 /** Portrait, close to a printed magazine page. */
 const COVER_SIZE = "1024x1536";
 const LIMITS = { scene: 600, tagline: 70 };
@@ -77,9 +77,7 @@ export async function writeCoverConcept(
     signal: context?.signal,
     onSend: () => context?.meter?.beforeCall("text"),
   });
-  const input = body.usage?.prompt_tokens ?? 0;
-  const output = body.usage?.completion_tokens ?? 0;
-  console.info(`Comimo: cover concept used ${input} in, ${output} out (~$${(input * PRICE.input + output * PRICE.output).toFixed(4)})`);
+  chargeSpark(context, body.usage, "cover concept");
 
   const content = body.choices?.[0]?.message?.content;
   if (!content) throw new MetaApiError("server", 200, body.choices?.[0]?.message?.refusal ? "cover concept refused" : "empty cover concept");

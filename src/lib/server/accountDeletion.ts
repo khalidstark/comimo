@@ -2,6 +2,7 @@ import "server-only";
 import { deleteAllAlbums } from "./album";
 import { deleteAccountRecord, getAccount, type Account } from "./auth";
 import { getBlobStore, type BlobStore } from "./blob";
+import { detachLedger } from "./costs";
 import { getKV, type KV } from "./kv";
 import { deleteLibrary } from "./library";
 import { deletingKey, destroyAllSessions } from "./session";
@@ -12,7 +13,8 @@ import { deletingKey, destroyAllSessions } from "./session";
  * 1. A "deleting" mark (account:<id>:deleting) and an entry in the pending
  *    list. From this moment every session of the account is refused, no new
  *    one can start, and its public albums answer 404 (isAccountLive).
- * 2. Albums, then the library (days, cast, settings, every image and photo).
+ * 2. Albums, then the library (days, cast, settings, every image and photo),
+ *    then the cost ledger is cut loose from the account (server/costs.ts).
  * 3. Sessions, the account record and its email.
  * 4. The mark and the pending entry, last.
  *
@@ -33,6 +35,7 @@ export async function startAccountDeletion(account: Account, kv: KV = getKV()): 
 export async function finishAccountDeletion(accountId: string, kv: KV = getKV(), blobs: BlobStore = getBlobStore()): Promise<void> {
   await deleteAllAlbums(accountId, kv, blobs);
   await deleteLibrary(accountId, kv, blobs);
+  await detachLedger(accountId, kv);
   await destroyAllSessions(accountId, kv);
   const account = await getAccount(accountId, kv);
   if (account) await deleteAccountRecord(account, kv);

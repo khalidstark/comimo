@@ -1,6 +1,7 @@
 import "server-only";
 import type { ModelCallContext } from "../index";
 import { metaJson } from "./client";
+import { MODEL_IDS, chargeSpark } from "./pricing";
 import { outputText } from "./sam";
 
 /**
@@ -10,8 +11,7 @@ import { outputText } from "./sam";
  * Only the art prompt changes; the panel's caption and dialogue stay as told.
  */
 
-const SPARK_MODEL = "muse-spark-1.3";
-const PRICE = { input: 1.25e-6, output: 4.25e-6 };
+const SPARK_MODEL = MODEL_IDS.spark;
 const MAX_SCENE = 600;
 
 /** Last resort when Spark can't help: a calm, drawable moment that still fits a diary page. */
@@ -45,9 +45,7 @@ export async function softenScene(scene: string, context?: ModelCallContext): Pr
     signal: context?.signal,
     onSend: () => context?.meter?.beforeCall("text"),
   });
-  const input = body.usage?.input_tokens ?? 0;
-  const output = body.usage?.output_tokens ?? 0;
-  console.info(`Comimo: softened a refused scene, ${input} in, ${output} out (~$${(input * PRICE.input + output * PRICE.output).toFixed(4)})`);
+  chargeSpark(context, body.usage, "softening a refused scene");
   const text = outputText(body).replace(/\s+/g, " ").trim().slice(0, MAX_SCENE);
   return text || QUIET_SCENE;
 }

@@ -1,4 +1,4 @@
-import { guard, guardResponse } from "@/lib/guard";
+import { guard, guardResponse, withCost } from "@/lib/guard";
 import { isMockMode } from "@/lib/models";
 import { suggestCaptions } from "@/lib/models/meta/captions";
 import { modelErrorResponse } from "@/lib/models/wire";
@@ -40,10 +40,10 @@ export async function POST(request: Request, { params }: AlbumContext) {
         album.title,
         { visitorId: check.visitorId, signal: request.signal, meter: check.meter },
       );
-      return jsonNoStore({ mode: "meta", captions: Object.fromEntries(images.map((image, i) => [image.id, captions[i] ?? ""])) });
+      return withCost(jsonNoStore({ mode: "meta", captions: Object.fromEntries(images.map((image, i) => [image.id, captions[i] ?? ""])) }), check.meter);
     } catch (error) {
       check.refundIfUnbilled();
-      return modelErrorResponse(error);
+      return withCost(modelErrorResponse(error), check.meter);
     }
   } catch (error) {
     return albumFailure("captions", error);

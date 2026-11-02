@@ -1,5 +1,8 @@
 import "server-only";
 import { after } from "next/server";
+import type { ArtStyleId } from "@/lib/artStyles";
+import { COST_HEADER, DAY_HEADER, charge, emptyCost, type CallKind, type CostRecord, type CostStep } from "@/lib/costs";
+import { isLedgerDayId, recordCost } from "@/lib/server/costs";
 import { getKV, type KV } from "@/lib/server/kv";
 import { hit, minutesText, windowOf } from "@/lib/server/rateLimit";
 import { hashTag } from "@/lib/server/request";
@@ -35,8 +38,24 @@ import { sessionAccount, type SessionAccount } from "@/lib/server/session";
  * `sprite`: five image calls animating one character. `photo`: one SAM and one vision call describing a reference photo.
  * `cover`: one text and one image call drawing a month's magazine cover.
  * `caption`: one vision call suggesting captions for an album's photos (only when the owner asks).
+ * `wardrobe`: a new outfit for a character (a SAM call with a photo, one text and one image call).
+ * `outfit`: today's clothes from the day's photos (a SAM call per photo, one vision call, an image call per person dressed).
  */
-export type GuardAction = "transcribe" | "script" | "panel" | "character" | "sprite" | "photo" | "cover" | "caption";
+export type GuardAction = "transcribe" | "script" | "panel" | "character" | "sprite" | "photo" | "cover" | "caption" | "wardrobe" | "outfit";
+
+/** Where a request's money goes in the cost records, unless the model code names a step (face check, redraws). */
+const COST_STEP: Record<GuardAction, CostStep> = {
+  transcribe: "transcribe",
+  script: "script",
+  panel: "panels",
+  character: "sheet",
+  sprite: "sprite",
+  photo: "photo",
+  cover: "cover",
+  caption: "caption",
+  wardrobe: "wardrobe",
+  outfit: "outfit",
+};
 
 /**
  * Kinds of upstream call. Image and SAM calls count against the daily image
@@ -54,6 +73,15 @@ export interface UsageMeter {
   beforeCall(kind: UpstreamCall): void;
   /** True once any upstream request has been sent. */
   readonly billed: boolean;
+  /**
+   * Record what a finished, billed call cost (prices in meta/pricing.ts).
+   * `step` defaults to the route's (COST_STEP); the face check names its own.
+   */
+  charge(kind: CallKind, usd: number, step?: CostStep): void;
+  /** What this request's calls cost so far. */
+  readonly cost: CostRecord;
+  /** Facts for the cost ledger: the art style and panel index this request drew. */
+  tag(facts: { style?: ArtStyleId; panel?: number }): void;
 }
 
 /** A daily cap was reached in the middle of a request. */
@@ -111,6 +139,10 @@ function limits() {
       cover: Math.max(1, Math.ceil(comics / 2)),
       // Caption suggestions: a few albums an hour.
       caption: Math.max(1, Math.ceil(comics / 2)),
+      // New outfits in the wardrobe: a few changes of clothes an hour.
+      wardrobe: comics * 2,
+      // Today's clothes from photos: once per comic, plus a retry.
+      outfit: comics * 2,
     } satisfies Record<GuardAction, number>,
     // Reference-sheet uploads: a few per comic (one per character), more only on stale tokens.
     uploadsPerHour: comics * 4,
@@ -178,10 +210,30 @@ function flushAfterResponse(pending: Promise<unknown>[]) {
  * requests running at the same moment on different instances can each send
  * a call or two past a cap before they see each other's counts.
  */
+/** The cost side of a meter: what the request's finished calls cost, and the facts the ledger files them with. */
+interface Tally {
+  charge: UsageMeter["charge"];
+  tag: UsageMeter["tag"];
+  readonly cost: CostRecord;
+  readonly facts: { style?: ArtStyleId; panel?: number };
+}
+
+function createTally(step: CostStep): Tally {
+  const cost = emptyCost();
+  const facts: Tally["facts"] = {};
+  return {
+    charge: (kind, usd, at = step) => charge(cost, kind, usd, at),
+    tag: (next) => void Object.assign(facts, next),
+    cost,
+    facts,
+  };
+}
+
 function createMeter(
   kv: KV,
   account: SessionAccount,
   start: { images: number; uploads: number; accountUploads: number },
+  tally: Tally,
 ): UsageMeter {
   let billed = false;
   const counts = { ...start };
@@ -199,6 +251,11 @@ function createMeter(
   return {
     get billed() {
       return billed;
+    },
+    charge: tally.charge,
+    tag: tally.tag,
+    get cost() {
+      return tally.cost;
     },
     beforeCall(kind) {
       const { dailyImages, dailyUploads, uploadsPerHour } = limits();
@@ -219,17 +276,59 @@ function createMeter(
   };
 }
 
-/** A meter for mock calls: counts nothing, never blocks. */
-function freeMeter(): UsageMeter {
+/** A meter for mock calls: counts nothing, never blocks (mock models never charge, so the cost stays 0). */
+function freeMeter(tally: Tally): UsageMeter {
   let billed = false;
   return {
     get billed() {
       return billed;
     },
+    charge: tally.charge,
+    tag: tally.tag,
+    get cost() {
+      return tally.cost;
+    },
     beforeCall() {
       billed = true;
     },
   };
+}
+
+/**
+ * After the response, file what the request cost in the account's ledger
+ * (server/costs.ts), under the comic named by the X-Comimo-Day header when it
+ * is a valid id. The account comes from the session, so a client can only
+ * ever file costs under itself; the amounts come from this server's meter.
+ */
+function fileCostAfterResponse(request: Request, account: SessionAccount, action: GuardAction, tally: Tally) {
+  const header = request.headers.get(DAY_HEADER);
+  const dayId = isLedgerDayId(header) ? header : null;
+  const write = async () => {
+    try {
+      await recordCost(account.id, { dayId, action, cost: tally.cost, ...tally.facts });
+    } catch (error) {
+      console.error(`Comimo: cost ledger write failed (${error instanceof Error ? error.name : "unknown"})`);
+    }
+  };
+  try {
+    after(write);
+  } catch {
+    // Outside a request (tests): nothing to file.
+  }
+}
+
+/**
+ * The response with the request's cost in the X-Comimo-Cost header, for the
+ * browser to add to the comic or character (errors too: a failed panel can
+ * still have cost something). Returns the same response.
+ */
+export function withCost(response: Response, meter: UsageMeter): Response {
+  try {
+    response.headers.set(COST_HEADER, JSON.stringify(meter.cost));
+  } catch {
+    // Immutable headers (never for our own Response.json): the ledger still has it.
+  }
+  return response;
 }
 
 async function readCount(kv: KV, key: string): Promise<number> {
@@ -241,6 +340,7 @@ function limitMessage(action: GuardAction, retryAfterSec: number): string {
   if (action === "character" || action === "sprite") return `That's a lot of drawing for one hour. Try again in ${wait}.`;
   if (action === "photo") return `That's a lot of photos for one hour. Try again in ${wait}.`;
   if (action === "caption") return `That's a lot of captions for one hour. Try again in ${wait}.`;
+  if (action === "wardrobe" || action === "outfit") return `That's a lot of outfits for one hour. Try again in ${wait}.`;
   return `That's a lot of comics for one hour. Try again in ${wait}.`;
 }
 
@@ -262,7 +362,10 @@ export async function guard(request: Request, action: GuardAction, options: { re
   if (!account) return { ok: false, status: 401, error: "Sign in to keep going. It takes a few seconds.", retryAfterSec: 0 };
 
   const visitorId = accountTag(account);
-  if (!options.real) return { ok: true, visitorId, meter: freeMeter(), refundIfUnbilled: () => {} };
+  // A sheet drawn while a comic is being made (a cast member's first appearance) is that comic's cost.
+  const forComic = isLedgerDayId(request.headers.get(DAY_HEADER));
+  const tally = createTally(action === "character" && forComic ? "sheets" : COST_STEP[action]);
+  if (!options.real) return { ok: true, visitorId, meter: freeMeter(tally), refundIfUnbilled: () => {} };
 
   if (process.env.COMIMO_PAUSE_GENERATION === "1") {
     return { ok: false, status: 503, error: "Making new comics is paused right now. The sample days still work.", retryAfterSec: 3600 };
@@ -292,7 +395,8 @@ export async function guard(request: Request, action: GuardAction, options: { re
       return { ok: false, status: 503, error: "Comimo has drawn all the panels it can for today. Come back tomorrow.", retryAfterSec: secondsToTomorrow() };
     }
 
-    const meter = createMeter(kv, account, { images, uploads, accountUploads });
+    const meter = createMeter(kv, account, { images, uploads, accountUploads }, tally);
+    fileCostAfterResponse(request, account, action, tally);
     let refunded = false;
     return {
       ok: true,
