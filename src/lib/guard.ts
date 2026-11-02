@@ -364,7 +364,7 @@ export async function guard(request: Request, action: GuardAction, options: { re
   const visitorId = accountTag(account);
   // A sheet drawn while a comic is being made (a cast member's first appearance) is that comic's cost.
   const forComic = isLedgerDayId(request.headers.get(DAY_HEADER));
-  const tally = createTally(action === "character" && forComic ? "sheets" : COST_STEP[action]);
+  const tally = createTally((action === "character" || action === "wardrobe") && forComic ? "sheets" : COST_STEP[action]);
   if (!options.real) return { ok: true, visitorId, meter: freeMeter(tally), refundIfUnbilled: () => {} };
 
   if (process.env.COMIMO_PAUSE_GENERATION === "1") {
