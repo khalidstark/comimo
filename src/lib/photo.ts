@@ -30,8 +30,8 @@ function toJpeg(canvas: HTMLCanvasElement, quality: number): Promise<Blob | null
   return new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", quality));
 }
 
-/** The photo at most 1536 px a side, as a JPEG under 5 MB. */
-export async function preparePhoto(file: File): Promise<Blob> {
+/** The photo at most 1536 px (or `maxSide`) a side, as a JPEG under 5 MB. */
+export async function preparePhoto(file: File, maxSide = PHOTO_MAX_SIDE): Promise<Blob> {
   if (file.size > RAW_MAX_BYTES) throw new PhotoError("That photo is too big. Use one under 30 MB.");
   if (!(await isSupportedImage(file))) throw new PhotoError("Use a JPEG, PNG or WebP photo.");
   let bitmap: ImageBitmap;
@@ -41,7 +41,7 @@ export async function preparePhoto(file: File): Promise<Blob> {
     throw new PhotoError("That photo couldn't be opened. Try another one.");
   }
   try {
-    const scale = Math.min(1, PHOTO_MAX_SIDE / Math.max(bitmap.width, bitmap.height));
+    const scale = Math.min(1, maxSide / Math.max(bitmap.width, bitmap.height));
     const canvas = document.createElement("canvas");
     canvas.width = Math.max(1, Math.round(bitmap.width * scale));
     canvas.height = Math.max(1, Math.round(bitmap.height * scale));

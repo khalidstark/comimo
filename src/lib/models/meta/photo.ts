@@ -2,6 +2,7 @@ import "server-only";
 import type { ModelCallContext, ModelImage } from "../index";
 import { MetaApiError, metaJson } from "./client";
 import { dataUrl } from "./image";
+import { MODEL_IDS, chargeSpark } from "./pricing";
 import { segment } from "./sam";
 
 /**
@@ -16,9 +17,7 @@ import { segment } from "./sam";
  * Docs: dev.meta.ai/docs/sam/segmenting, /docs/sam/reading-segmentation, /docs/image-understanding
  */
 
-const SPARK_MODEL = "muse-spark-1.3";
-/** Standard Spark prices per token, for the log line. */
-const PRICE = { input: 1.25e-6, output: 4.25e-6 };
+const SPARK_MODEL = MODEL_IDS.spark;
 
 export interface PersonBox {
   x1: number;
@@ -80,7 +79,7 @@ interface ChatBody {
 /** Words the description must never contain; a slip is dropped with its sentence. */
 const SENSITIVE = /\b(ethnic\w*|race|racial|arab\w*|african|asian|caucasian|european|latin[oa]|middle[- ]eastern|hispanic|muslim|christian|jewish|hindu|religio\w*|skin|complexion|weight|overweight|fat|disab\w*|\d+\s*(?:years?|yrs?)(?:[- ]old)?)\b/i;
 
-function scrub(look: string): string {
+export function scrub(look: string): string {
   const sentences = look.replace(/\s+/g, " ").trim().split(/(?<=[.!?])\s+/);
   return sentences
     .filter((sentence) => !SENSITIVE.test(sentence))
@@ -114,9 +113,7 @@ export async function describePerson(crop: ModelImage, context?: ModelCallContex
     signal: context?.signal,
     onSend: () => context?.meter?.beforeCall("text"),
   });
-  const input = body.usage?.prompt_tokens ?? 0;
-  const output = body.usage?.completion_tokens ?? 0;
-  console.info(`Comimo: photo description used ${input} in, ${output} out (~$${(input * PRICE.input + output * PRICE.output).toFixed(4)})`);
+  chargeSpark(context, body.usage, "photo description");
 
   const content = body.choices?.[0]?.message?.content;
   if (!content) throw new MetaApiError("server", 200, body.choices?.[0]?.message?.refusal ? "description refused" : "empty description");

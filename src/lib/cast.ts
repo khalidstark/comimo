@@ -11,6 +11,7 @@ import type {
   CharacterRole,
   CharacterSheetRequest,
   CharacterSheetResponse,
+  DayOutfit,
   ImageRef,
   ReferenceSheet,
   SpriteRequest,
@@ -19,6 +20,8 @@ import type {
   WireImage,
 } from "./types";
 import { blobToWire, wireToBlob } from "./wireImage";
+import { costFromResponse, type CostRecord } from "./costs";
+import { afterBaseRedraw, outfitSheet, wearingFor, withCharacterCost, withOutfitSheet, type Wearing } from "./wardrobe";
 
 /* ---------- Loading and seeding ---------- */
 
@@ -105,6 +108,49 @@ export function withReferenceFile(character: Character, style: ArtStyleId, token
   return { ...character, referenceSheets: { ...character.referenceSheets, [style]: next } };
 }
 
+/* ---------- What they wear (03.2-04) ---------- */
+
+/**
+ * The sheet a comic in `style` draws them from: the day's outfit, else the
+ * outfit they wear from now on, else their usual sheet. `missing` is true
+ * when they wear an outfit not drawn in this style yet (draw it with
+ * drawOutfitInStyle from `base`; until then panels use the usual sheet).
+ */
+export function wornSheetFor(
+  character: Character,
+  style: ArtStyleId,
+  dayOutfits?: DayOutfit[] | null,
+): { sheet: ReferenceSheet | null; base: ReferenceSheet | null; wearing: Wearing; missing: boolean } {
+  const base = referenceSheetFor(character, style);
+  const wearing = wearingFor(character, dayOutfits);
+  if (wearing.kind === "usual") return { sheet: base, base, wearing, missing: false };
+  const own = outfitSheet(wearing.outfit, style);
+  return { sheet: own ?? base, base, wearing, missing: !own };
+}
+
+/** The signed Files API token of the sheet a comic uses (see wornSheetFor), if uploaded. */
+export function wornFileTokenFor(character: Character, style: ArtStyleId, dayOutfits?: DayOutfit[] | null): string | undefined {
+  const { sheet, wearing, missing } = wornSheetFor(character, style, dayOutfits);
+  if (wearing.kind === "usual" || missing) return referenceFileTokenFor(character, style);
+  return sheet?.file && sheet.file.sheet === referenceKey(sheet.image) ? sheet.file.token : undefined;
+}
+
+/**
+ * Keep (or forget) the uploaded-file token on the sheet a comic used: their
+ * usual sheet or the worn outfit's (a day outfit's lives on the Day, so the
+ * character is unchanged).
+ */
+export function withWornFile(character: Character, style: ArtStyleId, token: string | null, dayOutfits?: DayOutfit[] | null): Character {
+  const { wearing, missing } = wornSheetFor(character, style, dayOutfits);
+  if (wearing.kind === "usual" || missing) return withReferenceFile(character, style, token);
+  if (wearing.kind === "day") return character;
+  const sheet = outfitSheet(wearing.outfit, style)!;
+  const next: ReferenceSheet = { ...sheet };
+  if (token) next.file = { token, sheet: referenceKey(sheet.image) };
+  else delete next.file;
+  return withOutfitSheet(character, wearing.outfit.id, style, next);
+}
+
 /** A sheet-drawing failure with a message the cast screen can show. */
 export class SheetError extends Error {
   name = "SheetError";
@@ -114,8 +160,14 @@ export class SheetError extends Error {
  * Ask Muse Image for the character's reference sheet in a style, keep the
  * image on this device and save the character with it. Returns the updated character.
  */
-export async function drawReferenceSheet(character: Character, style: ArtStyleId, signal?: AbortSignal): Promise<Character> {
-  return (await requestSheet(character, style, signal)).character;
+export async function drawReferenceSheet(character: Character, style: ArtStyleId, signal?: AbortSignal, dayId?: string): Promise<Character> {
+  return (await requestSheet(character, style, signal, undefined, dayId)).character;
+}
+
+/** drawReferenceSheet for a comic being made: filed under that comic, and its cost handed back for the day. */
+export async function drawSheetForComic(character: Character, style: ArtStyleId, dayId: string, signal?: AbortSignal): Promise<{ character: Character; cost: CostRecord | null }> {
+  const { character: drawn, cost } = await requestSheet(character, style, signal, undefined, dayId);
+  return { character: drawn, cost };
 }
 
 /**
@@ -143,7 +195,8 @@ export async function drawSheet(
   style: ArtStyleId,
   photo?: WireImage,
   signal?: AbortSignal,
-): Promise<{ sheet: ReferenceSheet; photoRefused: boolean }> {
+  dayId?: string,
+): Promise<{ sheet: ReferenceSheet; photoRefused: boolean; cost: CostRecord | null }> {
   const body: CharacterSheetRequest = {
     characterId: character.id,
     name: character.name,
@@ -156,7 +209,7 @@ export async function drawSheet(
   try {
     response = await fetch("/api/character", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...(dayId ? { "X-Comimo-Day": dayId } : {}) },
       body: JSON.stringify(body),
       signal,
     });
@@ -177,7 +230,7 @@ export async function drawSheet(
   const sheet: ReferenceSheet = { image };
   if (result.sheetToken) sheet.sheetToken = result.sheetToken;
   if (result.fileToken) sheet.file = { token: result.fileToken, sheet: referenceKey(image) };
-  return { sheet, photoRefused: result.photoRefused === true };
+  return { sheet, photoRefused: result.photoRefused === true, cost: costFromResponse(response) };
 }
 
 async function requestSheet(
@@ -185,14 +238,15 @@ async function requestSheet(
   style: ArtStyleId,
   signal?: AbortSignal,
   photo?: WireImage,
-): Promise<{ character: Character; photoRefused: boolean }> {
-  const { sheet, photoRefused } = await drawSheet(character, style, photo, signal);
-  const drawn = await updateStoredCharacter(character, (current) => ({
-    ...current,
-    referenceSheets: { ...current.referenceSheets, [style]: sheet },
-  }));
+  dayId?: string,
+): Promise<{ character: Character; photoRefused: boolean; cost: CostRecord | null }> {
+  const { sheet, photoRefused, cost } = await drawSheet(character, style, photo, signal, dayId);
+  // Outfit sheets in this style were edits of the old sheet: they are drawn again from the new one when needed.
+  const drawn = await updateStoredCharacter(character, (current) =>
+    withCharacterCost(afterBaseRedraw({ ...current, referenceSheets: { ...current.referenceSheets, [style]: sheet } }, style), cost),
+  );
   if (!drawn) throw new SheetError("Couldn't save the sheet on this device. Private windows can block storage.");
-  return { character: drawn, photoRefused };
+  return { character: drawn, photoRefused, cost };
 }
 
 /**
@@ -200,7 +254,7 @@ async function requestSheet(
  * in hand) and save it, so a sheet and a sprite finishing at the same time
  * don't overwrite each other. Null when storage refused.
  */
-async function updateStoredCharacter(character: Character, change: (current: Character) => Character): Promise<Character | null> {
+export async function updateStoredCharacter(character: Character, change: (current: Character) => Character): Promise<Character | null> {
   const stored = await getCharacter(character.id);
   const next = change(stored ? withStarterAliases(stored) : character);
   return (await saveCharacter(next)) ? next : null;
@@ -346,7 +400,8 @@ export function animateCharacter(character: Character): Promise<Character | null
       columns: result.columns,
       animations: ANIMATIONS,
     };
-    return updateStoredCharacter(character, (current) => ({ ...current, spriteSheet, portrait: { kind: "blob", id: portraitId } }));
+    const cost = costFromResponse(response);
+    return updateStoredCharacter(character, (current) => withCharacterCost({ ...current, spriteSheet, portrait: { kind: "blob", id: portraitId } }, cost));
   })().finally(() => animating.delete(character.id));
   animating.set(character.id, run);
   return run;

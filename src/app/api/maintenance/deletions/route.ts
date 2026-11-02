@@ -1,5 +1,5 @@
-import { createHash, timingSafeEqual } from "node:crypto";
 import { sweepDeletions } from "@/lib/server/accountDeletion";
+import { maintenanceAuthorized } from "@/lib/server/maintenance";
 
 /**
  * POST /api/maintenance/deletions
@@ -7,17 +7,8 @@ import { sweepDeletions } from "@/lib/server/accountDeletion";
  * Finishes account deletions that stopped part way (safe to run any time, e.g.
  * from a Vercel cron). Without the secret configured the route doesn't exist (404).
  */
-function authorized(request: Request): boolean | null {
-  const secret = process.env.COMIMO_MAINTENANCE_SECRET?.trim();
-  if (!secret || secret.length < 32) return null;
-  const given = request.headers.get("authorization")?.replace(/^Bearer\s+/i, "") ?? "";
-  const a = createHash("sha256").update(given).digest();
-  const b = createHash("sha256").update(secret).digest();
-  return timingSafeEqual(a, b);
-}
-
 export async function POST(request: Request) {
-  const allowed = authorized(request);
+  const allowed = maintenanceAuthorized(request);
   if (allowed === null) return new Response("Not found", { status: 404 });
   if (!allowed) return Response.json({ error: "Not allowed." }, { status: 401, headers: { "Cache-Control": "no-store" } });
   try {

@@ -15,6 +15,7 @@ import type {
 } from "@/lib/types";
 import type { ArtStyleId } from "@/lib/artStyles";
 import type { UsageMeter } from "@/lib/guard";
+import type { CostStep } from "@/lib/costs";
 import { metaModels } from "./meta";
 import { mockModels } from "./mock";
 
@@ -101,8 +102,10 @@ export interface ModelCallContext {
   visitorId?: string;
   /** The incoming request's signal, so a closed tab stops the upstream call. */
   signal?: AbortSignal;
-  /** The spending meter: call `beforeCall` right before each request to Meta. */
+  /** The spending meter: call `beforeCall` right before each request to Meta, `charge` after each billed answer. */
   meter?: UsageMeter;
+  /** The cost step this call's money goes to, when not the route's own (the face check, redraws). */
+  costStep?: CostStep;
 }
 
 /** How the script is written. */
@@ -111,7 +114,35 @@ export interface ScriptOptions {
   storyMode?: StoryMode;
 }
 
-export type ModelMethod = "transcribe" | "writeScript" | "drawReferenceSheet" | "drawPanel" | "checkConsistency";
+/** A change of clothes in words (03.2-04). */
+export interface OutfitText {
+  /** What they wear, e.g. "Long olive raincoat, cream sweater, yellow rain boots". */
+  clothes: string;
+  /** A few words for the wardrobe list, e.g. "Olive raincoat". */
+  label: string;
+  /** Their whole look with these clothes (face and hair as before). */
+  look: string;
+}
+
+/** A person cut from one of the day's photos, matched to a cast member, and what they wear. */
+export interface PersonMatch extends OutfitText {
+  /** Index of the crop in the request. */
+  crop: number;
+  characterId: string;
+  /** 0 to 1. */
+  confidence: number;
+}
+
+/** Someone SAM found in a photo, in the photo's pixels. */
+export interface PhotoPerson {
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
+  score: number;
+}
+
+export type ModelMethod = "transcribe" | "writeScript" | "drawReferenceSheet" | "drawPanel" | "checkConsistency" | "outfit";
 
 export interface ComicModels {
   readonly mode: ModelMode;
@@ -132,6 +163,20 @@ export interface ComicModels {
   drawPanel(panel: ScriptPanel, references: CharacterReference[], options: PanelOptions, context?: ModelCallContext): Promise<ModelImage>;
   /** Find characters that drifted from their reference sheet and redraw them. */
   checkConsistency(image: ModelImage, references: CharacterReference[], options: ConsistencyOptions, context?: ModelCallContext): Promise<ConsistencyResult>;
+  /** Every person in a photo (SAM 3.1, "person"). */
+  findPeople(photo: ModelImage & { width: number; height: number }, context?: ModelCallContext): Promise<PhotoPerson[]>;
+  /** A character's new clothes in words, from typed text and/or a photo crop; null when there are none to go on. */
+  writeOutfit(base: { name: string; look: string }, input: { clothes?: string; photo?: ModelImage | null }, context?: ModelCallContext): Promise<OutfitText | null>;
+  /** A character's sheet redrawn in new clothes (the crop, when given, shows the clothes). */
+  drawOutfitSheet(
+    subject: SheetSubject,
+    sheet: Pick<CharacterReference, "image" | "fileId">,
+    clothes: string,
+    photo: ModelImage | null,
+    context?: ModelCallContext,
+  ): Promise<{ image: ModelImage; photoRefused: boolean }>;
+  /** Which cast member each person cut from the day's photos is, and what they wear. */
+  matchPeople(crops: ModelImage[], references: CharacterReference[], context?: ModelCallContext): Promise<PersonMatch[]>;
 }
 
 /** Thrown when a voice note or other input can't be sent to a model as it is. */

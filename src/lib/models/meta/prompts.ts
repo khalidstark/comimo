@@ -431,3 +431,100 @@ export function redrawPrompt(targets: RedrawTarget[], style: ArtStyleId): string
   lines.push(NO_TEXT);
   return lines.join("\n");
 }
+
+/* ------------------------------------------------------------------ */
+/* Outfits (03.2-04): the wardrobe and today's clothes from photos      */
+/* ------------------------------------------------------------------ */
+
+/** The rules every outfit description shares (Muse Spark), so a photo never leaks anything but clothes. */
+const OUTFIT_RULES = `Clothes only. Never describe or change the face, hair, glasses, facial hair, headscarf or hijab, body or anything about who the person is: those stay exactly as in their description. Never mention or guess ethnicity, race, nationality, religion, health, disability, body weight, attractiveness or age. Do not describe skin colour, the background, the photo, the pose or anyone else. No brand names or logos.`;
+
+/** Spark: a character's new clothes, from a photo crop, a typed description, or both. */
+export const OUTFIT_PROMPT = `You keep a comic character's wardrobe. You get the character's current description (how an illustrator draws them) and either a photo of a person showing the new clothes, a short description of the clothes the user typed, or both.
+
+Write three things:
+- clothes: what they are wearing now, in plain English, under 160 characters: each garment with its colour and any obvious pattern, plus shoes, a hat, a bag or a scarf if visible or named (e.g. "Long olive raincoat over a cream knit sweater, dark jeans, yellow rain boots").
+- label: 2 to 4 words naming the outfit for a wardrobe list (e.g. "Olive raincoat").
+- look: the character's full description rewritten with these clothes: copy every non-clothing detail from the current description word for word (face, hair, glasses, facial hair, headscarf, build, anything they always carry), drop the old clothes, and put the new clothes in their place. Under 400 characters.
+
+${OUTFIT_RULES}
+
+With a photo and typed text, the typed text wins where they disagree. If the photo shows no clear person and there is no usable text, or the text isn't about clothes, set ok to false and leave the other fields "".`;
+
+export const OUTFIT_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  required: ["ok", "clothes", "label", "look"],
+  properties: {
+    ok: { type: "boolean" },
+    clothes: { type: "string" },
+    label: { type: "string" },
+    look: { type: "string" },
+  },
+};
+
+/**
+ * Muse Image edit of a reference sheet (image 1) into a new outfit, with an
+ * optional photo of the clothes (image 2): same character, same sheet, other clothes.
+ */
+export function outfitSheetPrompt(input: { name: string; clothes: string; style: ArtStyleId; photo: boolean; animal?: boolean }): string {
+  const art = ART_STYLES[input.style];
+  const lines = [
+    `Image 1 is the character reference sheet of an original comic character named ${input.name}: the same character twice, a front view and a three-quarter view.`,
+    `Redraw this exact sheet with only their clothes changed. New clothes: ${input.clothes}.`,
+  ];
+  if (input.photo) {
+    lines.push(
+      "Image 2 is a photo of someone wearing these clothes: copy only the garments from it (their cut, colours, patterns and layers), drawn in the art style below. Take nothing else from the photo: not the face, hair, skin, body, pose, background or lighting.",
+    );
+  }
+  lines.push(
+    `Keep everything else exactly as in image 1: the same face, hair, glasses, facial hair, headscarf, skin tone, body shape and proportions, both poses, the layout, the size of each figure and the ${art.sheetBackground.toLowerCase()}. The identical new outfit in both views.`,
+  );
+  lines.push(art.prompt);
+  lines.push(NO_TEXT);
+  return lines.join("\n");
+}
+
+/** Spark vision: which cast member (if any) each person cut from the day's photos is, and what they wear. */
+export const MATCH_PROMPT = `You help a comic diary dress its characters the way they really looked today. You get the reference sheets of a few comic characters (drawings of real people: the user and people in their life) and some cut-outs of people found in the user's photos from today.
+
+For each cut-out, decide which character it is, comparing only what doesn't change with clothes: face shape, hair (colour, length, texture, style), glasses, facial hair, headscarf, and build. The sheets are drawings and the cut-outs are photos, so expect a different rendering; ignore the clothes, the pose, the light and the photo quality. If you are not sure, or it is someone else, answer "none". Each character matches at most one cut-out: if two cut-outs look like the same character, pick the clearer one and answer "none" for the other.
+
+For each cut-out that is a character, also write:
+- clothes: what they are wearing in the photo, under 160 characters (each garment with its colour and obvious pattern, plus shoes, hat, bag or scarf if visible).
+- label: 2 to 4 words naming the outfit (e.g. "Denim jacket").
+- look: that character's description (given with their sheet) rewritten with these clothes: every non-clothing detail copied word for word, the old clothes replaced by the new. Under 400 characters.
+For "none", leave those three "".
+
+confidence is 0 to 1 that the cut-out really is that character.
+
+${OUTFIT_RULES}`;
+
+/** The matcher's answer: one item per cut-out, in order, naming a character id or "none". */
+export function matchSchema(count: number, characterIds: string[]) {
+  return {
+    type: "object",
+    additionalProperties: false,
+    required: ["people"],
+    properties: {
+      people: {
+        type: "array",
+        minItems: count,
+        maxItems: count,
+        items: {
+          type: "object",
+          additionalProperties: false,
+          required: ["characterId", "confidence", "clothes", "label", "look"],
+          properties: {
+            characterId: { type: "string", enum: [...characterIds, "none"] },
+            confidence: { type: "number" },
+            clothes: { type: "string" },
+            label: { type: "string" },
+            look: { type: "string" },
+          },
+        },
+      },
+    },
+  };
+}

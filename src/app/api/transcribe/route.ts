@@ -1,4 +1,4 @@
-import { guard, guardResponse } from "@/lib/guard";
+import { guard, guardResponse, withCost } from "@/lib/guard";
 import { requireSession } from "@/lib/server/session";
 import { getModels } from "@/lib/models";
 import { json, jsonError, modelErrorResponse } from "@/lib/models/wire";
@@ -73,10 +73,10 @@ export async function POST(request: Request) {
       },
       { visitorId: check.visitorId, signal: request.signal, meter: check.meter },
     );
-    return json<TranscribeResponse>({ mode: source, transcript }, source);
+    return withCost(json<TranscribeResponse>({ mode: source, transcript }, source), check.meter);
   } catch (error) {
     // Refund only when nothing billable reached Meta; an abort or timeout after sending still counts.
     check.refundIfUnbilled();
-    return modelErrorResponse(error);
+    return withCost(modelErrorResponse(error), check.meter);
   }
 }

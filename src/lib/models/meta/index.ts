@@ -2,6 +2,8 @@ import "server-only";
 import type { ComicModels } from "../index";
 import { checkConsistency } from "./consistency";
 import { drawPanel, drawReferenceSheet, uploadReference } from "./image";
+import { drawOutfitSheet, matchPeople, writeOutfit } from "./outfit";
+import { findPeople } from "./photo";
 import { writeScript } from "./script";
 import { transcribe } from "./transcribe";
 
@@ -12,11 +14,15 @@ import { transcribe } from "./transcribe";
  */
 export const metaModels: ComicModels = {
   mode: "meta",
-  sources: { transcribe: "meta", writeScript: "meta", drawReferenceSheet: "meta", drawPanel: "meta", checkConsistency: "meta" },
+  sources: { transcribe: "meta", writeScript: "meta", drawReferenceSheet: "meta", drawPanel: "meta", checkConsistency: "meta", outfit: "meta" },
   transcribe,
   writeScript,
   drawReferenceSheet,
   uploadReference,
   drawPanel,
   checkConsistency,
+  findPeople,
+  writeOutfit,
+  drawOutfitSheet,
+  matchPeople,
 };

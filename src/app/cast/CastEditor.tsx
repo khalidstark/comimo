@@ -31,9 +31,12 @@ import {
   type DraftErrors,
   type DraftField,
 } from "@/lib/cast";
-import { deleteCharacter, getImage, saveCharacter } from "@/lib/store";
+import { deleteCharacter, saveCharacter } from "@/lib/store";
 import type { Character, CharacterRole, ImageRef, WireImage } from "@/lib/types";
+import { canChangeClothes } from "@/lib/wardrobe";
 import styles from "./cast.module.css";
+import { useSheetUrl } from "./useSheetUrl";
+import { Wardrobe } from "./Wardrobe";
 
 const TILTS = ["-3deg", "2deg", "-1.5deg", "3deg"];
 
@@ -51,6 +54,8 @@ export function CastEditor() {
   const [notice, setNotice] = useState("");
   /** Work in progress or news per character (drawing from a photo, animating). */
   const [statuses, setStatuses] = useState<Record<string, CardStatus>>({});
+  /** The card whose wardrobe opens first (?wardrobe=<id>, from About you). */
+  const [wardrobeFor] = useState(() => (typeof window === "undefined" ? null : new URLSearchParams(window.location.search).get("wardrobe")));
   /** Where focus goes after the list re-renders (a card's edit button, or the add button). */
   const focusAfter = useRef<string | null>(null);
 
@@ -194,6 +199,8 @@ export function CastEditor() {
               }}
               onRemove={() => void remove(member)}
               onSheetDrawn={sheetDrawn}
+              onChange={replace}
+              wardrobeOpen={wardrobeFor === member.id}
             />
           ),
         )}
@@ -253,6 +260,10 @@ interface CastCardProps {
   onKeep: () => void;
   onRemove: () => void;
   onSheetDrawn: (character: Character) => void;
+  /** A wardrobe change (outfit drawn, worn or deleted), already saved. */
+  onChange: (character: Character) => void;
+  /** Open the wardrobe at first (from "Change clothes" in About you). */
+  wardrobeOpen: boolean;
 }
 
 /** The still picture of a drawn character without a sprite: their portrait, or the front view from a sheet. */
@@ -265,7 +276,7 @@ function stillFor(member: Character): { ref: ImageRef; fromSheet: boolean } | nu
   return null;
 }
 
-function CastCard({ member, tilt, status, onAnimate, confirming, onEdit, onAskRemove, onKeep, onRemove, onSheetDrawn }: CastCardProps) {
+function CastCard({ member, tilt, status, onAnimate, confirming, onEdit, onAskRemove, onKeep, onRemove, onSheetDrawn, onChange, wardrobeOpen }: CastCardProps) {
   const cardRef = useRef<HTMLLIElement>(null);
   const bubbleRef = useRef<HTMLParagraphElement>(null);
   const confirmRef = useRef<HTMLButtonElement>(null);
@@ -324,6 +335,8 @@ function CastCard({ member, tilt, status, onAnimate, confirming, onEdit, onAskRe
         {member.role === "self" ? <AboutYouNote member={member} /> : null}
 
         <ReferenceSheets member={member} onDrawn={onSheetDrawn} />
+
+        {canChangeClothes(member) ? <Wardrobe member={member} onChange={onChange} open={wardrobeOpen} /> : null}
 
         <p
           className={status?.error ? styles.error : styles.sheetStatus}
@@ -400,31 +413,6 @@ function AboutYouNote({ member }: { member: Character }) {
 }
 
 /* ---------- Reference sheet ---------- */
-
-/** An object URL for a sheet: a Blob from the store or a manifest file. */
-function useSheetUrl(ref: ImageRef | null): string | null {
-  const [blobUrl, setBlobUrl] = useState<{ id: string; url: string } | null>(null);
-  const blobId = ref?.kind === "blob" ? ref.id : null;
-
-  useEffect(() => {
-    if (!blobId) return;
-    let url: string | null = null;
-    let cancelled = false;
-    void getImage(blobId).then((blob) => {
-      if (cancelled || !blob) return;
-      url = URL.createObjectURL(blob);
-      setBlobUrl({ id: blobId, url });
-    });
-    return () => {
-      cancelled = true;
-      if (url) URL.revokeObjectURL(url);
-    };
-  }, [blobId]);
-
-  if (!ref) return null;
-  if (ref.kind === "art") return artAt(ref.path).src;
-  return blobUrl?.id === ref.id ? blobUrl.url : null;
-}
 
 /** The character's reference sheets, one per art style. */
 function ReferenceSheets({ member, onDrawn }: { member: Character; onDrawn: (character: Character) => void }) {

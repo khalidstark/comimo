@@ -7,6 +7,7 @@ import { localPanels, pagesFromNumbers } from "@/lib/layout/comicPages";
 import { applyStoryMode, silenceForgottenSpeech } from "../storyMode";
 import type { ModelCallContext, ScriptOptions } from "../index";
 import { MetaApiError, metaJson } from "./client";
+import { MODEL_IDS, chargeSpark } from "./pricing";
 import { SCRIPT_SYSTEM_PROMPT, castBlock, scriptSchema, storyModeBlock, transcriptMessage } from "./prompts";
 // Cast by name (03-05): aliases in; new people (03-06) under placeholders until the user names them.
 import { NEW_PERSON_IDS, isNewPersonId, remapPanel, resolveNewPeople } from "@/lib/newPeople";
@@ -20,9 +21,7 @@ import { CAST_NAMES_PROMPT, castNamesBlock, withNewPeopleSchema } from "./prompt
  * Docs: dev.meta.ai/docs/structured-output, /docs/protocols/chat-completions
  */
 
-const MODEL = "muse-spark-1.3";
-/** Standard prices per token (dev.meta.ai/docs/pricing-rate-limits). */
-const PRICE = { input: 1.25e-6, cached: 0.15e-6, output: 4.25e-6 };
+const MODEL = MODEL_IDS.spark;
 const MAX_OUTPUT_TOKENS = 6_000;
 const ATTEMPTS = 2;
 
@@ -47,15 +46,10 @@ class ScriptShapeError extends Error {
   }
 }
 
-function logUsage(usage: ChatBody["usage"], attempt: number) {
-  const input = usage?.prompt_tokens ?? 0;
-  const cached = usage?.prompt_tokens_details?.cached_tokens ?? 0;
-  const output = usage?.completion_tokens ?? 0;
+/** Charge one attempt (a retry costs too) and log it with its reasoning tokens. */
+function chargeAttempt(context: ModelCallContext, usage: ChatBody["usage"], attempt: number) {
   const reasoning = usage?.completion_tokens_details?.reasoning_tokens ?? 0;
-  const cost = (input - cached) * PRICE.input + cached * PRICE.cached + output * PRICE.output;
-  console.info(
-    `Comimo: script attempt ${attempt} used ${input} in (${cached} cached), ${output} out (${reasoning} reasoning) (~$${cost.toFixed(4)})`,
-  );
+  chargeSpark(context, usage, `script attempt ${attempt} (${reasoning} reasoning)`);
 }
 
 function clip(value: unknown, max: number): string {
@@ -201,7 +195,7 @@ export async function writeScript(
       timeoutMs: 75_000,
       onSend: () => context.meter?.beforeCall("text"),
     });
-    logUsage(body.usage, attempt);
+    chargeAttempt(context, body.usage, attempt);
 
     const choice = body.choices?.[0];
     const content = choice?.message?.content;

@@ -1,4 +1,4 @@
-import { guard, guardResponse } from "@/lib/guard";
+import { guard, guardResponse, withCost } from "@/lib/guard";
 import { requireSession } from "@/lib/server/session";
 import { isMockMode } from "@/lib/models";
 import { isTrustedSheet } from "@/lib/models/fileTokens";
@@ -61,24 +61,27 @@ export async function POST(request: Request) {
     const started = Date.now();
     const poses = await drawSpritePoses({ name: name.trim(), role: role as CharacterRole, look: look.trim() }, image, context);
     const sprite = await assembleSprite(poses, headRegionFor(role as CharacterRole));
-    console.info(`Comimo: sprite assembled in ${((Date.now() - started) / 1000).toFixed(1)} s (~$0.05)`);
-    return json<SpriteResponse>(
-      {
-        mode: "meta",
-        image: { mimeType: "image/webp", base64: base64(sprite.sheet) },
-        portrait: { mimeType: "image/webp", base64: base64(sprite.portrait) },
-        frameWidth: sprite.frameWidth,
-        frameHeight: sprite.frameHeight,
-        columns: sprite.columns,
-      },
-      "meta",
+    console.info(`Comimo: sprite assembled in ${((Date.now() - started) / 1000).toFixed(1)} s (~$${check.meter.cost.usd.toFixed(4)})`);
+    return withCost(
+      json<SpriteResponse>(
+        {
+          mode: "meta",
+          image: { mimeType: "image/webp", base64: base64(sprite.sheet) },
+          portrait: { mimeType: "image/webp", base64: base64(sprite.portrait) },
+          frameWidth: sprite.frameWidth,
+          frameHeight: sprite.frameHeight,
+          columns: sprite.columns,
+        },
+        "meta",
+      ),
+      check.meter,
     );
   } catch (error) {
     check.refundIfUnbilled();
     if (error instanceof SpriteAssemblyError) {
       console.warn(`Comimo: sprite assembly failed (${error.message})`);
-      return jsonError(502, "The sprite didn't come out right. Comimo keeps the still picture.");
+      return withCost(jsonError(502, "The sprite didn't come out right. Comimo keeps the still picture."), check.meter);
     }
-    return modelErrorResponse(error);
+    return withCost(modelErrorResponse(error), check.meter);
   }
 }

@@ -5,6 +5,7 @@ import type { PanelFigures } from "@/lib/types";
 import type { CharacterReference, ModelCallContext, ModelImage } from "../index";
 import { metaJson } from "./client";
 import { dataUrl } from "./image";
+import { MODEL_IDS, chargeSam } from "./pricing";
 import { maskAt, matchCast, mergeDetections, nounPhrase, toFigures, type CastInPanel, type Detection, type DetectionSet, type Mask, type PixelBox } from "./samMatch";
 
 /**
@@ -16,7 +17,7 @@ import { maskAt, matchCast, mergeDetections, nounPhrase, toFigures, type CastInP
  * Docs: dev.meta.ai/docs/sam/segmenting, /docs/sam/reading-segmentation
  */
 
-const MODEL = "sam-3.1";
+const MODEL = MODEL_IDS.sam;
 const SAM_TIMEOUT_MS = 45_000;
 /** Longest side of the copy SAM looks at. */
 const SAM_MAX_SIDE = 1280;
@@ -92,6 +93,7 @@ export async function segment(image: ModelImage, phrase: string, context?: Model
     signal: context?.signal,
     onSend: () => context?.meter?.beforeCall("sam"),
   });
+  chargeSam(context);
   return parseSegmentation(outputText(body));
 }
 

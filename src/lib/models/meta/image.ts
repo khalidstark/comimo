@@ -4,6 +4,7 @@ import { drawSize } from "@/lib/layout/page";
 import type { ScriptPanel } from "@/lib/types";
 import type { CharacterReference, ModelCallContext, ModelImage, PanelOptions, SheetSubject } from "../index";
 import { MetaApiError, metaJson } from "./client";
+import { MODEL_IDS, chargeImage, usdText } from "./pricing";
 import { panelPrompt, photoSheetPrompt, sheetPrompt, type PanelCharacter } from "./prompts";
 import { QUIET_SCENE, softenScene } from "./soften";
 
@@ -16,10 +17,11 @@ import { QUIET_SCENE, softenScene } from "./soften";
  * /docs/file-handling
  *
  * Every image request goes through the spending meter (`beforeCall("image")`
- * runs before each attempt), so the daily image cap holds. $0.01 per image.
+ * runs before each attempt), so the daily image cap holds, and each image
+ * returned is charged to the request's cost (PRICES.image, $0.01).
  */
 
-const MODEL = "muse-image-1.0";
+const MODEL = MODEL_IDS.image;
 /** Images take a while with reasoning_strength "high" (multi-pass, same price). */
 const IMAGE_TIMEOUT_MS = 150_000;
 /** Most reference sheets sent with one panel (the API takes up to 10). */
@@ -30,7 +32,7 @@ const FILE_LIFETIME_SEC = 2_592_000;
 const MAX_REFERENCE_BYTES = 5 * 1024 * 1024;
 
 /** `size` sets the aspect ratio only; the generator picks the pixels. Panels use their slot's (see drawSize). */
-const SHEET_SIZE = "1536x1024";
+export const SHEET_SIZE = "1536x1024";
 
 interface ImagesBody {
   data?: { b64_json?: string; revised_prompt?: string }[];
@@ -65,7 +67,8 @@ export async function requestImage(path: "/images/generations" | "/images/edits"
     onSend: () => context?.meter?.beforeCall("image"),
   });
   const image = firstImage(response);
-  console.info(`Comimo: ${path.slice(8)} returned ${image.data.byteLength} bytes in ${((Date.now() - started) / 1000).toFixed(1)} s (~$0.01)`);
+  const usd = chargeImage(context);
+  console.info(`Comimo: ${path.slice(8)} returned ${image.data.byteLength} bytes in ${((Date.now() - started) / 1000).toFixed(1)} s (~${usdText(usd)})`);
   return image;
 }
 

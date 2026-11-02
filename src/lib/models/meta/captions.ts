@@ -3,6 +3,7 @@ import sharp from "sharp";
 import type { ModelCallContext } from "../index";
 import { MetaApiError, metaJson } from "./client";
 import { dataUrl } from "./image";
+import { MODEL_IDS, chargeSpark } from "./pricing";
 import { outputText } from "./sam";
 
 /**
@@ -12,8 +13,7 @@ import { outputText } from "./sam";
  * Docs: dev.meta.ai/docs/image-understanding
  */
 
-const SPARK_MODEL = "muse-spark-1.3";
-const PRICE = { input: 1.25e-6, output: 4.25e-6 };
+const SPARK_MODEL = MODEL_IDS.spark;
 const SIDE = 768;
 export const CAPTION_WORDS = 14;
 
@@ -71,9 +71,7 @@ export async function suggestCaptions(photos: Uint8Array[], title: string, conte
     signal: context?.signal,
     onSend: () => context?.meter?.beforeCall("text"),
   });
-  const input = body.usage?.input_tokens ?? 0;
-  const output = body.usage?.output_tokens ?? 0;
-  console.info(`Comimo: album captions (${photos.length}) used ${input} in, ${output} out (~$${(input * PRICE.input + output * PRICE.output).toFixed(4)})`);
+  chargeSpark(context, body.usage, `album captions (${photos.length})`);
   let parsed: { captions?: unknown };
   try {
     parsed = JSON.parse(outputText(body)) as typeof parsed;

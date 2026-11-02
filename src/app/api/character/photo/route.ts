@@ -1,4 +1,4 @@
-import { guard, guardResponse } from "@/lib/guard";
+import { guard, guardResponse, withCost } from "@/lib/guard";
 import { requireSession } from "@/lib/server/session";
 import { isMockMode } from "@/lib/models";
 import { describePerson, findPeople, pickPerson } from "@/lib/models/meta/photo";
@@ -68,13 +68,13 @@ export async function POST(request: Request) {
     // One SAM call (daily image cap) and one Spark call, both metered as they are sent.
     const context = { visitorId: check.visitorId, signal: request.signal, meter: check.meter };
     const person = pickPerson(await findPeople(photo, context), photo.width, photo.height);
-    if (!person) return jsonError(422, "Comimo couldn't find one clear person in that photo. Try a photo where they stand out.");
+    if (!person) return withCost(jsonError(422, "Comimo couldn't find one clear person in that photo. Try a photo where they stand out."), check.meter);
     const crop = await cropPerson(photo, photo.width, photo.height, person);
     const look = await describePerson(crop, context);
-    if (!look) return jsonError(422, "Comimo couldn't describe a person from that photo. Try another one, or write how they look.");
-    return json<PhotoLookResponse>({ mode: "meta", look, crop: toWire(crop) }, "meta");
+    if (!look) return withCost(jsonError(422, "Comimo couldn't describe a person from that photo. Try another one, or write how they look."), check.meter);
+    return withCost(json<PhotoLookResponse>({ mode: "meta", look, crop: toWire(crop) }, "meta"), check.meter);
   } catch (error) {
     // No refund: the photo was already decoded.
-    return modelErrorResponse(error);
+    return withCost(modelErrorResponse(error), check.meter);
   }
 }

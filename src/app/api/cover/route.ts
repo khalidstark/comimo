@@ -1,5 +1,5 @@
 import { artStyleOf, isArtStyleId } from "@/lib/artStyles";
-import { guard, guardResponse } from "@/lib/guard";
+import { guard, guardResponse, withCost } from "@/lib/guard";
 import { requireSession } from "@/lib/server/session";
 import { isMockMode, type CharacterReference } from "@/lib/models";
 import { isTrustedSheet, verifyFileToken } from "@/lib/models/fileTokens";
@@ -95,9 +95,9 @@ export async function POST(request: Request) {
         headers: { "Cache-Control": "no-store" },
       });
     }
-    return json<CoverResponse>({ mode: "meta", image: toWire(image), tagline: concept.tagline }, "meta");
+    return withCost(json<CoverResponse>({ mode: "meta", image: toWire(image), tagline: concept.tagline }, "meta"), check.meter);
   } catch (error) {
     check.refundIfUnbilled();
-    return modelErrorResponse(error);
+    return withCost(modelErrorResponse(error), check.meter);
   }
 }

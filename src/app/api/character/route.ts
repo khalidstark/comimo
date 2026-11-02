@@ -1,5 +1,5 @@
 import { artStyleOf, isArtStyleId } from "@/lib/artStyles";
-import { guard, guardResponse } from "@/lib/guard";
+import { guard, guardResponse, withCost } from "@/lib/guard";
 import { requireSession } from "@/lib/server/session";
 import { getModels, type ModelImage } from "@/lib/models";
 import { signFileId, signSheet } from "@/lib/models/fileTokens";
@@ -88,21 +88,25 @@ export async function POST(request: Request) {
     // The photo is done with: drop the reference before anything else happens.
     reference = null;
     image ??= await models.drawReferenceSheet(subject, context);
+    check.meter.tag({ style: subject.style });
     // A failed upload isn't fatal: the sheet still works, panels send it inline and upload it then.
     const fileId = await models.uploadReference(image, context);
-    return json<CharacterSheetResponse>(
-      {
-        mode: source,
-        image: toWire(image),
-        sheetToken: signSheet(image.data),
-        fileToken: fileId ? signFileId(fileId) : null,
-        ...(photoRefused ? { photoRefused } : {}),
-      },
-      source,
+    return withCost(
+      json<CharacterSheetResponse>(
+        {
+          mode: source,
+          image: toWire(image),
+          sheetToken: signSheet(image.data),
+          fileToken: fileId ? signFileId(fileId) : null,
+          ...(photoRefused ? { photoRefused } : {}),
+        },
+        source,
+      ),
+      check.meter,
     );
   } catch (error) {
     // Refund only when nothing billable reached Meta and no photo was decoded; an abort or timeout after sending still counts.
     if (!wire) check.refundIfUnbilled();
-    return modelErrorResponse(error);
+    return withCost(modelErrorResponse(error), check.meter);
   }
 }

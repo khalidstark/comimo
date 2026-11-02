@@ -725,6 +725,31 @@
   font-size: var(--step--1);
 }
 
+/* What the comic cost: a receipt stub torn off the bottom of the note */
+.madeCost {
+  display: grid;
+  gap: var(--space-3xs);
+  justify-self: start;
+  padding: var(--space-2xs) var(--space-s);
+  border: var(--panel-border-thin) dashed var(--line);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--highlight) 22%, var(--surface));
+  font-size: var(--step--1);
+}
+
+.madeCost strong {
+  font-family: var(--font-display-stack);
+  font-size: var(--step-0);
+}
+
+.madeSteps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3xs) var(--space-xs);
+  color: var(--ink-soft);
+  font-variant-numeric: tabular-nums;
+}
+
 /* ---------- Flashbacks ----------
    A memory is printed faded and warm, with a soft edge that melts into the gutter;
    the first panel back in the present gets a small "Now" tab. */

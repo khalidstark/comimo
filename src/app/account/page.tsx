@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { PageTurn } from "@/components/PageTurn";
 import { RequireAccount } from "@/components/account/RequireAccount";
+import { AccountCosts } from "./AccountCosts";
 import { DeleteAccount } from "./DeleteAccount";
 import styles from "./AboutYouCard.module.css";
 
@@ -27,6 +28,7 @@ export default function AccountPage() {
             Edit about you
           </Link>
         </section>
+        <AccountCosts />
         <DeleteAccount />
       </main>
     </PageTurn>

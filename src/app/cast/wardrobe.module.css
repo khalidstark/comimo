@@ -1,0 +1,280 @@
+/* The wardrobe on a cast card: a rail of outfits like stickers on a clothes line */
+.wardrobe {
+  display: grid;
+  gap: var(--space-2xs);
+  inline-size: 100%;
+  margin-block-start: var(--space-2xs);
+  padding-block-start: var(--space-xs);
+  border-block-start: var(--panel-border-thin) dashed color-mix(in srgb, var(--ink) 40%, transparent);
+}
+
+.title {
+  font-family: var(--font-display-stack);
+  font-size: var(--step-0);
+  font-weight: 700;
+}
+
+.wearing {
+  font-size: var(--step--1);
+  color: var(--ink-soft);
+}
+
+.wearing strong {
+  color: var(--ink);
+}
+
+.rail {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 6.25rem;
+  gap: var(--space-xs);
+  margin: 0;
+  padding: var(--space-3xs) var(--space-3xs) var(--space-xs);
+  list-style: none;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x proximity;
+}
+
+.tile {
+  display: grid;
+  gap: 2px;
+  justify-items: start;
+  align-content: start;
+  scroll-snap-align: start;
+  min-inline-size: 0;
+}
+
+/* The front view of the sheet, in a tilted sticker frame */
+.tileImage,
+.tileEmpty {
+  inline-size: 100%;
+  aspect-ratio: 3 / 4;
+  object-fit: cover;
+  object-position: 0% 40%;
+  border: var(--panel-border-thin) solid var(--line);
+  border-radius: 10px;
+  background: var(--paper);
+  rotate: -1.5deg;
+  transition: rotate var(--dur-panel) var(--ease-pop);
+}
+
+.tile:nth-child(2n) .tileImage,
+.tile:nth-child(2n) .tileEmpty {
+  rotate: 1.5deg;
+}
+
+.tileEmpty {
+  display: block;
+  border-style: dashed;
+}
+
+.tile[data-worn] .tileImage,
+.tile[data-worn] .tileEmpty {
+  rotate: 0deg;
+  border-color: var(--accent);
+  box-shadow: 3px 3px 0 var(--accent);
+}
+
+.tileLabel {
+  inline-size: 100%;
+  overflow: hidden;
+  font-size: var(--step--1);
+  font-weight: 700;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wornTag {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: 2rem;
+  padding-inline: 0.5em;
+  background: var(--highlight);
+  color: var(--on-highlight);
+  border: var(--panel-border-thin) solid #1b2148;
+  font-family: var(--font-lettering-stack);
+  font-size: var(--step--1);
+  font-weight: 600;
+  rotate: -2deg;
+}
+
+.textButton {
+  min-block-size: 2.25rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent-text);
+  font-family: var(--font-display-stack);
+  font-size: var(--step--1);
+  font-weight: 700;
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 0.2em;
+  cursor: pointer;
+}
+
+.quiet {
+  color: var(--ink-soft);
+  min-block-size: 1.75rem;
+}
+
+.open {
+  justify-self: start;
+}
+
+/* The change-clothes panel: an uncut panel inside the card */
+.panel {
+  display: grid;
+  gap: var(--space-xs);
+  padding: var(--space-s);
+  border: var(--panel-border-thin) dashed color-mix(in srgb, var(--ink) 45%, transparent);
+  border-radius: var(--radius-panel);
+  background: var(--surface);
+}
+
+.modes {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  border: var(--panel-border-thin) solid var(--line);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.mode {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-block-size: 2.75rem;
+  padding-inline: var(--space-2xs);
+  font-family: var(--font-display-stack);
+  font-size: var(--step--1);
+  font-weight: 700;
+  text-align: center;
+  cursor: pointer;
+}
+
+.mode + .mode {
+  border-inline-start: var(--panel-border-thin) solid var(--line);
+}
+
+.mode input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.mode:has(input:checked) {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.mode:has(input:focus-visible) {
+  outline: 3px solid var(--accent);
+  outline-offset: -3px;
+}
+
+.field {
+  display: grid;
+  gap: var(--space-3xs);
+}
+
+.field input:not([type="file"]),
+.field textarea {
+  inline-size: 100%;
+  min-block-size: 2.75rem;
+  padding: var(--space-2xs) var(--space-xs);
+  border: var(--panel-border-thin) solid var(--line);
+  border-radius: 10px;
+  background: var(--paper);
+  font: inherit;
+}
+
+.field input[type="file"] {
+  max-inline-size: 100%;
+  min-block-size: 2.75rem;
+  font: inherit;
+  font-size: var(--step--1);
+}
+
+.label {
+  font-weight: 700;
+  font-size: var(--step--1);
+}
+
+.optional,
+.hint {
+  color: var(--ink-soft);
+  font-size: var(--step--1);
+  font-weight: 500;
+}
+
+.consent {
+  display: flex;
+  gap: var(--space-2xs);
+  align-items: start;
+  font-size: var(--step--1);
+  font-weight: 600;
+}
+
+.consent input {
+  flex: none;
+  inline-size: 1.25rem;
+  block-size: 1.25rem;
+  margin-block-start: 0.1em;
+  accent-color: var(--accent);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+  align-items: center;
+}
+
+.status {
+  color: var(--ink-soft);
+  font-size: var(--step--1);
+}
+
+.status:empty {
+  display: none;
+}
+
+.error {
+  color: var(--accent-text);
+  font-size: var(--step--1);
+  font-weight: 600;
+}
+
+.preview {
+  display: grid;
+  gap: var(--space-xs);
+  margin: 0;
+}
+
+.previewImage {
+  inline-size: 100%;
+  aspect-ratio: 3 / 2;
+  object-fit: cover;
+  border: var(--panel-border-thin) solid var(--line);
+  border-radius: var(--radius-panel);
+  background: var(--paper);
+  box-shadow: 4px 4px 0 var(--ink);
+}
+
+.previewText {
+  display: grid;
+  gap: 2px;
+  font-size: var(--step--1);
+}
+
+.previewText strong {
+  font-family: var(--font-display-stack);
+  font-size: var(--step-0);
+}
+
+.cost {
+  color: var(--ink-soft);
+}
