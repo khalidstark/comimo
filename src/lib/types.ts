@@ -1,5 +1,6 @@
 import type { ArtPath } from "@/art/manifest";
 import type { ArtStyleId } from "./artStyles";
+import type { ComicCost, CostRecord } from "./costs";
 
 /**
  * Comimo's data model, shared by the pages, the on-device store and the
@@ -102,6 +103,15 @@ export interface Character {
    * `personality` above is written from them.
    */
   about?: AboutYou;
+  /**
+   * Their wardrobe (03.2-04): the same character in other clothes, newest
+   * last, at most MAX_OUTFITS. Missing on records made before outfits.
+   */
+  outfits?: Outfit[];
+  /** The outfit new comics draw them in; missing or unknown means their usual clothes (`look` and `referenceSheets`). */
+  outfitId?: string;
+  /** What drawing them has cost so far (sheets, outfits, sprite), when known. */
+  cost?: CostRecord;
   /** True for the invented starter cast that ships with the app. */
   starter: boolean;
   createdAt: string;
@@ -127,6 +137,40 @@ export interface ReferenceFile {
   token: string;
   /** Key of the sheet it was uploaded from. */
   sheet: string;
+}
+
+/** Outfits a character can keep in their wardrobe. */
+export const MAX_OUTFITS = 6;
+
+/**
+ * A change of clothes: the character's reference sheet redrawn by Muse Image
+ * with only the clothes changed (face, hair, glasses and body kept), from a
+ * photo or a typed description. The photo is never kept.
+ */
+export interface Outfit {
+  id: string;
+  /** A few words for the wardrobe list, e.g. "Olive raincoat". */
+  label: string;
+  /** What they wear, in plain words. */
+  clothes: string;
+  /** Their whole look in this outfit; sent to the models instead of `Character.look`. */
+  look: string;
+  /** The sheet in this outfit, per art style; another style is drawn the first time a comic needs it. */
+  sheets: Partial<Record<ArtStyleId, ReferenceSheet>>;
+  source: "photo" | "description";
+  createdAt: string;
+  /** What drawing it cost. */
+  cost?: CostRecord;
+}
+
+/**
+ * What someone wore on one day (03.2-04): found in the photos attached
+ * before the comic was made, drawn as a sheet for that day only.
+ */
+export interface DayOutfit extends Omit<Outfit, "id" | "source" | "createdAt"> {
+  characterId: string;
+  /** Which attached photo it came from (0-based, in the order attached). */
+  photo: number;
 }
 
 /** How the script refers to the user in scene descriptions (narration stays first person). */
@@ -366,6 +410,10 @@ export interface Day {
   newPeople?: NewPerson[];
   /** Characters drawn just for this story (03-06), by their `oneoff:` id. */
   oneOffs?: OneOff[];
+  /** What people wore that day, from the photos attached before drawing (03.2-04); their panels use these sheets. */
+  outfits?: DayOutfit[];
+  /** What making the comic cost (03.2-04); missing on older days. */
+  cost?: ComicCost;
   /** True for the invented sample days. */
   sample?: boolean;
   createdAt: string;
@@ -616,4 +664,66 @@ export interface CoverResponse {
   image: WireImage;
   /** One short cover line, in the month's own words. */
   tagline: string;
+}
+
+/* ------------------------------------------------------------------ */
+/* Outfits (03.2-04)                                                   */
+/* ------------------------------------------------------------------ */
+
+/**
+ * POST /api/character/outfit: a character's sheet redrawn in other clothes.
+ * Give `clothes` (typed) and/or `photo` (with `consent`), or `outfit` to
+ * redraw an outfit the character already has in another style.
+ */
+export interface OutfitRequest {
+  characterId: string;
+  name: string;
+  role: CharacterRole;
+  /** Their usual look (the base of the new one). */
+  look: string;
+  style: ArtStyleId;
+  /** Their reference sheet in `style`, with the token proving this server drew it. */
+  sheet: WireImage;
+  sheetToken?: string;
+  clothes?: string;
+  /** A photo showing the clothes (shrunk in the browser); SAM finds the person, the crop is used once and dropped. */
+  photo?: WireImage;
+  consent?: boolean;
+  /** An existing outfit's words, to draw it in another style without describing it again. */
+  outfit?: { clothes: string; label: string; look: string };
+}
+export interface OutfitResponse {
+  mode: ModelMode;
+  outfit: { clothes: string; label: string; look: string };
+  image: WireImage;
+  sheetToken: string | null;
+  fileToken: string | null;
+  /** True when Muse Image wouldn't use the photo and drew the clothes from the words. */
+  photoRefused?: boolean;
+}
+
+/** POST /api/outfit/today: who is in the day's photos and what they wore. */
+export interface TodayOutfitRequest {
+  /** The day's photos, shrunk to 1024 px in the browser (at most 6). */
+  photos: WireImage[];
+  /** The narrator first, then other cast members with a sheet (at most 4). */
+  references: WireReference[];
+  style: ArtStyleId;
+}
+export interface TodayOutfit {
+  characterId: string;
+  clothes: string;
+  label: string;
+  look: string;
+  /** Which photo (index in the request). */
+  photo: number;
+  image: WireImage;
+  sheetToken: string | null;
+  fileToken: string | null;
+}
+export interface TodayOutfitResponse {
+  mode: ModelMode;
+  outfits: TodayOutfit[];
+  /** People SAM found across the photos. */
+  people: number;
 }

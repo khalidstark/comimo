@@ -94,4 +94,8 @@ export const BODY_LIMITS = {
   sprite: 8 * 1024 * 1024,
   /** A photo of at most 5 MB plus the form fields. */
   photo: 5 * 1024 * 1024 + 64 * 1024,
+  /** A character, their sheet and an optional photo (each at most 5 MB as base64; in practice under 2 MB together). */
+  wardrobe: 12 * 1024 * 1024,
+  /** Up to six photos shrunk to 1024 px and up to four sheets (usually sent as file tokens). */
+  outfitToday: 12 * 1024 * 1024,
 } as const;

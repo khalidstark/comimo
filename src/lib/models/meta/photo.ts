@@ -79,7 +79,7 @@ interface ChatBody {
 /** Words the description must never contain; a slip is dropped with its sentence. */
 const SENSITIVE = /\b(ethnic\w*|race|racial|arab\w*|african|asian|caucasian|european|latin[oa]|middle[- ]eastern|hispanic|muslim|christian|jewish|hindu|religio\w*|skin|complexion|weight|overweight|fat|disab\w*|\d+\s*(?:years?|yrs?)(?:[- ]old)?)\b/i;
 
-function scrub(look: string): string {
+export function scrub(look: string): string {
   const sentences = look.replace(/\s+/g, " ").trim().split(/(?<=[.!?])\s+/);
   return sentences
     .filter((sentence) => !SENSITIVE.test(sentence))

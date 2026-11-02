@@ -32,7 +32,7 @@ const FILE_LIFETIME_SEC = 2_592_000;
 const MAX_REFERENCE_BYTES = 5 * 1024 * 1024;
 
 /** `size` sets the aspect ratio only; the generator picks the pixels. Panels use their slot's (see drawSize). */
-const SHEET_SIZE = "1536x1024";
+export const SHEET_SIZE = "1536x1024";
 
 interface ImagesBody {
   data?: { b64_json?: string; revised_prompt?: string }[];

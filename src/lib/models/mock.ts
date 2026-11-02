@@ -4,7 +4,7 @@ import { sampleDays, sampleNarration } from "@/fixtures/days";
 import { localPanels } from "@/lib/layout/comicPages";
 import { normalizeStory } from "@/lib/layout/pickLayout";
 import { DEFAULT_STORY_MODE, type CastBrief, type ComicPage, type ComicScript, type Day, type PanelFrame, type ScriptPanel, type Transcript } from "@/lib/types";
-import type { AudioInput, CharacterReference, ComicModels, ConsistencyResult, ModelImage, PanelOptions, ScriptOptions, SheetSubject } from "./index";
+import type { AudioInput, CharacterReference, ComicModels, ConsistencyResult, ModelImage, OutfitText, PanelOptions, PersonMatch, PhotoPerson, ScriptOptions, SheetSubject } from "./index";
 import { applyStoryMode } from "./storyMode";
 import { NEW_PERSON_IDS, isNewPersonId, remapPanel, resolveNewPeople } from "@/lib/newPeople";
 
@@ -342,13 +342,56 @@ async function checkConsistency(image: ModelImage, references: CharacterReferenc
   return { ...none, driftedCharacterIds: [drifted.characterId], fixedCharacterIds: [drifted.characterId], fixedImage: stampFixed(image, drifted.name) };
 }
 
+/* ---------- Outfits ---------- */
+
+const MOCK_PHOTO_CLOTHES = "Teal rain jacket over a sunflower-yellow T-shirt, dark jeans, white trainers";
+
+/** No SAM in practice mode: the middle of the photo stands in for one person. */
+async function findPeople(photo: ModelImage & { width: number; height: number }): Promise<PhotoPerson[]> {
+  return [{ x1: photo.width * 0.2, y1: photo.height * 0.05, x2: photo.width * 0.8, y2: photo.height * 0.95, score: 1 }];
+}
+
+function mockOutfit(look: string, clothes: string): OutfitText {
+  const label = clothes.split(/[,.]| over | with /)[0].split(/\s+/).slice(0, 3).join(" ");
+  return { clothes, label: label.charAt(0).toUpperCase() + label.slice(1), look: `${look.trim()} Now wearing: ${clothes}.`.slice(0, 400) };
+}
+
+/** The typed clothes as they are, or a stand-in for a photo. */
+async function writeOutfit(base: { name: string; look: string }, input: { clothes?: string; photo?: ModelImage | null }): Promise<OutfitText | null> {
+  await wait(DELAY_MS.check);
+  const clothes = input.clothes?.replace(/\s+/g, " ").trim().slice(0, 200) || (input.photo ? MOCK_PHOTO_CLOTHES : "");
+  return clothes.length >= 6 ? mockOutfit(base.look, clothes) : null;
+}
+
+/** A mock sheet in teal with the outfit's name, so a change of clothes shows. */
+async function drawOutfitSheet(subject: SheetSubject, _sheet: unknown, clothes: string): Promise<{ image: ModelImage; photoRefused: boolean }> {
+  await wait(DELAY_MS.draw * 2);
+  const svg = sheetSvg(subject.name, subject.style)
+    .replaceAll(PINK, "#0f9e8e")
+    .replace(/MOCK (\w+) SHEET: /, "MOCK $1 OUTFIT: ")
+    .replace("</svg>", `<text x="450" y="40" text-anchor="middle" font-size="20" font-weight="700" fill="${INK}">${escapeXml(clothes.slice(0, 60))}</text>\n</svg>`);
+  return { image: { mimeType: SVG_TYPE, data: new TextEncoder().encode(svg) }, photoRefused: false };
+}
+
+/** Practice mode: the first person in the photos is the first character (the narrator), nobody else. */
+async function matchPeople(crops: ModelImage[], references: CharacterReference[]): Promise<PersonMatch[]> {
+  await wait(DELAY_MS.check);
+  const self = references[0];
+  if (!self || crops.length === 0) return [];
+  return [{ crop: 0, characterId: self.characterId, confidence: 0.9, ...mockOutfit(self.look, MOCK_PHOTO_CLOTHES) }];
+}
+
 export const mockModels: ComicModels = {
   mode: "mock",
-  sources: { transcribe: "mock", writeScript: "mock", drawReferenceSheet: "mock", drawPanel: "mock", checkConsistency: "mock" },
+  sources: { transcribe: "mock", writeScript: "mock", drawReferenceSheet: "mock", drawPanel: "mock", checkConsistency: "mock", outfit: "mock" },
   transcribe,
   writeScript,
   drawReferenceSheet,
   uploadReference,
   drawPanel,
   checkConsistency,
+  findPeople,
+  writeOutfit,
+  drawOutfitSheet,
+  matchPeople,
 };

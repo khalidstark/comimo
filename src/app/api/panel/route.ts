@@ -3,14 +3,15 @@ import { artStyleOf, isArtStyleId } from "@/lib/artStyles";
 import { guard, guardResponse, withCost } from "@/lib/guard";
 import { requireSession } from "@/lib/server/session";
 import { getModels, type CharacterReference } from "@/lib/models";
-import { isTrustedSheet, signFileId, signSheet, verifyFileToken } from "@/lib/models/fileTokens";
+import { parseReferences } from "@/lib/models/references";
+import { signFileId, signSheet } from "@/lib/models/fileTokens";
 import { cutOneOffs } from "@/lib/models/oneOff";
-import { isMissingFileError, isSendableImage, pickReferences } from "@/lib/models/meta/image";
-import { fromWire, isRecord, isText, json, jsonError, modelErrorResponse, toWire } from "@/lib/models/wire";
+import { isMissingFileError, pickReferences } from "@/lib/models/meta/image";
+import { isRecord, isText, json, jsonError, modelErrorResponse, toWire } from "@/lib/models/wire";
 import { BODY_LIMITS, readBoundedJson } from "@/lib/requestBody";
 import { isBeat, isShot } from "@/lib/layout/pickLayout";
 import { snapAspect } from "@/lib/layout/page";
-import type { ApiError, CharacterRole, Corner, DialogueLine, LetteringZone, PanelFrame, PanelResponse, ScriptPanel, TextDir, UnitBox, UploadedReference } from "@/lib/types";
+import type { ApiError, Corner, DialogueLine, LetteringZone, PanelFrame, PanelResponse, ScriptPanel, TextDir, UploadedReference } from "@/lib/types";
 
 /** Muse Image can take a minute or two with reasoning_strength "high", plus one retry. */
 export const maxDuration = 300;
@@ -18,8 +19,6 @@ export const maxDuration = 300;
 const MAX_CHARACTERS = 8;
 const MAX_LINES = 8;
 const DIRS: TextDir[] = ["rtl", "ltr", "auto"];
-const ROLES: CharacterRole[] = ["self", "friend", "family", "teacher", "pet", "other"];
-
 function isIdList(value: unknown): value is string[] {
   return Array.isArray(value) && value.length <= MAX_CHARACTERS && value.every((id) => isText(id, 100));
 }
@@ -80,38 +79,6 @@ function parsePanel(value: unknown): ScriptPanel | null {
     ...(emphasis === true ? { emphasis: true } : {}),
     ...(flashback === true ? { flashback: true } : {}),
   };
-}
-
-function parseReferences(value: unknown): CharacterReference[] | "stale" | "untrusted" | null {
-  if (!Array.isArray(value) || value.length > MAX_CHARACTERS) return null;
-  const references: CharacterReference[] = [];
-  for (const item of value) {
-    if (!isRecord(item)) return null;
-    const { characterId, name, look, image, sheetToken, fileToken, role, oneOff, box } = item;
-    if (!isText(characterId, 100) || !isText(name, 100) || typeof look !== "string" || look.length > 2000) return null;
-    if (role !== undefined && !ROLES.includes(role as CharacterRole)) return null;
-    const wire = image === undefined ? null : fromWire(image);
-    if (image !== undefined && !wire) return null;
-    // Only real PNG/JPEG/WebP sheets go to Meta (mock SVG sheets are dropped), and only
-    // sheets this server drew or the shipped starter sheets: never an arbitrary image.
-    const decoded = wire && isSendableImage(wire) ? wire : null;
-    if (decoded && !isTrustedSheet(decoded.data, sheetToken)) return "untrusted";
-    const fileId = fileToken === undefined ? null : verifyFileToken(fileToken);
-    // A token this server can't use (another key, tampered) without the image: ask for the image instead.
-    if (fileToken !== undefined && !fileId && !decoded) return "stale";
-    // A one-off (03-06) sends the earlier panel it first appeared in (signed by imageToken) and where it is in it.
-    const at = oneOff === true && isRecord(box) ? (box as unknown as UnitBox) : undefined;
-    references.push({
-      characterId,
-      name,
-      look,
-      image: decoded,
-      ...(fileId ? { fileId } : {}),
-      ...(role ? { role: role as CharacterRole } : {}),
-      ...(oneOff === true ? { oneOff: true, ...(at ? { box: at } : {}) } : {}),
-    });
-  }
-  return references;
 }
 
 /** Without references, fall back to the starter cast's descriptions (no reference images). */
