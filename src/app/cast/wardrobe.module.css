@@ -51,7 +51,7 @@
   inline-size: 100%;
   aspect-ratio: 3 / 4;
   object-fit: cover;
-  object-position: 22% 40%;
+  object-position: 0% 40%;
   border: var(--panel-border-thin) solid var(--line);
   border-radius: 10px;
   background: var(--paper);

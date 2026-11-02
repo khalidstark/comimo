@@ -114,7 +114,9 @@ function CostLine({ cost }: { cost: ComicCost }) {
   const steps = COMIC_STEPS.filter((step) => (cost.byStep[step] ?? 0) > 0);
   return (
     <p className={styles.madeCost}>
-      <strong>Made for {aboutUsd(cost.usd)}</strong> in model calls
+      <span>
+        <strong>Made for {aboutUsd(cost.usd)}</strong> in model calls
+      </span>
       {steps.length > 0 ? (
         <span className={styles.madeSteps}>
           {steps.map((step) => (
@@ -190,7 +192,7 @@ export function FacesNote({ summary, made }: { summary: FacesSummary; made?: Mad
               <bdi>{outfit.name}</bdi> in <bdi>{outfit.label}</bdi> (photo {outfit.photo + 1})
             </span>
           ))}
-          . The photos are in this day&apos;s album.
+          . Today&apos;s photos are in this day&apos;s album.
         </p>
       ) : null}
       {made?.cost ? <CostLine cost={made.cost} /> : null}
