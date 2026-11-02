@@ -19,6 +19,8 @@ export interface IssueDay extends IssueDayInfo {
   rtl: boolean;
   pages: BookPage[];
   panelCount: number;
+  /** What the comic cost in model calls (dollars); missing on days made before costs were kept. */
+  cost?: number;
 }
 
 export interface IssueCast extends CastInfo {
@@ -65,6 +67,7 @@ export function issueDay(day: Day, panels: PanelView[], layouts: (PageLayoutChoi
     rtl: day.languages.dominant === "ar",
     pages,
     panelCount: day.panels.length,
+    ...(day.cost && !day.cost.mock ? { cost: day.cost.usd } : {}),
   };
 }
 

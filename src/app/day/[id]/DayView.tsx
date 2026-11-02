@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { art } from "@/art/manifest";
 import { ComicBook, type BookPage } from "@/components/comic/ComicBook";
-import { FacesNote } from "@/components/comic/FacesNote";
+import { FacesNote, type MadeFacts } from "@/components/comic/FacesNote";
 import { MoodBadge } from "@/components/comic/MoodBadge";
 import { pageView } from "@/components/comic/pageView";
 import type { FacesSummary, PanelView } from "@/components/comic/view";
@@ -31,6 +31,15 @@ interface DayViewProps {
   layouts: (PageLayoutChoice | null)[];
   previous?: DayLink;
   next?: DayLink;
+}
+
+/** Who today's photos dressed (by the names the panels were made with) and the comic's cost; old days have neither. */
+function madeFacts(day: Day): MadeFacts {
+  const names = Object.assign({}, ...day.panels.map((panel) => panel.names ?? {})) as Record<string, string>;
+  return {
+    outfits: (day.outfits ?? []).map((outfit) => ({ name: names[outfit.characterId] ?? "Someone", label: outfit.label, photo: outfit.photo })),
+    ...(day.cost ? { cost: day.cost } : {}),
+  };
 }
 
 const monthFormat = new Intl.DateTimeFormat("en-GB", { month: "long", timeZone: "UTC" });
@@ -85,7 +94,7 @@ export function DayView({ day, panels, faces, layouts, previous, next }: DayView
         </details>
       ) : null}
 
-      {!crisis && faces ? <FacesNote summary={faces} /> : null}
+      {!crisis && faces ? <FacesNote summary={faces} made={madeFacts(day)} /> : null}
 
       {day.heavy && !crisis ? <CheckInCard day={day} /> : null}
 

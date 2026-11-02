@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties, type ReactNode } from "react";
 import { artStyleOf, type ArtStyleId } from "@/lib/artStyles";
+import { aboutUsd } from "@/lib/costs";
 import type { MagazineIssue } from "@/lib/magazine/build";
 import { CoverError, drawCover } from "@/lib/magazine/coverStore";
 import { issuePages, mainCast, monthInWords, monthLabel, spreadOf, spreadsFor } from "@/lib/magazine/issue";
@@ -13,6 +14,22 @@ import { saveCoverImage } from "./saveCover";
 import styles from "./reader.module.css";
 
 const TWO_UP = "(min-width: 64rem)";
+
+/** "This issue cost about $0.41 to make, 6 comics." from the days' recorded costs. */
+function IssueCost({ days }: { days: { cost?: number }[] }) {
+  const known = days.filter((day) => typeof day.cost === "number");
+  if (known.length === 0) return null;
+  const total = known.reduce((sum, day) => sum + (day.cost ?? 0), 0);
+  const which =
+    known.length < days.length
+      ? ` (the ${known.length} of ${days.length} comics with a recorded cost)`
+      : `, ${days.length === 1 ? "one comic" : `${days.length} comics`}`;
+  return (
+    <p className={styles.issueCost}>
+      This issue cost <strong>{aboutUsd(total)}</strong> to make{which}.
+    </p>
+  );
+}
 
 function subscribeTwoUp(onChange: () => void) {
   const query = window.matchMedia(TWO_UP);
@@ -292,6 +309,7 @@ export function Magazine({ sample, heading }: { sample: MagazineIssue; heading: 
               Print or save as PDF
             </Link>
           </div>
+          {!issue.sample ? <IssueCost days={issue.days} /> : null}
           {cover.status === "error" ? (
             <p className={styles.coverError} role="alert">
               {cover.message}

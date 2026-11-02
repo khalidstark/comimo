@@ -113,6 +113,19 @@ export function parseCost(value: unknown): CostRecord | null {
   return record;
 }
 
+/** GET /api/me/costs: the account's own totals from the server's cost ledger. */
+export interface MyCosts {
+  /** Comics with at least one panel drawn by the real models. */
+  comics: number;
+  /** Dollars those comics cost, retries and redraws included. */
+  comicsUsd: number;
+  /** Drawing the cast outside comics: sheets, photos, outfits, sprites. */
+  castUsd: number;
+  /** Covers and caption suggestions. */
+  extrasUsd: number;
+  totalUsd: number;
+}
+
 /** The response header every metered route answers with: that request's cost as JSON. */
 export const COST_HEADER = "X-Comimo-Cost";
 /** The request header naming the comic (day id) a model call is for, so the server ledger can file it. */

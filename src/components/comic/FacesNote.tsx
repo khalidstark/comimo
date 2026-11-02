@@ -1,4 +1,5 @@
 import { Art } from "@/art/Art";
+import { COMIC_STEPS, aboutUsd, type ComicCost, type CostStep } from "@/lib/costs";
 import type { FacesSummary, FixedFace, OneOffFace, PanelArt } from "./view";
 import styles from "./comic.module.css";
 
@@ -85,7 +86,49 @@ function OneOffLine({ face, sam }: { face: OneOffFace; sam: boolean }) {
  * comics say so and never mention SAM; days made before the real check have
  * no note (see facesSummary).
  */
-export function FacesNote({ summary }: { summary: FacesSummary }) {
+/** How the comic was made beyond the faces: who today's photos dressed, and what it cost. */
+export interface MadeFacts {
+  outfits: { name: string; label: string; photo: number }[];
+  cost?: ComicCost;
+}
+
+const STEP_WORDS: Record<CostStep, string> = {
+  transcribe: "listening",
+  outfit: "today's outfit",
+  script: "script",
+  sheets: "new sheets",
+  panels: "panels",
+  faceCheck: "face check",
+  redraws: "redraws",
+  sheet: "sheets",
+  photo: "photos",
+  sprite: "sprites",
+  wardrobe: "wardrobe",
+  cover: "cover",
+  caption: "captions",
+};
+
+/** "Made for about $0.07 in model calls: listening $0.003, script $0.012, …" */
+function CostLine({ cost }: { cost: ComicCost }) {
+  if (cost.mock || cost.usd <= 0) return <p className={styles.facesHint}>Made in practice mode: no model was called, so it cost nothing.</p>;
+  const steps = COMIC_STEPS.filter((step) => (cost.byStep[step] ?? 0) > 0);
+  return (
+    <p className={styles.madeCost}>
+      <strong>Made for {aboutUsd(cost.usd)}</strong> in model calls
+      {steps.length > 0 ? (
+        <span className={styles.madeSteps}>
+          {steps.map((step) => (
+            <span key={step}>
+              {STEP_WORDS[step]} ${(cost.byStep[step] ?? 0).toFixed(3)}
+            </span>
+          ))}
+        </span>
+      ) : null}
+    </p>
+  );
+}
+
+export function FacesNote({ summary, made }: { summary: FacesSummary; made?: MadeFacts }) {
   const faces = summary.fixed;
   return (
     <section className={styles.faces} aria-labelledby="faces-title">
@@ -138,6 +181,19 @@ export function FacesNote({ summary }: { summary: FacesSummary }) {
           ))}
         </ul>
       ) : null}
+      {made?.outfits.length ? (
+        <p className={styles.facesLede}>
+          Dressed from today&apos;s photos:{" "}
+          {made.outfits.map((outfit, i) => (
+            <span key={outfit.name}>
+              {i > 0 ? "; " : ""}
+              <bdi>{outfit.name}</bdi> in <bdi>{outfit.label}</bdi> (photo {outfit.photo + 1})
+            </span>
+          ))}
+          . The photos are in this day&apos;s album.
+        </p>
+      ) : null}
+      {made?.cost ? <CostLine cost={made.cost} /> : null}
     </section>
   );
 }
