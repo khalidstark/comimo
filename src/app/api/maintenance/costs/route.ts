@@ -1,3 +1,4 @@
+import { connection } from "next/server";
 import { aggregateCosts, ledgerAccounts, ledgerOf, summarizeAccount } from "@/lib/server/costs";
 import { maintenanceAuthorized } from "@/lib/server/maintenance";
 
@@ -11,6 +12,8 @@ import { maintenanceAuthorized } from "@/lib/server/maintenance";
  * route doesn't exist (404).
  */
 export async function GET(request: Request) {
+  // Never prerendered: every call reads the ledger as it is now.
+  await connection();
   const allowed = maintenanceAuthorized(request);
   if (allowed === null) return new Response("Not found", { status: 404 });
   if (!allowed) return Response.json({ error: "Not allowed." }, { status: 401, headers: { "Cache-Control": "no-store" } });

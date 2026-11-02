@@ -298,7 +298,7 @@ function Preview({
         <strong dir="auto">{outfit.label}</strong>
         <span dir="auto">{outfit.clothes}</span>
         {refused ? <span className={styles.hint}>Muse Image wouldn&apos;t use the photo, so the clothes were drawn from its description.</span> : null}
-        {outfit.cost ? <span className={styles.cost}>Drawn for {aboutUsd(outfit.cost.usd)}</span> : null}
+        {outfit.cost && outfit.cost.usd > 0 ? <span className={styles.cost}>Drawn for {aboutUsd(outfit.cost.usd)}</span> : null}
       </figcaption>
       <div className={styles.actions}>
         <button type="button" className="btn btn--accent" onClick={onWear}>
