@@ -3,8 +3,10 @@ import { albumIsViewable } from "@/lib/server/album";
 import { sessionCookieName } from "@/lib/server/cookieName";
 
 /**
- * Two checks before a page renders:
+ * Three checks before a page renders:
  *
+ * - /: the landing page is for visitors without an account; with a session
+ *   cookie it sends them to /record (until the signed-in home is designed).
  * - /record and /welcome: an optimistic sign-in check. With no session cookie at all, a
  *   visitor who taps Record goes to the quick sign-up and comes straight back
  *   after. This only looks at the cookie's presence; the API routes check the
@@ -53,7 +55,17 @@ export async function proxy(request: NextRequest) {
     });
   }
 
-  if (request.cookies.has(sessionCookieName())) return NextResponse.next();
+  const signedIn = request.cookies.has(sessionCookieName());
+  // The landing page is for newcomers; someone with an account goes straight to their day.
+  if (pathname === "/") {
+    if (!signedIn) return NextResponse.next();
+    const url = request.nextUrl.clone();
+    url.pathname = "/record";
+    url.search = "";
+    return NextResponse.redirect(url);
+  }
+
+  if (signedIn) return NextResponse.next();
   const url = request.nextUrl.clone();
   url.pathname = "/signup";
   url.search = `?next=${encodeURIComponent(request.nextUrl.pathname)}`;
@@ -61,5 +73,5 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/record", "/welcome", "/album/:id"],
+  matcher: ["/", "/record", "/welcome", "/album/:id"],
 };

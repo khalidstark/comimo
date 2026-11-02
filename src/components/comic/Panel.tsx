@@ -44,8 +44,10 @@ function useFitLettering(ref: RefObject<HTMLDivElement | null>) {
       layer.style.removeProperty("--fit");
       const band = layer.clientHeight;
       const box = sheet.getBoundingClientRect();
+      // On-screen rects include any transform (the magazine scales whole pages); layout sizes don't.
+      const k = box.height / (sheet.offsetHeight || box.height || 1) || 1;
       const bottomInset = Number.parseFloat(getComputedStyle(layer).getPropertyValue("--ib")) || 0;
-      const room = box.bottom - (box.height * bottomInset) / 100 - layer.getBoundingClientRect().top;
+      const room = (box.bottom - (box.height * bottomInset) / 100 - layer.getBoundingClientRect().top) / k;
       for (let step = 0; step < FIT_STEPS.length; step++) {
         const need = layer.scrollHeight;
         const limit = step < 2 ? band : room;
@@ -82,9 +84,11 @@ function useFreeLettering(ref: RefObject<HTMLDivElement | null>, panel: PanelVie
 
     const place = () => {
       const box = sheet.getBoundingClientRect();
-      const W = box.width;
-      const H = box.height;
+      // Work in layout pixels: on-screen rects include any transform (the magazine scales whole pages).
+      const W = sheet.offsetWidth;
+      const H = sheet.offsetHeight;
       if (W < 40 || H < 40) return;
+      const k = box.width / W || 1;
       const style = getComputedStyle(sheet);
       const share = (name: string) => (Number.parseFloat(style.getPropertyValue(name)) || 0) / 100;
       const desktop = style.getPropertyValue("--show-desktop").trim() === "inline";
@@ -100,7 +104,7 @@ function useFreeLettering(ref: RefObject<HTMLDivElement | null>, panel: PanelVie
       const bodies = figures.items.map((item) => toPx(item.box));
       const covers = slot.covers[desktop ? "desktop" : "phone"].map((c) => pad({ x: c.x * W, y: c.y * H, w: c.w * W, h: c.h * H }, 0.03, 0.03, 0.03));
       const stamp = sheet.querySelector<HTMLElement>("button[aria-pressed]")?.getBoundingClientRect();
-      const hard = [...heads, ...covers, ...(stamp ? [{ x: stamp.left - box.left - 4, y: stamp.top - box.top - 4, w: stamp.width + 8, h: stamp.height + 8 }] : [])];
+      const hard = [...heads, ...covers, ...(stamp ? [{ x: (stamp.left - box.left) / k - 4, y: (stamp.top - box.top) / k - 4, w: stamp.width / k + 8, h: stamp.height / k + 8 }] : [])];
       const margin = Math.max(4, W * 0.012);
       const area = {
         x: W * share("--il") + margin,
@@ -123,7 +127,7 @@ function useFreeLettering(ref: RefObject<HTMLDivElement | null>, panel: PanelVie
             element.style.top = "0px";
             element.style.maxWidth = `${width / scale}px`;
             const rect = element.getBoundingClientRect();
-            return { w: rect.width, h: rect.height };
+            return { w: rect.width / k, h: rect.height / k };
           }),
         );
 
