@@ -7,7 +7,8 @@ import { MAX_PHOTO_BYTES, PhotoInputError, cropPerson, isPhotoType, readPhoto } 
 import { BODY_LIMITS, readBoundedForm } from "@/lib/requestBody";
 import type { PhotoLookResponse } from "@/lib/types";
 
-export const maxDuration = 120;
+/** SAM (45 s timeout) and a vision call (60 s), each with one retry. */
+export const maxDuration = 300;
 
 const MOCK_LOOK = "Adult with short dark hair, wearing a plain jacket over a T-shirt. (Mock description: the real models aren't connected.)";
 

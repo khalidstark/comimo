@@ -8,7 +8,8 @@ import { cleanAbout } from "@/lib/aboutYou";
 import type { CastBrief, CharacterRole, ScriptResponse } from "@/lib/types";
 import { DEFAULT_STORY_MODE, isStoryMode } from "@/lib/types";
 
-export const maxDuration = 60;
+/** Up to two Muse Spark attempts, each with a 75 s timeout and one retry: 60 s cut long scripts off mid-call. */
+export const maxDuration = 300;
 
 const MAX_TRANSCRIPT = 20_000;
 const MAX_CAST = 20;

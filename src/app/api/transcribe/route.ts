@@ -5,7 +5,8 @@ import { json, jsonError, modelErrorResponse } from "@/lib/models/wire";
 import { BODY_LIMITS, readBoundedForm } from "@/lib/requestBody";
 import type { LanguageHint, TranscribeResponse } from "@/lib/types";
 
-export const maxDuration = 60;
+/** The transcribe call waits up to 90 s (plus one retry); 60 s ended the function first. */
+export const maxDuration = 300;
 
 /**
  * Largest voice note accepted. The browser sends 16 kHz mono WAV, 32 KB a
