@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { MAX_VOICE_NOTE_MS } from "@/lib/audio/toWav";
+import { AudioConvertError, MAX_VOICE_NOTE_MS, overVoiceNoteCap, voiceNoteDurationMs } from "@/lib/audio/toWav";
 
 /** Longest recording; the recorder stops itself here. Same cap as the WAV conversion. */
 export const MAX_RECORDING_MS = MAX_VOICE_NOTE_MS;
@@ -19,7 +19,8 @@ const MIN_RECORDING_MS = 1_000;
 const MIME_TYPES = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4;codecs=mp4a.40.2", "audio/mp4", "audio/ogg;codecs=opus"];
 const AUDIO_EXTENSIONS = /\.(m4a|mp3|mp4|wav|webm|ogg|oga|opus|aac|flac|caf|3gp|amr)$/i;
 
-export type RecorderStatus = "idle" | "requesting" | "recording" | "review";
+/** "checking": an uploaded file is being measured before it is taken. */
+export type RecorderStatus = "idle" | "requesting" | "recording" | "checking" | "review";
 
 export type RecorderProblem =
   | "denied"
@@ -28,7 +29,9 @@ export type RecorderProblem =
   | "failed"
   | "too-short"
   | "too-big"
+  | "too-long"
   | "not-audio"
+  | "unreadable"
   | "empty";
 
 /** A voice note ready for the pipeline: a fresh recording or an uploaded file. */
@@ -45,14 +48,20 @@ export interface Recorder {
   status: RecorderStatus;
   problem: RecorderProblem | null;
   elapsedMs: number;
+  /** Length of the uploaded file just refused as "too-long". */
+  refusedMs: number | null;
   take: Take | null;
   /** Live input for the level meter while recording. */
   analyser: AnalyserNode | null;
   start: () => Promise<void>;
   stop: () => void;
   discard: () => void;
-  /** Accept an uploaded file as the take; returns false (and sets `problem`) if it can't be used. */
-  acceptFile: (file: File) => boolean;
+  /**
+   * Accept an uploaded file as the take. It is measured first, so a note over
+   * two minutes is refused as soon as it is picked; resolves false (and sets
+   * `problem`) if it can't be used.
+   */
+  acceptFile: (file: File) => Promise<boolean>;
 }
 
 function canRecord(): boolean {
@@ -90,6 +99,7 @@ export function useRecorder(): Recorder {
   const [status, setStatus] = useState<RecorderStatus>("idle");
   const [problem, setProblem] = useState<RecorderProblem | null>(null);
   const [elapsedMs, setElapsedMs] = useState(0);
+  const [refusedMs, setRefusedMs] = useState<number | null>(null);
   const [take, setTake] = useState<Take | null>(null);
   const [analyser, setAnalyser] = useState<AnalyserNode | null>(null);
 
@@ -99,6 +109,8 @@ export function useRecorder(): Recorder {
   const timerRef = useRef<number | null>(null);
   const takeUrlRef = useRef<string | null>(null);
   const mountedRef = useRef(true);
+  /** Bumped for every picked file, so only the latest one's measurement counts. */
+  const pickRef = useRef(0);
 
   const stopTimer = useCallback(() => {
     if (timerRef.current !== null) {
@@ -131,6 +143,8 @@ export function useRecorder(): Recorder {
 
   const start = useCallback(async () => {
     if (recorderRef.current) return;
+    // A file still being measured loses to a fresh recording.
+    pickRef.current++;
     if (!canRecord()) {
       setProblem("unsupported");
       return;
@@ -229,24 +243,49 @@ export function useRecorder(): Recorder {
   }, [release, replaceTake, stop]);
 
   const discard = useCallback(() => {
+    pickRef.current++;
     replaceTake(null);
     setElapsedMs(0);
     setProblem(null);
+    setRefusedMs(null);
     setStatus("idle");
   }, [replaceTake]);
 
   const acceptFile = useCallback(
-    (file: File) => {
+    async (file: File) => {
       if (recorderRef.current) return false;
+      const pick = ++pickRef.current;
+      setRefusedMs(null);
       const issue: RecorderProblem | null =
         file.size === 0 ? "empty" : !isAudioFile(file) ? "not-audio" : file.size > MAX_AUDIO_BYTES ? "too-big" : null;
       if (issue) {
         setProblem(issue);
         return false;
       }
-      replaceTake({ blob: file, url: URL.createObjectURL(file), source: "upload", durationMs: null, fileName: file.name });
-      setElapsedMs(0);
+
+      // Measure it now, so a note over two minutes is refused here and not after "Make my comic".
       setProblem(null);
+      setStatus("checking");
+      let durationMs: number | null = null;
+      let unreadable = false;
+      try {
+        durationMs = await voiceNoteDurationMs(file);
+      } catch (error) {
+        // A browser that can't prepare audio at all hears about it when the comic is made, as before.
+        unreadable = !(error instanceof AudioConvertError && error.problem === "unsupported");
+      }
+      if (!mountedRef.current || pick !== pickRef.current) return false;
+
+      const refused: RecorderProblem | null = unreadable ? "unreadable" : durationMs !== null && overVoiceNoteCap(durationMs) ? "too-long" : null;
+      if (refused) {
+        setProblem(refused);
+        setRefusedMs(refused === "too-long" ? durationMs : null);
+        // A take picked earlier stays ready.
+        setStatus(takeUrlRef.current ? "review" : "idle");
+        return false;
+      }
+      replaceTake({ blob: file, url: URL.createObjectURL(file), source: "upload", durationMs, fileName: file.name });
+      setElapsedMs(0);
       setStatus("review");
       return true;
     },
@@ -269,5 +308,5 @@ export function useRecorder(): Recorder {
     };
   }, [release]);
 
-  return { status, problem, elapsedMs, take, analyser, start, stop, discard, acceptFile };
+  return { status, problem, elapsedMs, refusedMs, take, analyser, start, stop, discard, acceptFile };
 }

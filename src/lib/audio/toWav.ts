@@ -13,6 +13,11 @@ export const MAX_VOICE_NOTE_MS = 120_000;
 /** Encoders pad a little; a recording stopped at the cap may decode slightly longer. */
 const CAP_SLACK_MS = 1_500;
 
+/** True when a voice note of this length is over the cap (with the encoder slack). */
+export function overVoiceNoteCap(durationMs: number, maxMs = MAX_VOICE_NOTE_MS): boolean {
+  return durationMs > maxMs + CAP_SLACK_MS;
+}
+
 export type AudioConvertProblem = "unsupported" | "undecodable" | "too-long" | "silent";
 
 export class AudioConvertError extends Error {
@@ -104,7 +109,7 @@ function isSilent(samples: Float32Array): boolean {
 export async function toWav(blob: Blob, maxMs = MAX_VOICE_NOTE_MS): Promise<WavResult> {
   const buffer = await decode(blob);
   const fullMs = buffer.duration * 1000;
-  if (fullMs > maxMs + CAP_SLACK_MS) {
+  if (overVoiceNoteCap(fullMs, maxMs)) {
     throw new AudioConvertError("too-long", "That voice note is longer than two minutes. Trim it and try again.");
   }
   const durationMs = Math.min(fullMs, maxMs);
@@ -113,4 +118,54 @@ export async function toWav(blob: Blob, maxMs = MAX_VOICE_NOTE_MS): Promise<WavR
     throw new AudioConvertError("silent", "That voice note sounds silent. Check the mic and try again.");
   }
   return { wav: encodeWav(samples), durationMs };
+}
+
+/** How long a media element says the file is; null when it can't tell (or doesn't answer in time). */
+function elementDurationMs(blob: Blob, timeoutMs: number): Promise<number | null> {
+  if (typeof document === "undefined") return Promise.resolve(null);
+  return new Promise((resolve) => {
+    const url = URL.createObjectURL(blob);
+    const audio = document.createElement("audio");
+    let settled = false;
+    const finish = (ms: number | null) => {
+      if (settled) return;
+      settled = true;
+      window.clearTimeout(timer);
+      audio.removeAttribute("src");
+      audio.load();
+      URL.revokeObjectURL(url);
+      resolve(ms);
+    };
+    const timer = window.setTimeout(() => finish(null), timeoutMs);
+    const read = () => {
+      const seconds = audio.duration;
+      if (Number.isFinite(seconds) && seconds > 0) finish(seconds * 1000);
+      // MediaRecorder webm has no duration in its header until the end is sought.
+      else if (seconds === Infinity) {
+        try {
+          audio.currentTime = Number.MAX_SAFE_INTEGER;
+        } catch {
+          finish(null);
+        }
+      }
+    };
+    audio.preload = "metadata";
+    audio.muted = true;
+    audio.addEventListener("loadedmetadata", read);
+    audio.addEventListener("durationchange", read);
+    audio.addEventListener("error", () => finish(null));
+    audio.src = url;
+  });
+}
+
+/**
+ * The length of a picked voice note, to refuse a long one as soon as it is
+ * chosen. Reads the header through a media element, else decodes the file.
+ * Rejects with "undecodable" (or "unsupported") when the browser can't read it at all.
+ */
+export async function voiceNoteDurationMs(blob: Blob): Promise<number> {
+  const fromElement = await elementDurationMs(blob, 4_000);
+  if (fromElement !== null) return fromElement;
+  const buffer = await decode(blob);
+  return buffer.duration * 1000;
 }
