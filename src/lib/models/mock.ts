@@ -1,6 +1,6 @@
 import "server-only";
 import { starterCastById } from "@/fixtures/cast";
-import { sampleDays, sampleNarration } from "@/fixtures/days";
+import { sampleDays } from "@/fixtures/days";
 import { localPanels } from "@/lib/layout/comicPages";
 import { normalizeStory } from "@/lib/layout/pickLayout";
 import { DEFAULT_STORY_MODE, type GoodThing, type WeekRequest, type CastBrief, type ComicPage, type ComicScript, type Day, type PanelFrame, type ScriptPanel, type Transcript } from "@/lib/types";
@@ -93,19 +93,18 @@ const LONG_NOTE = 700;
 
 /** One mock page from a sample day: its panels (with narration) plus 0 to 2 quiet beats, by hash. */
 function mockPage(day: Day, transcript: string, toCast: (id: string) => string, cast: CastBrief[]): ScriptPanel[] {
-  const narration = sampleNarration[day.id] ?? [];
-  const story: ScriptPanel[] = day.panels.map(({ index, scene, caption, dialogue, characterIds, shot, beat }) => ({
+  const story: ScriptPanel[] = day.panels.map(({ index, scene, caption, narration, dialogue, characterIds, shot, beat }) => ({
     index,
     scene,
-    caption,
-    ...(narration[index] ? { narration: narration[index] } : {}),
+    ...(caption ? { caption } : {}),
+    ...(narration ? { narration } : {}),
     dialogue: dialogue.map((line) => ({ ...line, speakerId: toCast(line.speakerId) })),
     characterIds: characterIds.map(toCast),
     shot,
     beat,
   }));
-  // The samples have 4 panels; add quiet beats so mock comics also come in 5 and 6 panels.
-  const extra = hash(transcript + day.id) % 3;
+  // Add up to two quiet beats so mock comics come in several lengths, never past a page's six panels.
+  const extra = Math.min(hash(transcript + day.id) % 3, Math.max(0, 6 - story.length));
   const who = story[1].characterIds[0];
   const name = cast.find((member) => member.id === who)?.name ?? (who ? starterCastById[who]?.name : undefined) ?? "the speaker";
   const beats: ScriptPanel[] = [
