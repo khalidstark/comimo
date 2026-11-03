@@ -153,7 +153,10 @@ export function HomeView() {
                   "Your diaries"
                 )}
               </h2>
-              <p className={shelf.hint}>Every day keeps your daily comics. Make a diary for anything else, and write in it whenever you like.</p>
+              {/* How-to, so only until the first diary of their own: after that the shelf explains itself. */}
+              {loaded.diaries.length === 0 ? (
+                <p className={shelf.hint}>Every day keeps your daily comics. Make a diary for anything else, and write in it whenever you like.</p>
+              ) : null}
             </div>
             <ul className={shelf.shelf}>
               {[{ id: EVERY_DAY, name: "Every day", color: "sun" as const, sticker: "spark" as const, daily: true }, ...loaded.diaries.map((d) => ({ ...d, daily: false }))].map(
