@@ -101,6 +101,18 @@ export const art = {
     teta: drawn("site/sprite-teta.webp", "", 1800, 1440),
     mishmish: drawn("site/sprite-mishmish.webp", "", 1800, 1440),
   },
+  /**
+   * The smooth sheets of the same characters: 12 columns x 3 rows (idle, talk, wave), made once
+   * at design time from the Muse art (design/). They play wherever these characters appear; a
+   * character without one here keeps its Muse sheet above.
+   */
+  spriteSheetsHf: {
+    mascot: drawn("sprites-hf/mimo.webp", "", 3840, 864),
+    nour: drawn("sprites-hf/nour.webp", "", 3600, 1200),
+    karim: drawn("sprites-hf/karim.webp", "", 3600, 1200),
+    teta: drawn("sprites-hf/teta.webp", "", 3600, 1200),
+    mishmish: drawn("sprites-hf/mishmish.webp", "", 3600, 1200),
+  },
   month: {
     cover: drawn("site/month-cover.webp", "", 1000, 1250),
     /** The sample issue's own cover, drawn by Muse Image from the starter sheets through the cover route (04-01). */

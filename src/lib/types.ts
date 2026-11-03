@@ -70,6 +70,8 @@ export interface SpriteSheet {
   frameHeight: number;
   /** Frames per row in the image (rows may use fewer). */
   columns: number;
+  /** Rows in the image. Missing on older records: one past the last animation's row. */
+  rows?: number;
   /** `idle` is required; the player falls back to it. */
   animations: { idle: SpriteAnimation } & Partial<Record<SpriteAnimationName, SpriteAnimation>>;
 }

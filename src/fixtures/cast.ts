@@ -1,4 +1,4 @@
-import { spriteSheets } from "@/art/sprites";
+import { museSpriteSheets } from "@/art/sprites";
 import type { CastBrief, Character } from "@/lib/types";
 
 /**
@@ -7,6 +7,13 @@ import type { CastBrief, Character } from "@/lib/types";
  */
 
 const SHIPPED = "2026-10-01T00:00:00.000Z";
+
+/**
+ * Their sprite sheets. These records are saved to the store and follow the account, so they
+ * keep the Muse sheet every build can draw; the player swaps in the smooth sheet by its art
+ * path (playableSheet in src/art/sprites.ts).
+ */
+const spriteSheets = museSpriteSheets;
 
 export const starterCast: Character[] = [
   {

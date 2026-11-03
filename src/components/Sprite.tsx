@@ -2,11 +2,13 @@
 
 import { useEffect, useRef, useState, useSyncExternalStore, type CSSProperties, type RefObject } from "react";
 import { artAt } from "@/art/manifest";
+import { playableSheet } from "@/art/sprites";
 import { getImage } from "@/lib/store";
 import type { SpriteAnimation, SpriteAnimationName, SpriteSheet } from "@/lib/types";
 import styles from "./sprite.module.css";
 
 interface SpriteProps {
+  /** A site character's sheet is swapped for the one it plays today (see playableSheet). */
   sheet: SpriteSheet;
   /** Accessible name, e.g. "Mimo waving". Empty string makes the sprite decorative. */
   label: string;
@@ -77,12 +79,15 @@ function useSheetUrl(sheet: SpriteSheet): string | null {
 /**
  * Plays one row of a sprite sheet with CSS steps() on background-position.
  *
- * Idle loops with a random blink now and then, talk loops while `talking`,
- * and wave plays once on hover, tap or focus. The animation pauses while the
+ * Idle loops (with a random blink now and then, on sheets that have a blink
+ * row), talk loops while `talking`, and wave plays once on hover, tap or
+ * focus. The grid comes from the sheet: 6 x 4 for the Muse sheets drawn at
+ * runtime, 12 x 3 for the smooth site sheets. The animation pauses while the
  * sprite is off screen or the tab is hidden; under reduced motion the sprite
  * holds its first idle frame and nothing plays.
  */
-export function Sprite({ sheet, label, talking = false, greet = false, hostRef, className }: SpriteProps) {
+export function Sprite({ sheet: given, label, talking = false, greet = false, hostRef, className }: SpriteProps) {
+  const sheet = playableSheet(given);
   const ownRef = useRef<HTMLSpanElement>(null);
   const url = useSheetUrl(sheet);
   const reduced = useSyncExternalStore(subscribeReduced, reducedSnapshot, reducedServerSnapshot);
@@ -139,7 +144,7 @@ export function Sprite({ sheet, label, talking = false, greet = false, hostRef, 
     return () => clearTimeout(timer);
   }, [greet, playing, sheet.animations.wave]);
 
-  // Blink now and then while idling.
+  // Blink now and then while idling (sheets without a blink row just breathe).
   useEffect(() => {
     if (!playing || oneShot || wantsTalk || !sheet.animations.blink) return;
     const timer = setTimeout(
@@ -152,7 +157,7 @@ export function Sprite({ sheet, label, talking = false, greet = false, hostRef, 
   // Nothing plays under reduced motion: hold the first idle frame.
   const name: SpriteAnimationName = reduced ? "idle" : (oneShot?.name ?? (wantsTalk ? "talk" : "idle"));
   const animation: SpriteAnimation = sheet.animations[name] ?? sheet.animations.idle;
-  const rows = Math.max(...Object.values(sheet.animations).map((a) => (a ? a.row : 0))) + 1;
+  const rows = sheet.rows ?? Math.max(...Object.values(sheet.animations).map((a) => (a ? a.row : 0))) + 1;
   const columns = Math.max(1, sheet.columns);
   const frames = Math.max(1, Math.min(animation.frames, columns));
   const moving = !reduced && frames > 1 && columns > 1;
