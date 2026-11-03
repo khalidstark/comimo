@@ -1,11 +1,11 @@
-import { art, artAt } from "@/art/manifest";
+import { artAt } from "@/art/manifest";
 import { toPanelViews, type PanelArt } from "@/components/comic/view";
 import { starterCastById } from "@/fixtures/cast";
 import { loadCast } from "../cast";
 import { pageLayoutChain } from "../layout/comicPages";
 import { getImage, listDays } from "../store";
 import type { Character, Day, ImageRef, MonthKey } from "../types";
-import { issueCast, issueDay, type MagazineIssue } from "./build";
+import { coverPanel, issueCast, issueDay, type MagazineIssue } from "./build";
 import { getStoredCover } from "./coverStore";
 import { issueDays, issueMonths, monthOf } from "./issue";
 
@@ -68,6 +68,11 @@ export async function loadIssue(library: Library, month: MonthKey): Promise<Load
 
     const stored = await getStoredCover(month);
     const coverArt = stored ? await resolve({ kind: "blob", id: stored.imageId }) : null;
+    // Until a cover is drawn: the month's own best panel (among those this device can show), never the sample art.
+    const pick = coverArt
+      ? null
+      : coverPanel(days.map((day) => ({ id: day.id, panels: day.panels.filter((panel) => images.get(`${day.id}:${panel.index}`)) })));
+    const ownPanel = pick ? (images.get(`${pick.dayId}:${pick.index}`) ?? null) : null;
 
     const issue: MagazineIssue = {
       key: month,
@@ -78,7 +83,7 @@ export async function loadIssue(library: Library, month: MonthKey): Promise<Load
       cast: issueCast(days, library.cast, (member) => portraits.get(member.id) ?? null),
       cover: coverArt
         ? { art: coverArt, tagline: stored!.tagline || null, drawn: true }
-        : { art: { kind: "art", asset: art.month.cover }, tagline: null, drawn: false },
+        : { art: ownPanel, tagline: null, drawn: false },
     };
     return { issue, release };
   } catch (error) {

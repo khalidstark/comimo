@@ -65,6 +65,7 @@ export async function saveCoverImage(ctx: IssueContext): Promise<void> {
   g.fillStyle = INK;
   g.fillRect(0, 0, W, H);
   try {
+    if (!issue.cover.art) throw new Error("no cover picture");
     const art = await loadImage(srcOf(issue.cover.art));
     const scale = Math.max(W / art.naturalWidth, H / art.naturalHeight);
     const w = art.naturalWidth * scale;

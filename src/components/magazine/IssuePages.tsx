@@ -83,7 +83,7 @@ function Cover({ ctx }: { ctx: IssueContext }) {
   const dates = dayCount(issue.days);
   return (
     <article className={styles.sheet} data-kind="cover" aria-label={`Front cover: ${issueLine(issue)}`}>
-      <Picture picture={issue.cover.art} className={styles.coverArt} eager />
+      {issue.cover.art ? <Picture picture={issue.cover.art} className={styles.coverArt} eager /> : null}
       <div className={styles.coverWash} aria-hidden="true" />
       <ol className={styles.spine} aria-label="The month's weather, comic by comic">
         {issue.days.map((day) => (

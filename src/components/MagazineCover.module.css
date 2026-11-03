@@ -6,6 +6,8 @@
   border: var(--panel-border) solid var(--line);
   rotate: -3deg;
   color: #1b2148;
+  /* Under the picture; shows on a user's issue with nothing drawn yet. */
+  background: #f7f5ef;
   text-decoration: none;
   overflow: hidden;
   box-shadow:
