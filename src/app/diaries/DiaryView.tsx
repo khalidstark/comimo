@@ -163,7 +163,8 @@ export function DiaryView() {
             >
               Delete diary
             </button>
-            <button type="button" className="btn btn--ghost" onClick={() => setConfirm(false)}>
+            {/* Focus lands on the safe answer when the question opens. */}
+            <button type="button" className="btn btn--ghost" onClick={() => setConfirm(false)} autoFocus>
               Keep it
             </button>
           </div>
