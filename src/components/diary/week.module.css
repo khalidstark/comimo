@@ -57,8 +57,13 @@
 }
 
 .titleMark {
-  background: linear-gradient(transparent 55%, color-mix(in srgb, var(--highlight) 85%, transparent) 55%);
-  padding-inline: 0.1em;
+  display: inline-block;
+  padding: 0 0.2em 0.05em;
+  background: var(--highlight);
+  color: #1b2148;
+  border: var(--panel-border-thin) solid #1b2148;
+  rotate: -1.5deg;
+  box-shadow: 3px 3px 0 var(--shadow);
 }
 
 .headline {

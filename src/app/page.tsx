@@ -1,27 +1,18 @@
 import Link from "next/link";
 import { Art } from "@/art/Art";
-import { art, type MoodKey } from "@/art/manifest";
+import { art } from "@/art/manifest";
 import { CastStage } from "@/components/home/CastStage";
 import { DemoDay } from "@/components/home/DemoDay";
 import { Magnetic } from "@/components/home/Magnetic";
 import { MagazineCover } from "@/components/MagazineCover";
 import { MoodCalendar } from "@/components/MoodCalendar";
 import { StartNudge } from "@/components/account/StartNudge";
+import { WeekStrip } from "@/components/home/WeekStrip";
 import { YourBook } from "@/components/home/YourBook";
 import { PAGE_TURN, PageTurn } from "@/components/PageTurn";
 import { RecordStamp } from "@/components/RecordStamp";
 import { sampleCheckInQuestions, sampleDays } from "@/fixtures/days";
 import styles from "./page.module.css";
-
-const WEEK: { day: string; mood?: MoodKey }[] = [
-  { day: "Sat", mood: "sunny" },
-  { day: "Sun", mood: "cloudy" },
-  { day: "Mon", mood: "rainy" },
-  { day: "Tue" },
-  { day: "Wed", mood: "sunny" },
-  { day: "Thu", mood: "rainbow" },
-  { day: "Fri" },
-];
 
 const STEPS = [
   {
@@ -79,21 +70,16 @@ export default function Home() {
               </div>
             </div>
 
-            <Link href="/month" className={styles.week} transitionTypes={PAGE_TURN}>
-              <span className={styles.weekTitle}>This week</span>
-              <ol className={styles.weekRow}>
-                {WEEK.map(({ day, mood }) => (
-                  <li key={day} className={styles.weekDay}>
-                    {mood ? (
-                      <Art asset={art.mood[mood]} className={styles.weekIcon} alt={`${day}: ${art.mood[mood].alt}`} />
-                    ) : (
-                      <span className={styles.weekBlank} role="img" aria-label={`${day}: no comic`} />
-                    )}
-                    <span aria-hidden="true">{day.slice(0, 2)}</span>
-                  </li>
-                ))}
-              </ol>
-            </Link>
+            <WeekStrip
+              classes={{
+                week: styles.week,
+                weekTitle: styles.weekTitle,
+                weekRow: styles.weekRow,
+                weekDay: styles.weekDay,
+                weekIcon: styles.weekIcon,
+                weekBlank: styles.weekBlank,
+              }}
+            />
           </div>
         </section>
 

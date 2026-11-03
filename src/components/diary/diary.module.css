@@ -190,8 +190,10 @@
   scale: 1.08;
 }
 
-/* Washi tape label */
+/* Washi tape label, over the elastic band */
 .label {
+  position: relative;
+  z-index: 1;
   align-self: center;
   display: grid;
   place-items: center;

@@ -394,7 +394,7 @@ async function writeWeek(week: WeekRequest): Promise<{ headline: string; goodThi
   return {
     headline: week.days.length > 1 ? `${week.days.length} days worth remembering` : "A day worth remembering",
     goodThings,
-    line: "Practice mode wrote this from your titles; the real Muse Spark reads your own words.",
+    line: "Here's to the next one.",
   };
 }
 
