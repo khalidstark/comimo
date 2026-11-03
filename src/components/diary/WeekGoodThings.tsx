@@ -6,11 +6,25 @@ import { Art } from "@/art/Art";
 import { art } from "@/art/manifest";
 import { PAGE_TURN } from "@/components/PageTurn";
 import { formatDay } from "@/lib/format";
-import type { Day, WeekSummary } from "@/lib/types";
+import type { Day, ImageRef, WeekSummary } from "@/lib/types";
+import { useImageUrl } from "@/lib/useImageUrl";
 import { WeekError, isStale, weekEnd, writeWeek } from "@/lib/week";
 import styles from "./week.module.css";
 
 const NOTE_TILTS = ["-3deg", "2deg", "-1.5deg", "3deg", "-2.5deg", "1.5deg"];
+
+/** The panel the good thing is drawn in, as a small snapshot taped to the note. */
+function NoteSnap({ image }: { image: ImageRef }) {
+  const url = useImageUrl(image);
+  if (!url) return <span className={styles.snap} aria-hidden="true" />;
+  return (
+    <span className={styles.snap} aria-hidden="true">
+      {/* A stored Blob; next/image can't optimise Blobs. */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={url} alt="" />
+    </span>
+  );
+}
 
 const shortDate = new Intl.DateTimeFormat("en-GB", { weekday: "short", timeZone: "UTC" });
 function weekday(date: string): string {
@@ -65,6 +79,7 @@ export function WeekGoodThings({ monday, days, summary, onWritten }: { monday: s
               const day = byId.get(thing.dayId);
               const note = (
                 <>
+                  {day && thing.panel !== undefined && day.panels[thing.panel]?.image ? <NoteSnap image={day.panels[thing.panel].image!} /> : null}
                   <span className={styles.noteTag}>
                     {thing.kind === "did" ? "You did this" : "This happened"}
                     {day ? <span className={styles.noteDay}> · {weekday(day.date)}</span> : null}
@@ -77,7 +92,7 @@ export function WeekGoodThings({ monday, days, summary, onWritten }: { monday: s
               return (
                 <li key={`${thing.dayId}-${i}`} className={styles.note} data-kind={thing.kind} style={{ "--tilt": NOTE_TILTS[i % NOTE_TILTS.length], "--i": i } as CSSProperties}>
                   {day ? (
-                    <Link href={`/day/${day.id}`} className={styles.noteLink} transitionTypes={PAGE_TURN} aria-label={`${thing.text} Open the comic from ${formatDay(day.date)}`}>
+                    <Link href={`/day/${day.id}${thing.panel !== undefined ? `#panel-${thing.panel + 1}` : ""}`} className={styles.noteLink} transitionTypes={PAGE_TURN} aria-label={`${thing.text} Open the comic from ${formatDay(day.date)}`}>
                       {note}
                     </Link>
                   ) : (

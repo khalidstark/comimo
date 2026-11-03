@@ -17,7 +17,7 @@ export const WEEK_PROMPT = `You keep a comic diary for someone. They send you th
 Write them a short, warm look back at the good things of their week, the way a friend who listened all week would:
 Write everything in the language most of their words this week were in: natural Egyptian Arabic if they mostly spoke Arabic, English if they mostly spoke English (keep names as they wrote them).
 - headline: under 70 characters, about their week.
-- goodThings: 3 to 6 items, in date order. Each is one sentence under 140 characters, speaking to them in second person ("You…" or "إنت…"), about something that really happened in that day's words: something they did (helped someone, finished something, tried something new, kept going, laughed) or something good that happened to them or that someone did for them. Give the dayId it came from and kind "did" or "happened". Only what the words say: never invent events, people or feelings.
+- goodThings: 3 to 6 items, in date order. Each is one sentence under 140 characters, speaking to them in second person ("You…" or "إنت…"), about something that really happened in that day's words: something they did (helped someone, finished something, tried something new, kept going, laughed) or something good that happened to them or that someone did for them. Give the dayId it came from, kind "did" or "happened", and panel: the number of that comic's panel (from its list of panel scenes, counting from 0) that shows this moment best, or -1 if none does. Only what the words say: never invent events, people or feelings.
 - line: one closing sentence under 120 characters, warm and light.
 
 Hard rules: no advice, no suggestions, no lessons, no diagnosis, no scores or ratings of their mood or week, no therapy language, no "you should". If a day was hard, you may mention a good moment inside it, but never dwell on the hard part. If the week has fewer good things than 3, give what there is (at least 1). Never mention self-harm.`;
@@ -36,11 +36,12 @@ function schema(dayIds: string[]) {
         items: {
           type: "object",
           additionalProperties: false,
-          required: ["text", "dayId", "kind"],
+          required: ["text", "dayId", "kind", "panel"],
           properties: {
             text: { type: "string" },
             dayId: { type: "string", enum: dayIds },
             kind: { type: "string", enum: ["did", "happened"] },
+            panel: { type: "integer" },
           },
         },
       },
@@ -65,17 +66,19 @@ export interface WeekAnswer {
 }
 
 /** Clean the model's answer: known days only, no advice, sensible lengths. */
-export function weekFrom(raw: unknown, dayIds: string[]): WeekAnswer | null {
+export function weekFrom(raw: unknown, dayIds: string[], panelCounts: Record<string, number> = {}): WeekAnswer | null {
   if (typeof raw !== "object" || raw === null) return null;
   const { headline, goodThings, line } = raw as Record<string, unknown>;
   const known = new Set(dayIds);
   const things: GoodThing[] = [];
   for (const item of Array.isArray(goodThings) ? goodThings : []) {
     if (typeof item !== "object" || item === null) continue;
-    const { text, dayId, kind } = item as Record<string, unknown>;
+    const { text, dayId, kind, panel } = item as Record<string, unknown>;
     const sentence = clip(text, 160);
     if (!sentence || typeof dayId !== "string" || !known.has(dayId) || ADVICE.test(sentence)) continue;
-    things.push({ text: sentence, dayId, kind: kind === "did" ? "did" : "happened" });
+    const count = panelCounts[dayId] ?? 0;
+    const shown = typeof panel === "number" && Number.isInteger(panel) && panel >= 0 && panel < count ? panel : undefined;
+    things.push({ text: sentence, dayId, kind: kind === "did" ? "did" : "happened", ...(shown !== undefined ? { panel: shown } : {}) });
     if (things.length >= 6) break;
   }
   if (things.length === 0) return null;
@@ -94,7 +97,7 @@ export async function writeWeekSummary(week: WeekRequest, context?: ModelCallCon
       ...(context?.visitorId ? { safety_identifier: context.visitorId } : {}),
       messages: [
         { role: "system", content: WEEK_PROMPT },
-        { role: "user", content: JSON.stringify({ week: week.week, comics: week.days.map(({ id, date, title, text }) => ({ dayId: id, date, title, words: text })) }) },
+        { role: "user", content: JSON.stringify({ week: week.week, comics: week.days.map(({ id, date, title, text, scenes }) => ({ dayId: id, date, title, words: text, panelScenes: scenes ?? [] })) }) },
       ],
       response_format: { type: "json_schema", json_schema: { name: "good_things", strict: true, schema: schema(dayIds) } },
     },
@@ -111,7 +114,7 @@ export async function writeWeekSummary(week: WeekRequest, context?: ModelCallCon
   } catch {
     throw new MetaApiError("server", 200, "week was not JSON");
   }
-  const answer = weekFrom(parsed, dayIds);
+  const answer = weekFrom(parsed, dayIds, Object.fromEntries(week.days.map((day) => [day.id, day.scenes?.length ?? 0])));
   if (!answer) throw new MetaApiError("server", 200, "week had no usable good things");
   return answer;
 }

@@ -47,7 +47,13 @@ export function weekDays(days: Day[], monday: IsoDate): Day[] {
 export function weekPayload(days: Day[], monday: IsoDate): WeekRequest {
   return {
     week: monday,
-    days: days.map((day) => ({ id: day.id, date: day.date, title: day.title.slice(0, 120), text: day.transcript.replace(/\s+/g, " ").trim().slice(0, WEEK_TEXT_MAX) })),
+    days: days.map((day) => ({
+      id: day.id,
+      date: day.date,
+      title: day.title.slice(0, 120),
+      text: day.transcript.replace(/\s+/g, " ").trim().slice(0, WEEK_TEXT_MAX),
+      scenes: day.panels.slice(0, 18).map((panel) => (panel.scene ?? "").replace(/\s+/g, " ").trim().slice(0, 160)),
+    })),
   };
 }
 

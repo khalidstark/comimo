@@ -290,3 +290,21 @@ a.noteLink:focus-visible {
     inline-size: 3.75rem;
   }
 }
+
+/* The panel a good thing is drawn in, as a snapshot on the note */
+.snap {
+  display: block;
+  aspect-ratio: 16 / 10;
+  margin: calc(var(--space-2xs) * -1) calc(var(--space-2xs) * -1) var(--space-3xs);
+  overflow: hidden;
+  border: var(--panel-border-thin) solid #1b2148;
+  background: color-mix(in srgb, #1b2148 10%, transparent);
+  rotate: 1deg;
+}
+
+.snap img {
+  display: block;
+  inline-size: 100%;
+  block-size: 100%;
+  object-fit: cover;
+}

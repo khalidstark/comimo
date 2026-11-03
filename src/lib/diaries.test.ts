@@ -11,7 +11,7 @@ const day = (id: string, date: string, extra: Partial<Day> = {}): Day =>
     title: `Title ${id}`,
     transcript: `Words of ${id}. `.repeat(200),
     languages: { spoken: ["en"], dominant: "en", mixed: false },
-    panels: [{ index: 0 }] as Day["panels"],
+    panels: [{ index: 0, scene: "A rainy street." }] as Day["panels"],
     mood: "sunny",
     heavy: false,
     safety: "ok",
@@ -71,7 +71,8 @@ describe("the week", () => {
     expect(week.map((d) => d.id)).toEqual(["sat", "tue"]);
     const payload = weekPayload(week, "2026-10-31");
     expect(payload.days[0].text.length).toBeLessThanOrEqual(1500);
-    expect(Object.keys(payload.days[0]).sort()).toEqual(["date", "id", "text", "title"]);
+    expect(Object.keys(payload.days[0]).sort()).toEqual(["date", "id", "scenes", "text", "title"]);
+    expect(payload.days[0].scenes).toEqual(["A rainy street."]);
   });
 
   it("knows when new comics came since it was written", () => {
@@ -100,5 +101,22 @@ describe("the week", () => {
       { text: "Your friend waited for you at the bus stop.", dayId: "tue", kind: "happened" },
     ]);
     expect(weekFrom({ headline: "x", goodThings: [], line: "" }, ["sat"])).toBeNull();
+  });
+
+  it("keeps a good thing's panel only when that comic has it", () => {
+    const answer = weekFrom(
+      {
+        headline: "h",
+        goodThings: [
+          { text: "You fixed the bike.", dayId: "sat", kind: "did", panel: 2 },
+          { text: "Teta laughed.", dayId: "tue", kind: "happened", panel: 9 },
+          { text: "Rain stopped.", dayId: "tue", kind: "happened", panel: -1 },
+        ],
+        line: "",
+      },
+      ["sat", "tue"],
+      { sat: 4, tue: 5 },
+    );
+    expect(answer?.goodThings.map((t) => t.panel)).toEqual([2, undefined, undefined]);
   });
 });

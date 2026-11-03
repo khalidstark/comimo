@@ -453,6 +453,8 @@ export interface GoodThing {
   dayId: string;
   /** "did" when the user did it, "happened" when it happened to them or someone was kind to them. */
   kind: "did" | "happened";
+  /** The panel it is drawn in (0-based index into the comic's panels), when known. */
+  panel?: number;
 }
 
 /** The week's good things (Muse Spark), kept as the synced setting `week:<monday>`. */
@@ -472,7 +474,8 @@ export interface WeekSummary {
 /** POST /api/week */
 export interface WeekRequest {
   week: IsoDate;
-  days: { id: string; date: IsoDate; title: string; text: string }[];
+  /** Each comic: its words, and its panels' scenes in order (so a good thing can point at its panel). */
+  days: { id: string; date: IsoDate; title: string; text: string; scenes?: string[] }[];
 }
 export interface WeekResponse {
   mode: ModelMode;

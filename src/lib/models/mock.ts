@@ -390,6 +390,7 @@ async function writeWeek(week: WeekRequest): Promise<{ headline: string; goodThi
     text: i % 2 === 0 ? `You turned “${day.title}” into a comic worth keeping.` : `Something good found you in “${day.title}”.`,
     dayId: day.id,
     kind: i % 2 === 0 ? "did" : "happened",
+    panel: 0,
   }));
   return {
     headline: week.days.length > 1 ? `${week.days.length} days worth remembering` : "A day worth remembering",

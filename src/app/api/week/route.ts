@@ -17,11 +17,12 @@ function parseWeek(body: unknown): WeekRequest | null {
   const days: WeekRequest["days"] = [];
   for (const item of body.days) {
     if (!isRecord(item)) return null;
-    const { id, date, title, text } = item;
+    const { id, date, title, text, scenes } = item;
     if (!isText(id, 100) || !/^[A-Za-z0-9][A-Za-z0-9_.:-]{0,99}$/.test(id)) return null;
     if (typeof date !== "string" || !DATE.test(date)) return null;
     if (typeof title !== "string" || title.length > 200 || typeof text !== "string" || text.length > MAX_TEXT) return null;
-    days.push({ id, date, title: title.trim(), text: text.trim() });
+    if (scenes !== undefined && (!Array.isArray(scenes) || scenes.length > 18 || scenes.some((s) => typeof s !== "string" || s.length > 200))) return null;
+    days.push({ id, date, title: title.trim(), text: text.trim(), ...(Array.isArray(scenes) ? { scenes: scenes as string[] } : {}) });
   }
   return { week: body.week, days };
 }
