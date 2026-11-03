@@ -6,7 +6,7 @@ import { useEffect, useId, useState, type CSSProperties, type FormEvent } from "
 import { Art } from "@/art/Art";
 import { art } from "@/art/manifest";
 import { DiarySticker } from "@/components/diary/DiarySticker";
-import { NewDiary } from "@/components/diary/NewDiary";
+import { COLOR_NAMES, NewDiary } from "@/components/diary/NewDiary";
 import { Notebook } from "@/components/diary/Notebook";
 import { PAGE_TURN } from "@/components/PageTurn";
 import { DiaryError, EVERY_DAY, daysIn, deleteDiary, diaryNameProblem, loadDiaries, updateDiary } from "@/lib/diaries";
@@ -241,7 +241,7 @@ function EditDiary({ diary, others, onSaved, onDelete }: { diary: Diary; others:
         {DIARY_COLORS.map((value) => (
           <label key={value} className={styles.swatch} data-color={value}>
             <input type="radio" name={`${id}-color`} checked={color === value} onChange={() => setColor(value)} />
-            <span className="visually-hidden">{value}</span>
+            <span className="visually-hidden">{COLOR_NAMES[value]}</span>
           </label>
         ))}
       </div>

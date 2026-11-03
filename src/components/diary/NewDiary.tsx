@@ -6,7 +6,8 @@ import { DIARY_COLORS, DIARY_STICKERS, type Diary, type DiaryColor, type DiarySt
 import { DiarySticker } from "./DiarySticker";
 import styles from "./diary.module.css";
 
-const COLOR_NAMES: Record<DiaryColor, string> = { pink: "Riso pink", sun: "Sunflower", teal: "Teal", ink: "Night ink", lilac: "Lilac", grass: "Grass" };
+/** Spoken names for the cover colours (the radio buttons only show the colour). */
+export const COLOR_NAMES: Record<DiaryColor, string> = { pink: "Riso pink", sun: "Sunflower", teal: "Teal", ink: "Night ink", lilac: "Lilac", grass: "Grass" };
 
 /**
  * "New diary": name it anything (or start from a suggestion), pick a cover
