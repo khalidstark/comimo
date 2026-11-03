@@ -60,6 +60,33 @@ export function CastEditor() {
   /** Where focus goes after the list re-renders (a card's edit button, or the add button). */
   const focusAfter = useRef<string | null>(null);
 
+  function replace(character: Character) {
+    setCast((current) => (current ?? []).map((m) => (m.id === character.id ? character : m)));
+  }
+
+  function setStatus(id: string, status: CardStatus | null) {
+    setStatuses((current) => {
+      const next = { ...current };
+      if (status) next[id] = status;
+      else delete next[id];
+      return next;
+    });
+  }
+
+  /** Give a character their animated sprite once their first sheet exists. */
+  async function animate(character: Character) {
+    if (!canAnimate(character)) return;
+    setStatus(character.id, { busy: true, text: `Bringing ${character.name} to life. This takes a couple of minutes.` });
+    const animated = await animateCharacter(character);
+    if (animated) {
+      replace(animated);
+      setStatus(character.id, null);
+      setNotice(`${character.name} is animated now.`);
+    } else {
+      setStatus(character.id, { busy: false, text: `${character.name} keeps a still picture for now.` });
+    }
+  }
+
   /** Anyone drawn but still standing still (About you closed early, a sprite that failed) comes to life one at a time. */
   const animateTheStill = useEffectEvent(async (loaded: Character[]) => {
     for (const member of loaded) if (canAnimateNow(member)) await animate(member);
@@ -98,20 +125,21 @@ export function CastEditor() {
     setNotice(isNew ? `${character.name} joined your cast.` : `Saved ${character.name}.`);
     focusAfter.current = `edit-${character.id}`;
     if (photo) void drawFromPhoto(character, photo);
+    else if (isNew) void drawFromWords(character);
     return null;
   }
 
-  function replace(character: Character) {
-    setCast((current) => (current ?? []).map((m) => (m.id === character.id ? character : m)));
-  }
-
-  function setStatus(id: string, status: CardStatus | null) {
-    setStatuses((current) => {
-      const next = { ...current };
-      if (status) next[id] = status;
-      else delete next[id];
-      return next;
-    });
+  /** Someone added from a description is drawn straight away (and then brought to life), like a new face in a comic. */
+  async function drawFromWords(character: Character) {
+    setStatus(character.id, { busy: true, text: `Drawing ${character.name}. This takes about a minute.` });
+    try {
+      const drawn = await drawReferenceSheet(character, DEFAULT_ART_STYLE);
+      setStatus(drawn.id, null);
+      sheetDrawn(drawn);
+    } catch (problem) {
+      const text = problem instanceof SheetError ? problem.message : "The sheet didn't draw. Try again from the card.";
+      setStatus(character.id, { busy: false, text, error: true });
+    }
   }
 
   /** Draw the sheet from the photo's cut-out once; the cut-out is dropped when this returns. */
@@ -129,20 +157,6 @@ export function CastEditor() {
     } catch (problem) {
       const text = problem instanceof SheetError ? problem.message : "The sheet didn't draw. Try again from the card.";
       setStatus(character.id, { busy: false, text, error: true });
-    }
-  }
-
-  /** Give a character their animated sprite once their first sheet exists. */
-  async function animate(character: Character) {
-    if (!canAnimate(character)) return;
-    setStatus(character.id, { busy: true, text: `Bringing ${character.name} to life. This takes a couple of minutes.` });
-    const animated = await animateCharacter(character);
-    if (animated) {
-      replace(animated);
-      setStatus(character.id, null);
-      setNotice(`${character.name} is animated now.`);
-    } else {
-      setStatus(character.id, { busy: false, text: `${character.name} keeps a still picture for now.` });
     }
   }
 
@@ -493,12 +507,9 @@ function ReferenceSheet({
         onClick={() => void draw()}
         aria-disabled={busy || undefined}
         aria-describedby={statusId}
+        aria-label={`${busy ? "Drawing" : sheet ? "Redraw" : "Draw"} ${member.name}'s ${label.toLowerCase()} sheet`}
       >
         {busy ? "Drawing…" : sheet ? "Redraw" : "Draw sheet"}
-        <span className="visually-hidden">
-          {" "}
-          {label.toLowerCase()} sheet for {member.name}
-        </span>
       </button>
       <p id={statusId} className={error ? styles.error : styles.sheetStatus} role={error ? "alert" : "status"}>
         {error ?? (busy ? `Drawing ${member.name}. This takes about a minute.` : "")}
