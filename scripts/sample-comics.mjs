@@ -8,7 +8,8 @@
 //
 // Writes public/art/samples/*.webp, src/art/samplePanels.ts and src/fixtures/sampleComics.ts.
 // Nothing is invented here: the text, boxes, checks and cost are copied from the runs.
-import { mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import sharp from "sharp";
 
@@ -35,10 +36,20 @@ function altFrom(scene) {
   return first.length > 180 ? `${first.slice(0, 177).trimEnd()}…` : first;
 }
 
+/** Files written this run; anything else in the folder is an old drawing and is removed. */
+const written = new Set();
+
+/**
+ * The file name carries a hash of its content, so a sample drawn again gets a
+ * new URL: the image optimiser, the CDN and browsers cache by URL and would
+ * otherwise keep showing the old drawing.
+ */
 async function toWebp(source, name) {
-  const out = join(artDir, `${name}.webp`);
-  const info = await sharp(source).resize({ width: MAX_WIDTH, withoutEnlargement: true }).webp({ quality: QUALITY }).toFile(out);
-  return { width: info.width, height: info.height, bytes: info.size };
+  const { data, info } = await sharp(source).resize({ width: MAX_WIDTH, withoutEnlargement: true }).webp({ quality: QUALITY }).toBuffer({ resolveWithObject: true });
+  const file = `${name}-${createHash("sha256").update(data).digest("hex").slice(0, 8)}.webp`;
+  writeFileSync(join(artDir, file), data);
+  written.add(file);
+  return { file, width: info.width, height: info.height, bytes: info.size };
 }
 
 const assets = {};
@@ -61,13 +72,13 @@ for (const id of SAMPLE_IDS) {
     const key = `${id}-${panel.index}`;
     const drawn = await toWebp(fileFor(`img-panel-${panel.index}`), key);
     totalBytes += drawn.bytes;
-    assets[key] = { file: `${key}.webp`, alt: altFrom(panel.scene), width: drawn.width, height: drawn.height };
+    assets[key] = { file: drawn.file, alt: altFrom(panel.scene), width: drawn.width, height: drawn.height };
     let beforeImage = null;
     if (panel.consistency.beforeImage) {
       const beforeKey = `${key}-before`;
       const before = await toWebp(fileFor(`img-panel-${panel.index}-before`), beforeKey);
       totalBytes += before.bytes;
-      assets[beforeKey] = { file: `${beforeKey}.webp`, alt: "The same panel before SAM 3.1's face fix", width: before.width, height: before.height };
+      assets[beforeKey] = { file: before.file, alt: "The same panel before SAM 3.1's face fix", width: before.width, height: before.height };
       beforeImage = { kind: "art", path: `samples.${beforeKey}` };
     }
     const { consistency } = panel;
@@ -157,4 +168,7 @@ export const sampleComics: Record<${SAMPLE_IDS.map((id) => JSON.stringify(id)).j
 `,
 );
 
-console.log(`${Object.keys(assets).length} images, ${(totalBytes / 1024).toFixed(0)} KB; comics cost $${totalUsd.toFixed(4)}`);
+const stale = readdirSync(artDir).filter((file) => !written.has(file));
+for (const file of stale) rmSync(join(artDir, file));
+
+console.log(`${Object.keys(assets).length} images, ${(totalBytes / 1024).toFixed(0)} KB, ${stale.length} old files removed; comics cost $${totalUsd.toFixed(4)}`);
