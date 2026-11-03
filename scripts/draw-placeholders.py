@@ -165,36 +165,6 @@ write("how-draw.svg", svg(400, 300,
  f'<path d="M70 230q50-40 100 0t100 0t60-10" fill="none" stroke="#fff" stroke-width="6" stroke-linecap="round"/>',
  defs=dots("d3", "#d5dae2", 12, 2.4), title="Panels being drawn (placeholder)"))
 
-# ---------- scenes for sample comic panels (600x400) ----------
-def scene(name, title, body):
-    write(name, svg(600, 400, f'<rect width="600" height="400" fill="{PAPER}"/><rect width="600" height="400" fill="url(#sd)"/>' + body,
-                    defs=dots("sd", "#d5dae2", 12, 2.4), title=title))
-scene("scene-street.svg", "A bus stop on a grey morning (placeholder)",
- cloud(40, 30, 2.2, CLOUD) + cloud(330, 50, 1.8, CLOUD)
- + f'<path d="M0 300h600v100H0z" fill="{STORM}" {S}/><path d="M0 300h600" {S}/>'
- f'<path d="M380 120h8v180h-8z" fill="{INK}"/><rect x="350" y="96" width="68" height="40" rx="6" fill="{YEL}" {S}/>'
- f'<path d="M80 180h200v120H80z" fill="{TEAL}" {S}/><path d="M70 170h220v16H70z" fill="{INK}"/><path d="M96 260h170" {S}/>'
- + "".join(f'<path d="M{x} 340h50" stroke="{YEL}" stroke-width="8"/>' for x in range(20, 600, 110)))
-scene("scene-home.svg", "A kitchen table with a cake (placeholder)",
- f'<rect x="60" y="40" width="140" height="120" fill="#fff" {S}/><path d="M130 40v120M60 100h140" {S3}/>'
- f'<path d="M0 290h600v110H0z" fill="{TEAL}" {S}/><path d="M80 250h440v40H80z" fill="{YEL}" {S}/>'
- f'<path d="M230 170h140v80H230z" fill="{PINK}" {S}/><path d="M230 200q35 20 70 0t70 0" fill="none" stroke="#fff" stroke-width="7" stroke-linecap="round"/>'
- + "".join(f'<path d="M{x} 170v-30" {S}/><path d="M{x} 132q-6-8 0-16 6 8 0 16z" fill="{YEL}" {S3}/>' for x in (262, 300, 338))
- + f'<path d="M430 120h80v130h-80z" fill="{CLOUD}" {S}/>')
-scene("scene-desk.svg", "A late-night desk with a laptop (placeholder)",
- f'<rect width="600" height="400" fill="{STORM}"/><circle cx="500" cy="80" r="40" fill="{YEL}" {S}/>'
- f'<path d="M0 300h600v100H0z" fill="{INK}"/><path d="M160 120h280v170H160z" fill="{INK}" stroke="#fff" stroke-width="4" stroke-linejoin="round"/>'
- f'<rect x="176" y="136" width="248" height="138" fill="{PAPER}"/>'
- + "".join(f'<rect x="{x}" y="136" width="76" height="20" fill="{c}" stroke="{INK}" stroke-width="2"/>' for x, c in [(176, PINK), (252, YEL), (328, CLOUD)])
- + f'<path d="M120 290h360l20 22H100z" fill="{CLOUD}" {S}/>'
- f'<path d="M60 290v-140l40-30" fill="none" stroke="#fff" stroke-width="5"/><path d="M84 112l50 0-20 30z" fill="{YEL}" stroke="#fff" stroke-width="4" stroke-linejoin="round"/>')
-scene("scene-rooftop.svg", "Tea on a rooftop at sunset (placeholder)",
- f'<rect width="600" height="260" fill="{YEL}"/><rect width="600" height="260" fill="url(#sd)"/><circle cx="300" cy="250" r="90" fill="{PINK}" {S}/>'
- f'<path d="M0 260h40v-60h50v40h60v-90h60v110h80v-50h70v70h60v-100h60v80h50v40h70v140H0z" fill="{INK}"/>'
- f'<path d="M0 320h600v80H0z" fill="{TEAL}" {S}/>'
- f'<path d="M210 290h30l-4 34h-22zM360 290h30l-4 34h-22z" fill="#fff" {S}/><path d="M240 298q12 4 0 14M390 298q12 4 0 14" fill="none" {S3}/>'
- f'<path d="M222 280q-6-10 0-18M372 280q-6-10 0-18" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round"/>')
-
 # ---------- empty states (400x300) ----------
 write("empty-days.svg", svg(400, 300,
  f'<path d="M100 30h200v240H100z" fill="#fff" {S}/>'
