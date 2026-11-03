@@ -13,7 +13,7 @@ import { PAGE_TURN } from "@/components/PageTurn";
 import type { ArtStyleId } from "@/lib/artStyles";
 import { countWord, moodWords } from "@/lib/format";
 import type { IssueCast, MagazineIssue } from "@/lib/magazine/build";
-import { monthLabel, nextMonthName, type IssuePage } from "@/lib/magazine/issue";
+import { dayCount, monthLabel, nextMonthName, type IssuePage } from "@/lib/magazine/issue";
 import type { PageRole } from "./FlipBook";
 import styles from "./magazine.module.css";
 
@@ -79,11 +79,13 @@ function Cover({ ctx }: { ctx: IssueContext }) {
   const { issue, stars } = ctx;
   const lines = [...issue.days].sort((a, b) => b.panelCount - a.panelCount).slice(0, 3);
   const tagline = issue.cover.tagline ?? DEFAULT_TAGLINE;
+  // Days are dates: two comics on one date are one day.
+  const dates = dayCount(issue.days);
   return (
     <article className={styles.sheet} data-kind="cover" aria-label={`Front cover: ${issueLine(issue)}`}>
       <Picture picture={issue.cover.art} className={styles.coverArt} eager />
       <div className={styles.coverWash} aria-hidden="true" />
-      <ol className={styles.spine} aria-label="The month's weather, day by day">
+      <ol className={styles.spine} aria-label="The month's weather, comic by comic">
         {issue.days.map((day) => (
           <li key={day.id} style={{ background: `var(--mood-${day.mood})` } as CSSProperties}>
             <span className="visually-hidden">
@@ -97,8 +99,8 @@ function Cover({ ctx }: { ctx: IssueContext }) {
         <span className={styles.issueLine}>{issueLine(issue)}</span>
       </header>
       <span className={styles.badge} aria-hidden="true">
-        <span>{issue.days.length}</span>
-        <span>{issue.days.length === 1 ? "day" : "days"}</span>
+        <span>{dates}</span>
+        <span>{dates === 1 ? "day" : "days"}</span>
       </span>
       <div className={styles.coverFoot}>
         <p className={styles.tagline} dir="auto">
@@ -341,7 +343,7 @@ function BackCover({ ctx }: { ctx: IssueContext }) {
           </p>
         ))}
       </div>
-      <ol className={styles.backStrip} aria-label="Every day's weather">
+      <ol className={styles.backStrip} aria-label="Every comic's weather">
         {issue.days.map((day) => (
           <li key={day.id}>
             <Art asset={art.mood[day.mood]} className={styles.backIcon} alt="" />

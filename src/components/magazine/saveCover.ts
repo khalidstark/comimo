@@ -1,5 +1,5 @@
 import type { PanelArt } from "@/components/comic/view";
-import { monthLabel } from "@/lib/magazine/issue";
+import { daysAndComics, monthLabel } from "@/lib/magazine/issue";
 import { DEFAULT_TAGLINE, issueLine, type IssueContext } from "./IssuePages";
 
 /**
@@ -157,7 +157,7 @@ export async function saveCoverImage(ctx: IssueContext): Promise<void> {
 
   g.font = `400 ${Math.round(W * 0.026)}px ${lettering}`;
   g.fillStyle = "#c3c8e2";
-  g.fillText(`${issue.days.length} ${issue.days.length === 1 ? "day" : "days"} · ${monthLabel(issue.month)}`, left, H * 0.955);
+  g.fillText(`${daysAndComics(issue.days)} · ${monthLabel(issue.month)}`, left, H * 0.955);
 
   const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/png"));
   if (!blob) return;
