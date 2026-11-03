@@ -1,26 +1,19 @@
 import Link from "next/link";
 import { Art } from "@/art/Art";
-import { art, type MoodKey } from "@/art/manifest";
+import { art } from "@/art/manifest";
 import { CastStage } from "@/components/home/CastStage";
 import { DemoDay } from "@/components/home/DemoDay";
 import { Magnetic } from "@/components/home/Magnetic";
 import { MagazineCover } from "@/components/MagazineCover";
 import { MoodCalendar } from "@/components/MoodCalendar";
 import { StartNudge } from "@/components/account/StartNudge";
+import { UnderTheHood } from "@/components/home/UnderTheHood";
+import { WeekStrip } from "@/components/home/WeekStrip";
+import { YourBook } from "@/components/home/YourBook";
 import { PAGE_TURN, PageTurn } from "@/components/PageTurn";
 import { RecordStamp } from "@/components/RecordStamp";
 import { sampleCheckInQuestions, sampleDays } from "@/fixtures/days";
 import styles from "./page.module.css";
-
-const WEEK: { day: string; mood?: MoodKey }[] = [
-  { day: "Sat", mood: "sunny" },
-  { day: "Sun", mood: "cloudy" },
-  { day: "Mon", mood: "rainy" },
-  { day: "Tue" },
-  { day: "Wed", mood: "sunny" },
-  { day: "Thu", mood: "rainbow" },
-  { day: "Fri" },
-];
 
 const STEPS = [
   {
@@ -78,23 +71,21 @@ export default function Home() {
               </div>
             </div>
 
-            <Link href="/month" className={styles.week} transitionTypes={PAGE_TURN}>
-              <span className={styles.weekTitle}>This week</span>
-              <ol className={styles.weekRow}>
-                {WEEK.map(({ day, mood }) => (
-                  <li key={day} className={styles.weekDay}>
-                    {mood ? (
-                      <Art asset={art.mood[mood]} className={styles.weekIcon} alt={`${day}: ${art.mood[mood].alt}`} />
-                    ) : (
-                      <span className={styles.weekBlank} role="img" aria-label={`${day}: no comic`} />
-                    )}
-                    <span aria-hidden="true">{day.slice(0, 2)}</span>
-                  </li>
-                ))}
-              </ol>
-            </Link>
+            <WeekStrip
+              classes={{
+                week: styles.week,
+                weekTitle: styles.weekTitle,
+                weekRow: styles.weekRow,
+                weekDay: styles.weekDay,
+                weekIcon: styles.weekIcon,
+                weekBlank: styles.weekBlank,
+              }}
+            />
           </div>
         </section>
+
+        {/* ---------- Signed in: the week's good things and the diaries ---------- */}
+        <YourBook />
 
         {/* ---------- A real day ---------- */}
         <section id="demo" className={`page section ${styles.demo}`} aria-labelledby="demo-title">
@@ -126,6 +117,9 @@ export default function Home() {
             ))}
           </ol>
         </section>
+
+        {/* ---------- Under the hood: the four Meta models and a real receipt ---------- */}
+        <UnderTheHood />
 
         {/* ---------- The cast ---------- */}
         <section className={`page section ${styles.cast}`} aria-labelledby="cast-title">
@@ -194,7 +188,12 @@ export default function Home() {
         </section>
 
         <footer className={`page ${styles.footer}`}>
-          <p>Your account keeps your place, and your comics follow it to every device.</p>
+          <p>
+            Your account keeps your place, and your comics follow it to every device.{" "}
+            <Link href="/privacy" className="link">
+              Where your words go
+            </Link>
+          </p>
         </footer>
       </main>
     </PageTurn>

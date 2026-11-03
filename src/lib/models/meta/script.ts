@@ -8,7 +8,7 @@ import { applyStoryMode, silenceForgottenSpeech } from "../storyMode";
 import type { ModelCallContext, ScriptOptions } from "../index";
 import { MetaApiError, metaJson } from "./client";
 import { MODEL_IDS, chargeSpark } from "./pricing";
-import { SCRIPT_SYSTEM_PROMPT, castBlock, scriptSchema, storyModeBlock, transcriptMessage } from "./prompts";
+import { SCRIPT_SYSTEM_PROMPT, castBlock, diaryBlock, scriptSchema, storyModeBlock, transcriptMessage } from "./prompts";
 // Cast by name (03-05): aliases in; new people (03-06) under placeholders until the user names them.
 import { NEW_PERSON_IDS, isNewPersonId, remapPanel, resolveNewPeople } from "@/lib/newPeople";
 import { CAST_NAMES_PROMPT, castNamesBlock, withNewPeopleSchema } from "./prompts";
@@ -178,6 +178,7 @@ export async function writeScript(
       { role: "system", content: castBlock(cast) },
       { role: "system", content: `${CAST_NAMES_PROMPT}\n\n${castNamesBlock(cast)}` },
       { role: "system", content: storyModeBlock(mode) },
+      ...(options.diary ? [{ role: "system", content: diaryBlock(options.diary) }] : []),
       { role: "user", content: transcriptMessage(transcript) },
     ],
     response_format: {

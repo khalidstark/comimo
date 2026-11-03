@@ -455,7 +455,9 @@ button.entry:hover .entryTitle {
 }
 
 /* Painterly comics are printed on black like a graphic novel */
-.sheet[data-style="painterly"] {
+.sheet[data-style="painterly"],
+:global(:root[data-theme="dark"]) .sheet[data-style="painterly"],
+:global(:root:not([data-theme="light"])) .sheet[data-style="painterly"] {
   --paper: #121216;
   --ink: #efe8da;
   --ink-soft: #b9b2a5;

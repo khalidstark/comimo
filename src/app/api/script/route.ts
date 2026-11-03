@@ -66,6 +66,8 @@ export async function POST(request: Request) {
     return jsonError(400, "`storyMode` must be \"narrated\", \"dialogue\" or \"both\".");
   }
   const storyMode = isStoryMode(body.storyMode) ? body.storyMode : DEFAULT_STORY_MODE;
+  if (body.diary !== undefined && !isText(body.diary, 60)) return jsonError(400, "`diary` must be the diary's name (up to 40 characters).");
+  const diary = typeof body.diary === "string" ? body.diary.replace(/\s+/g, " ").trim().slice(0, 40) : undefined;
 
   const models = getModels();
   const source = models.sources.writeScript;
@@ -74,7 +76,7 @@ export async function POST(request: Request) {
   if (!check.ok) return guardResponse(check);
 
   try {
-    const script = await models.writeScript(body.transcript, cast, { visitorId: check.visitorId, signal: request.signal, meter: check.meter }, { storyMode });
+    const script = await models.writeScript(body.transcript, cast, { visitorId: check.visitorId, signal: request.signal, meter: check.meter }, { storyMode, ...(diary ? { diary } : {}) });
     return withCost(json<ScriptResponse>({ mode: source, script }, source), check.meter);
   } catch (error) {
     // Refund only when nothing billable reached Meta; an abort or timeout after sending still counts.

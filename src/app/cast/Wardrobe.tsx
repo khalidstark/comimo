@@ -18,7 +18,7 @@ import {
   withoutOutfit,
   wornOutfit,
 } from "@/lib/wardrobe";
-import { useSheetUrl } from "./useSheetUrl";
+import { useImageUrl as useSheetUrl } from "@/lib/useImageUrl";
 import styles from "./wardrobe.module.css";
 
 /** The record page's last style, so a new outfit is drawn in the style comics are made in. */

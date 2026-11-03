@@ -1,0 +1,83 @@
+.columns {
+  display: grid;
+  gap: var(--space-l);
+  margin-block-end: var(--space-l);
+}
+
+@media (min-width: 52rem) {
+  .columns {
+    grid-template-columns: 1fr 1fr;
+    align-items: start;
+  }
+}
+
+.card {
+  display: grid;
+  gap: var(--space-s);
+  padding: var(--space-m);
+}
+
+.card p {
+  margin: 0;
+}
+
+.wide {
+  max-inline-size: 52rem;
+  margin-block-end: var(--space-l);
+}
+
+.title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-xs);
+  font-size: var(--step-2);
+}
+
+.stamp {
+  display: inline-block;
+  padding: 0.05em 0.5em 0.1em;
+  border: var(--panel-border) solid #1b2148;
+  background: var(--highlight);
+  color: #1b2148;
+  font-family: var(--font-lettering-stack);
+  rotate: -4deg;
+  box-shadow: 3px 3px 0 var(--shadow);
+}
+
+.stamp[data-tone="gone"] {
+  background: #d4efea;
+}
+
+.stamp[data-tone="never"] {
+  background: var(--accent);
+}
+
+.list {
+  display: grid;
+  gap: var(--space-s);
+  margin: 0;
+}
+
+.list dt {
+  font-family: var(--font-display-stack);
+  font-weight: 700;
+}
+
+.list dd {
+  margin: 0;
+  color: var(--ink-soft);
+}
+
+.never {
+  display: grid;
+  gap: var(--space-2xs);
+  margin: 0;
+  padding-inline-start: 1.2em;
+}
+
+.never li::marker {
+  content: "✕  ";
+  color: var(--accent-text);
+  font-weight: 800;
+}

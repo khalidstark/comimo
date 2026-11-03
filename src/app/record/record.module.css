@@ -369,3 +369,12 @@
 .greetingPending {
   opacity: 0;
 }
+
+/* A diary sticker inside a "Write it in" chip */
+.diarySticker {
+  display: inline-block;
+  inline-size: 1.15em;
+  block-size: 1.15em;
+  margin-inline-end: 0.15em;
+  vertical-align: -0.2em;
+}

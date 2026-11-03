@@ -145,7 +145,7 @@ export function ComicBook({ pages, style, label, rtl = false, endnote }: ComicBo
 
       <div className={styles.leaves} onPointerDown={onPointerDown} onPointerUp={onPointerUp} onPointerCancel={() => (swipe.current = null)}>
         <div key={current} className={styles.leaf} data-arriving={turn ? turn.dir : undefined}>
-          <Comic panels={shown.panels} page={shown.page} style={style} label={`${label}, page ${current + 1} of ${count}`} />
+          <Comic panels={shown.panels} page={shown.page} style={style} label={`${label}, page ${current + 1} of ${count}`} comicTotal={pages.reduce((sum, p) => sum + p.panels.length, 0)} />
           {current === count - 1 && endnote ? <div className={styles.endnote}>{endnote}</div> : null}
         </div>
         {leaving && turn ? (

@@ -1,0 +1,547 @@
+/* ---------- The signed-in home: your book ---------- */
+.book {
+  display: grid;
+  gap: var(--space-l);
+}
+
+.bookHead {
+  display: grid;
+  gap: var(--space-3xs);
+}
+
+.bookKicker {
+  justify-self: start;
+  padding: 0.1em 0.6em 0.15em;
+  background: var(--highlight);
+  color: var(--on-highlight);
+  border: var(--panel-border-thin) solid #1b2148;
+  font-family: var(--font-lettering-stack);
+  font-weight: 600;
+  rotate: -2deg;
+}
+
+.bookTitle {
+  font-size: var(--step-4);
+  line-height: 0.95;
+}
+
+.hint {
+  color: var(--ink-soft);
+  font-size: var(--step--1);
+  max-inline-size: 52ch;
+}
+
+.shelfHead {
+  display: grid;
+  gap: var(--space-3xs);
+}
+
+.shelfTitle {
+  font-size: var(--step-2);
+}
+
+/* ---------- The shelf ---------- */
+.shelf {
+  --cover-w: clamp(8.5rem, 26vw, 11rem);
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(var(--cover-w), 1fr));
+  gap: var(--space-xl) var(--space-l);
+  margin: 0;
+  padding: var(--space-m) var(--space-2xs) var(--space-l);
+  list-style: none;
+  /* The plank every row of notebooks stands on */
+  background:
+    linear-gradient(transparent calc(100% - 14px), var(--ink) calc(100% - 14px), var(--ink) calc(100% - 10px), color-mix(in srgb, var(--ink) 18%, transparent) calc(100% - 10px));
+  perspective: 900px;
+}
+
+@media (max-width: 30rem) {
+  .shelf {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-l) var(--space-m);
+  }
+}
+
+.slot {
+  display: grid;
+  min-inline-size: 0;
+}
+
+/* ---------- A notebook ---------- */
+.notebook {
+  --cover: var(--accent);
+  --cover-deep: color-mix(in srgb, var(--cover) 70%, #1b2148);
+  --on-cover: #1b2148;
+  --rx: 0deg;
+  --ry: 0deg;
+  --gx: 30%;
+  position: relative;
+  display: grid;
+  color: var(--on-cover);
+  text-decoration: none;
+  transform-style: preserve-3d;
+  transform: rotate(var(--tilt, 0deg)) rotateX(var(--rx)) rotateY(var(--ry));
+  transition: transform 380ms var(--ease-pop, cubic-bezier(0.34, 1.56, 0.64, 1)), translate 380ms var(--ease-pop, cubic-bezier(0.34, 1.56, 0.64, 1));
+  outline: none;
+}
+
+.notebook[data-color="sun"] {
+  --cover: #ffc738;
+}
+.notebook[data-color="teal"] {
+  --cover: #0f9e8e;
+}
+.notebook[data-color="ink"] {
+  --cover: #2a3366;
+  --on-cover: #fafbfc;
+}
+.notebook[data-color="lilac"] {
+  --cover: #b9a4f2;
+}
+.notebook[data-color="grass"] {
+  --cover: #47b26b;
+}
+
+.notebook:not([data-static]):hover,
+.notebook:not([data-static]):focus-visible {
+  translate: 0 -10px;
+}
+
+.notebook:focus-visible .cover {
+  outline: 3px solid var(--accent);
+  outline-offset: 4px;
+}
+
+/* The page block showing past the cover's edge */
+.pages {
+  position: absolute;
+  inset: 6px -7px -5px 10px;
+  border: var(--panel-border-thin) solid #1b2148;
+  border-radius: 4px 10px 10px 4px;
+  background: repeating-linear-gradient(90deg, #fafbfc 0 3px, #dfe4ea 3px 4px);
+  box-shadow: 5px 6px 0 color-mix(in srgb, #1b2148 85%, transparent);
+}
+
+.cover {
+  position: relative;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  justify-items: center;
+  aspect-ratio: 3 / 4;
+  padding: var(--space-s) var(--space-xs) var(--space-xs) calc(var(--space-xs) + 14px);
+  overflow: hidden;
+  border: var(--panel-border) solid #1b2148;
+  border-radius: 5px 12px 12px 5px;
+  background:
+    radial-gradient(color-mix(in srgb, #1b2148 14%, transparent) 26%, transparent 28%) 0 0 / 9px 9px,
+    var(--cover);
+}
+
+/* Stitched spine; a spiral for the daily diary */
+.spine {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 0;
+  inline-size: 14px;
+  background: var(--cover-deep);
+  border-inline-end: var(--panel-border-thin) solid #1b2148;
+}
+
+.spine::after {
+  content: "";
+  position: absolute;
+  inset: 8px 5px;
+  border-inline-start: 2px dashed color-mix(in srgb, #fafbfc 70%, transparent);
+}
+
+.notebook[data-daily] .spine {
+  background: repeating-linear-gradient(180deg, transparent 0 7px, #1b2148 7px 11px, transparent 11px 16px), var(--cover-deep);
+}
+
+.notebook[data-daily] .spine::after {
+  display: none;
+}
+
+/* A glint that follows the pointer */
+.shine {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at var(--gx) 20%, rgb(255 255 255 / 0.35), transparent 45%);
+  opacity: 0;
+  transition: opacity 300ms ease;
+  pointer-events: none;
+}
+
+.notebook:hover .shine {
+  opacity: 1;
+}
+
+.sticker {
+  inline-size: 44%;
+  max-inline-size: 4.5rem;
+  margin-block-start: var(--space-2xs);
+  rotate: 8deg;
+  filter: drop-shadow(2px 2px 0 color-mix(in srgb, #1b2148 60%, transparent));
+  transition: rotate 380ms var(--ease-pop, ease), scale 380ms var(--ease-pop, ease);
+}
+
+.notebook:hover .sticker {
+  rotate: -6deg;
+  scale: 1.08;
+}
+
+/* Washi tape label, over the elastic band */
+.label {
+  position: relative;
+  z-index: 1;
+  align-self: center;
+  display: grid;
+  place-items: center;
+  inline-size: 112%;
+  min-block-size: 2.6rem;
+  padding: 0.3em 0.9em;
+  background:
+    repeating-linear-gradient(-45deg, rgb(255 255 255 / 0.25) 0 6px, transparent 6px 12px),
+    #fafbfc;
+  border-block: var(--panel-border-thin) solid #1b2148;
+  rotate: -3deg;
+  box-shadow: 0 3px 0 color-mix(in srgb, #1b2148 25%, transparent);
+}
+
+.labelName {
+  color: #1b2148;
+  font-family: var(--font-lettering-stack);
+  font-size: clamp(0.95rem, 0.8rem + 0.6vw, 1.15rem);
+  font-weight: 700;
+  line-height: 1.15;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+.count {
+  justify-self: start;
+  font-family: var(--font-display-stack);
+  font-size: var(--step--1);
+  font-weight: 700;
+}
+
+/* The elastic band */
+.band {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-end: 16%;
+  inline-size: 7px;
+  background: #1b2148;
+  opacity: 0.85;
+}
+
+.notebook[data-color="ink"] .band {
+  background: #ffc738;
+}
+
+/* The bookmark ribbon with the newest comic */
+.ribbon {
+  position: relative;
+  justify-self: start;
+  max-inline-size: 100%;
+  margin-block-start: var(--space-2xs);
+  padding: 0.15em 0.6em 0.2em;
+  overflow: hidden;
+  background: var(--surface);
+  border: var(--panel-border-thin) solid var(--line);
+  color: var(--ink-soft);
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* "New diary": an uncut notebook outline */
+.blank {
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: var(--space-2xs);
+  aspect-ratio: 3 / 4;
+  border: var(--panel-border) dashed color-mix(in srgb, var(--ink) 55%, transparent);
+  border-radius: 5px 12px 12px 5px;
+  background: color-mix(in srgb, var(--surface) 60%, transparent);
+  color: var(--ink);
+  font-family: var(--font-display-stack);
+  font-size: var(--step-0);
+  font-weight: 700;
+  cursor: pointer;
+  transition: translate 300ms var(--ease-pop, ease), background 300ms ease;
+}
+
+.blank:hover,
+.blank:focus-visible {
+  translate: 0 -6px;
+  background: color-mix(in srgb, var(--highlight) 30%, var(--surface));
+}
+
+.blankPlus {
+  display: grid;
+  place-items: center;
+  inline-size: 3rem;
+  block-size: 3rem;
+  border: var(--panel-border) solid #1b2148;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #1b2148;
+  font-size: 2rem;
+  line-height: 1;
+  box-shadow: 3px 3px 0 #1b2148;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .notebook,
+  .sticker,
+  .blank {
+    transition: none;
+  }
+  .notebook {
+    transform: rotate(var(--tilt, 0deg));
+  }
+}
+
+/* ---------- New diary form ---------- */
+.newForm {
+  display: grid;
+  gap: var(--space-l);
+  padding: var(--space-m);
+  background: var(--surface);
+  border: var(--panel-border) solid var(--line);
+  border-radius: var(--radius-panel);
+  box-shadow: var(--shadow-x, 5px) 5px 0 var(--shadow);
+  animation: pop-in 420ms var(--ease-pop, ease) both;
+}
+
+@media (min-width: 44rem) {
+  .newForm {
+    grid-template-columns: 12rem 1fr;
+    align-items: start;
+    padding: var(--space-l);
+  }
+}
+
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.97);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .newForm {
+    animation: none;
+  }
+}
+
+.newPreview {
+  justify-self: center;
+  inline-size: min(11rem, 60vw);
+  padding-inline-end: 8px;
+}
+
+.newFields {
+  display: grid;
+  gap: var(--space-s);
+  min-inline-size: 0;
+}
+
+.newTitle {
+  font-size: var(--step-2);
+}
+
+.field {
+  display: grid;
+  gap: var(--space-3xs);
+}
+
+.fieldLabel {
+  font-weight: 700;
+}
+
+.field input {
+  inline-size: 100%;
+  min-block-size: 3rem;
+  padding: var(--space-2xs) var(--space-xs);
+  border: var(--panel-border-thin) solid var(--line);
+  border-radius: 10px;
+  background: var(--paper);
+  font: inherit;
+  font-family: var(--font-lettering-stack);
+  font-size: var(--step-1);
+}
+
+.field [aria-invalid="true"] {
+  border-color: var(--accent);
+}
+
+.suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2xs);
+}
+
+.suggestion {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35em;
+  min-block-size: 2.5rem;
+  padding: 0.2em 0.8em 0.2em 0.4em;
+  border: var(--panel-border-thin) solid var(--line);
+  border-radius: var(--radius-pill);
+  background: var(--paper);
+  color: var(--ink);
+  font-weight: 600;
+  cursor: pointer;
+  transition: translate 200ms ease, background 200ms ease;
+}
+
+.suggestion:hover,
+.suggestion:focus-visible {
+  translate: 0 -2px;
+  background: color-mix(in srgb, var(--highlight) 40%, var(--paper));
+}
+
+.suggestionSticker {
+  inline-size: 1.5rem;
+  block-size: 1.5rem;
+}
+
+.pickers {
+  display: grid;
+  gap: var(--space-2xs);
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-inline-size: 0;
+}
+
+.swatches,
+.stickers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2xs);
+}
+
+.swatch {
+  --cover: var(--accent);
+  position: relative;
+  inline-size: 2.75rem;
+  block-size: 2.75rem;
+  border: var(--panel-border-thin) solid #1b2148;
+  border-radius: 6px 10px 10px 6px;
+  background: var(--cover);
+  cursor: pointer;
+}
+
+.swatch[data-color="sun"] {
+  --cover: #ffc738;
+}
+.swatch[data-color="teal"] {
+  --cover: #0f9e8e;
+}
+.swatch[data-color="ink"] {
+  --cover: #2a3366;
+}
+.swatch[data-color="lilac"] {
+  --cover: #b9a4f2;
+}
+.swatch[data-color="grass"] {
+  --cover: #47b26b;
+}
+
+.swatch input,
+.stickerPick input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  margin: 0;
+  cursor: pointer;
+}
+
+.swatch:has(input:checked),
+.stickerPick:has(input:checked) {
+  outline: 3px solid var(--ink);
+  outline-offset: 3px;
+  scale: 1.06;
+}
+
+.swatch:has(input:focus-visible),
+.stickerPick:has(input:focus-visible) {
+  outline: 3px solid var(--accent);
+  outline-offset: 3px;
+}
+
+.stickerPick {
+  position: relative;
+  display: grid;
+  place-items: center;
+  inline-size: 2.75rem;
+  block-size: 2.75rem;
+  border: var(--panel-border-thin) solid var(--line);
+  border-radius: 10px;
+  background: var(--paper);
+  cursor: pointer;
+}
+
+.stickerIcon {
+  inline-size: 1.9rem;
+  block-size: 1.9rem;
+}
+
+.error {
+  color: var(--accent-text);
+  font-weight: 600;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+  align-items: center;
+}
+
+/* ---------- The diary tab on a comic page ---------- */
+.tag {
+  --cover: var(--accent);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4em;
+  justify-self: start;
+  min-block-size: 2.5rem;
+  padding: 0.2em 0.8em 0.2em 0.4em;
+  border: var(--panel-border-thin) solid #1b2148;
+  border-radius: 10px 10px 4px 4px;
+  background: color-mix(in srgb, var(--cover) 40%, var(--surface));
+  color: var(--ink);
+  font-family: var(--font-display-stack);
+  font-weight: 700;
+  text-decoration: none;
+  box-shadow: 3px 3px 0 var(--shadow);
+  rotate: -1.5deg;
+}
+
+.tag[data-color="sun"] {
+  --cover: #ffc738;
+}
+.tag[data-color="teal"] {
+  --cover: #0f9e8e;
+}
+.tag[data-color="ink"] {
+  --cover: #6b78c9;
+}
+.tag[data-color="lilac"] {
+  --cover: #b9a4f2;
+}
+.tag[data-color="grass"] {
+  --cover: #47b26b;
+}
+
+.tagSticker {
+  inline-size: 1.4rem;
+  block-size: 1.4rem;
+}

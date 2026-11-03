@@ -35,12 +35,16 @@ export function AccountCosts() {
         <p className={styles.quiet}>The totals aren&apos;t available right now.</p>
       ) : (
         <>
-          <p className={styles.costLine}>
-            Your comics so far:{" "}
-            <strong>
-              {costs.comics === 1 ? "1 comic" : `${costs.comics} comics`}, {aboutUsd(costs.comicsUsd)}
-            </strong>
-          </p>
+          {costs.comics === 0 ? (
+            <p className={styles.costLine}>No comics drawn by the real models yet, so nothing spent.</p>
+          ) : (
+            <p className={styles.costLine}>
+              Your comics so far:{" "}
+              <strong>
+                {costs.comics === 1 ? "1 comic" : `${costs.comics} comics`}, {aboutUsd(costs.comicsUsd)}
+              </strong>
+            </p>
+          )}
           {costs.castUsd > 0 || costs.extrasUsd > 0 ? (
             <p className={styles.quiet}>
               Drawing your cast and outfits: {aboutUsd(costs.castUsd)}

@@ -69,7 +69,9 @@
 /* Quick form */
 .form {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-s);
+  min-inline-size: 0;
 }
 
 .row {

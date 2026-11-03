@@ -22,7 +22,7 @@ import {
   type StepStatus,
 } from "@/lib/pipeline";
 import type { ArtStyleId } from "@/lib/artStyles";
-import type { LanguageHint, LanguageMix, ScriptPanel, StoryMode } from "@/lib/types";
+import type { Diary, LanguageHint, LanguageMix, ScriptPanel, StoryMode } from "@/lib/types";
 import styles from "./making.module.css";
 
 const REDUCED_MOTION = "(prefers-reduced-motion: reduce)";
@@ -169,6 +169,8 @@ interface MakingComicProps {
   storyMode: StoryMode;
   /** Photos of the day, for today's outfit and the album. */
   photos?: File[];
+  /** The diary the comic goes in; null or missing for the daily one. */
+  diary?: Diary | null;
   /** Called after the screen is cancelled and closed. */
   onClose: () => void;
 }
@@ -178,8 +180,19 @@ interface MakingComicProps {
  * finishes. Panels are pencilled from the script, inked when drawn, and a
  * panel whose face was fixed flips from before to after.
  */
-export function MakingComic({ audio, text, language, style, storyMode, photos, onClose }: MakingComicProps) {
-  const [pipeline] = useState(() => new ComicPipeline({ audio, text, language, style, storyMode, ...(photos?.length ? { photos } : {}) }));
+export function MakingComic({ audio, text, language, style, storyMode, photos, diary, onClose }: MakingComicProps) {
+  const [pipeline] = useState(
+    () =>
+      new ComicPipeline({
+        audio,
+        text,
+        language,
+        style,
+        storyMode,
+        ...(photos?.length ? { photos } : {}),
+        ...(diary ? { diary: { id: diary.id, name: diary.name } } : {}),
+      }),
+  );
   const state = useSyncExternalStore(pipeline.subscribe, pipeline.getSnapshot, pipeline.getSnapshot);
   const [settled, setSettled] = useState<ReadonlySet<number>>(() => new Set());
   const dialogRef = useRef<HTMLDialogElement>(null);
@@ -314,6 +327,12 @@ export function MakingComic({ audio, text, language, style, storyMode, photos, o
           >
             {captionFor(state, fixing)}
           </p>
+          {status === "error" && failedStep ? (
+            // Up here too, so a phone doesn't have to scroll past every panel to retry.
+            <button type="button" className={`btn btn--ink ${styles.retryTop}`} onClick={retry}>
+              Try again
+            </button>
+          ) : null}
         </div>
 
         <div className={styles.stage}>
@@ -341,8 +360,8 @@ export function MakingComic({ audio, text, language, style, storyMode, photos, o
                 </>
               ) : crisis ? (
                 <p className={styles.pause} dir="auto">
-                  That sounded like a really heavy day. Instead of a comic, the next page has some people you can talk
-                  to.
+                  That sounded really heavy. Comimo won&apos;t turn this note into a comic. If you&apos;re thinking about hurting
+                  yourself, please reach out to someone you trust right now, or call your local emergency number.
                 </p>
               ) : (
                 <div className={styles.titleCard}>

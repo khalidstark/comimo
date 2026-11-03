@@ -2,6 +2,8 @@ import "server-only";
 import type {
   CastBrief,
   CharacterRole,
+  GoodThing,
+  WeekRequest,
   ComicScript,
   LanguageHint,
   ModelMode,
@@ -112,6 +114,8 @@ export interface ModelCallContext {
 export interface ScriptOptions {
   /** Defaults to DEFAULT_STORY_MODE. */
   storyMode?: StoryMode;
+  /** The name of the diary the entry is for (03.2-05), when it isn't the daily one. */
+  diary?: string;
 }
 
 /** A change of clothes in words (03.2-04). */
@@ -142,7 +146,7 @@ export interface PhotoPerson {
   score: number;
 }
 
-export type ModelMethod = "transcribe" | "writeScript" | "drawReferenceSheet" | "drawPanel" | "checkConsistency" | "outfit";
+export type ModelMethod = "transcribe" | "writeScript" | "drawReferenceSheet" | "drawPanel" | "checkConsistency" | "outfit" | "week";
 
 export interface ComicModels {
   readonly mode: ModelMode;
@@ -177,6 +181,8 @@ export interface ComicModels {
   ): Promise<{ image: ModelImage; photoRefused: boolean }>;
   /** Which cast member each person cut from the day's photos is, and what they wear. */
   matchPeople(crops: ModelImage[], references: CharacterReference[], context?: ModelCallContext): Promise<PersonMatch[]>;
+  /** The good things of the week, from its comics (03.2-05). */
+  writeWeek(week: WeekRequest, context?: ModelCallContext): Promise<{ headline: string; goodThings: GoodThing[]; line: string }>;
 }
 
 /** Thrown when a voice note or other input can't be sent to a model as it is. */

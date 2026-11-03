@@ -1,0 +1,222 @@
+.hood {
+  display: grid;
+  gap: var(--space-l);
+}
+
+.head {
+  display: grid;
+  gap: var(--space-2xs);
+}
+
+.kicker {
+  justify-self: start;
+  padding: 0.1em 0.6em 0.15em;
+  background: var(--ink);
+  color: var(--paper);
+  font-family: var(--font-lettering-stack);
+  font-weight: 600;
+  rotate: -2deg;
+}
+
+.layout {
+  display: grid;
+  gap: var(--space-xl);
+  align-items: start;
+}
+
+@media (min-width: 60rem) {
+  .layout {
+    grid-template-columns: 1.4fr 1fr;
+  }
+}
+
+/* The models as a strip of cut panels, joined by arrows */
+.strip {
+  display: grid;
+  gap: var(--space-s);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: step;
+}
+
+.step {
+  --tone: var(--highlight);
+  position: relative;
+  border: var(--panel-border) solid var(--line);
+  border-radius: var(--radius-panel);
+  background: var(--surface);
+  box-shadow: 4px 4px 0 var(--shadow);
+  transition: translate 260ms var(--ease-pop), box-shadow 260ms ease;
+}
+
+.step[data-tone="pink"] {
+  --tone: var(--accent);
+}
+.step[data-tone="teal"] {
+  --tone: var(--calm);
+}
+.step[data-tone="ink"] {
+  --tone: #6b78c9;
+}
+.step[data-tone="lilac"] {
+  --tone: #b9a4f2;
+}
+
+.step + .step::before {
+  content: "";
+  position: absolute;
+  inset-block-start: calc(var(--space-s) * -1 - 2px);
+  inset-inline-start: 2.1rem;
+  inline-size: 3px;
+  block-size: var(--space-s);
+  background: var(--line);
+}
+
+.step[data-open] {
+  translate: 6px 0;
+  box-shadow: 6px 6px 0 var(--tone);
+}
+
+.stepButton {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--space-s);
+  align-items: center;
+  inline-size: 100%;
+  min-block-size: 3.5rem;
+  padding: var(--space-xs) var(--space-s);
+  border: 0;
+  background: none;
+  color: var(--ink);
+  text-align: start;
+  cursor: pointer;
+}
+
+.stepButton:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: -3px;
+}
+
+.number {
+  display: grid;
+  place-items: center;
+  inline-size: 2.6rem;
+  block-size: 2.6rem;
+  border: var(--panel-border-thin) solid #1b2148;
+  border-radius: 50%;
+  background: var(--tone);
+  color: #1b2148;
+  font-family: var(--font-display-stack);
+  font-size: var(--step-1);
+  font-weight: 800;
+  transition: rotate 300ms var(--ease-pop), scale 300ms var(--ease-pop);
+}
+
+.step[data-open] .number {
+  rotate: -12deg;
+  scale: 1.1;
+}
+
+.stepText {
+  display: grid;
+}
+
+.model {
+  color: var(--ink-soft);
+  font-size: var(--step--1);
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.stepTitle {
+  font-family: var(--font-display-stack);
+  font-size: var(--step-1);
+  font-weight: 700;
+  line-height: 1.15;
+}
+
+.body {
+  margin: 0;
+  padding: 0 var(--space-s) var(--space-s) calc(var(--space-s) * 2 + 2.6rem);
+  color: var(--ink-soft);
+  animation: open 320ms ease both;
+}
+
+@keyframes open {
+  from {
+    opacity: 0;
+    translate: 0 -6px;
+  }
+}
+
+/* A till receipt with a torn bottom edge */
+.receipt {
+  position: relative;
+  margin: 0;
+  padding: var(--space-m) var(--space-m) var(--space-l);
+  background: #fafbfc;
+  color: #1b2148;
+  border: var(--panel-border-thin) solid #1b2148;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  rotate: 1.5deg;
+  box-shadow: 5px 6px 0 color-mix(in srgb, #1b2148 80%, transparent);
+  mask: linear-gradient(#000 0 0) top / 100% calc(100% - 10px) no-repeat, conic-gradient(from -45deg at bottom, #0000, #000 1deg 89deg, #0000 90deg) bottom / 20px 10px repeat-x;
+}
+
+.receiptTitle {
+  margin-block-end: var(--space-s);
+  padding-block-end: var(--space-2xs);
+  border-block-end: 2px dashed #1b2148;
+  font-family: var(--font-display-stack);
+  font-size: var(--step-1);
+  font-weight: 800;
+  text-align: center;
+}
+
+.lines {
+  display: grid;
+  gap: var(--space-2xs);
+  margin: 0;
+}
+
+.line {
+  display: flex;
+  gap: var(--space-s);
+  justify-content: space-between;
+  align-items: baseline;
+  font-size: var(--step--1);
+}
+
+.line dt {
+  flex: 1;
+}
+
+.line dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.total {
+  margin-block-start: var(--space-2xs);
+  padding-block-start: var(--space-2xs);
+  border-block-start: 2px dashed #1b2148;
+  font-size: var(--step-0);
+  font-weight: 800;
+}
+
+.receiptNote {
+  margin-block-start: var(--space-s);
+  font-size: 0.78rem;
+  color: #4b5277;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .step,
+  .number,
+  .body {
+    transition: none;
+    animation: none;
+  }
+}
