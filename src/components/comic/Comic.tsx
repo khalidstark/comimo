@@ -22,6 +22,8 @@ interface ComicProps {
   label: string;
   /** Show every panel at once with no ink-in (a page that is turning away). */
   still?: boolean;
+  /** Panels in the whole comic (panels are numbered across pages); defaults to this page's. */
+  comicTotal?: number;
 }
 
 /**
@@ -31,7 +33,7 @@ interface ComicProps {
  * server HTML hydrates stay put, so nothing blinks; when the comic mounts on
  * the client (a stored day, a page turn) those animate too.
  */
-export function Comic({ panels, page, style, label, still = false }: ComicProps) {
+export function Comic({ panels, page, style, label, still = false, comicTotal }: ComicProps) {
   const listRef = useRef<HTMLOListElement>(null);
   // False only while hydrating server HTML.
   const clientRender = useSyncExternalStore(
@@ -83,7 +85,7 @@ export function Comic({ panels, page, style, label, still = false }: ComicProps)
       <ol ref={listRef} className={pageStyles.page} style={page.vars as CSSProperties} aria-label={label}>
         {panels.map((panel, i) => {
           const slot = page.slots.find((s) => s.index === panel.index) ?? page.slots[i];
-          return slot ? <ComicPanel key={panel.index} panel={panel} slot={slot} total={panels.length} /> : null;
+          return slot ? <ComicPanel key={panel.index} panel={panel} slot={slot} total={comicTotal ?? panels.length} /> : null;
         })}
       </ol>
     </div>

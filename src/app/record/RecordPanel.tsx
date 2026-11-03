@@ -227,6 +227,8 @@ export function RecordPanel() {
           </label>
           <textarea
             id={typedId}
+            // It appears when "Type it instead" is pressed: the writing starts here.
+            autoFocus
             className={styles.typedText}
             value={typed}
             onChange={(event) => setTyped(event.target.value)}

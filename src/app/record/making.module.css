@@ -695,3 +695,8 @@
     translate: 0 0;
   }
 }
+
+/* "Try again" beside the caption; the step list keeps its own */
+.retryTop {
+  justify-self: start;
+}

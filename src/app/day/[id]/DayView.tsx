@@ -38,7 +38,8 @@ interface DayViewProps {
 function madeFacts(day: Day): MadeFacts {
   const names = Object.assign({}, ...day.panels.map((panel) => panel.names ?? {})) as Record<string, string>;
   return {
-    outfits: (day.outfits ?? []).map((outfit) => ({ name: names[outfit.characterId] ?? "Someone", label: outfit.label, photo: outfit.photo })),
+    // Only people who are in the comic: someone dressed but never drawn isn't worth a line.
+    outfits: (day.outfits ?? []).flatMap((outfit) => (names[outfit.characterId] ? [{ name: names[outfit.characterId], label: outfit.label, photo: outfit.photo }] : [])),
     ...(day.cost ? { cost: day.cost } : {}),
   };
 }
@@ -69,7 +70,10 @@ export function DayView({ day, panels, faces, layouts, previous, next }: DayView
         {day.sample ? null : <DiaryTag diaryId={day.diaryId} />}
         <h1 dir="auto">{crisis ? "Your day" : day.title}</h1>
         {crisis ? (
-          <p className="page-head__lede">Comimo didn&apos;t turn this note into a comic.</p>
+          <p className="page-head__lede">
+            Comimo didn&apos;t turn this note into a comic. If you&apos;re thinking about hurting yourself, please reach out to someone you trust
+            right now, or call your local emergency number.
+          </p>
         ) : (
           <MoodBadge mood={day.mood} />
         )}

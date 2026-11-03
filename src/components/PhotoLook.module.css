@@ -1,6 +1,9 @@
 /* "Start from a photo": an uncut panel inside the character form */
 .photo {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  max-inline-size: 100%;
+  overflow-wrap: anywhere;
   gap: var(--space-xs);
   margin: 0;
   padding: var(--space-s);
@@ -31,9 +34,11 @@
 }
 
 .file input {
+  inline-size: 100%;
   max-inline-size: 100%;
   min-block-size: 2.75rem;
   font: inherit;
+  font-size: var(--step--1);
 }
 
 .consent {

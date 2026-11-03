@@ -327,6 +327,12 @@ export function MakingComic({ audio, text, language, style, storyMode, photos, d
           >
             {captionFor(state, fixing)}
           </p>
+          {status === "error" && failedStep ? (
+            // Up here too, so a phone doesn't have to scroll past every panel to retry.
+            <button type="button" className={`btn btn--ink ${styles.retryTop}`} onClick={retry}>
+              Try again
+            </button>
+          ) : null}
         </div>
 
         <div className={styles.stage}>
@@ -354,8 +360,8 @@ export function MakingComic({ audio, text, language, style, storyMode, photos, d
                 </>
               ) : crisis ? (
                 <p className={styles.pause} dir="auto">
-                  That sounded like a really heavy day. Instead of a comic, the next page has some people you can talk
-                  to.
+                  That sounded really heavy. Comimo won&apos;t turn this note into a comic. If you&apos;re thinking about hurting
+                  yourself, please reach out to someone you trust right now, or call your local emergency number.
                 </p>
               ) : (
                 <div className={styles.titleCard}>
