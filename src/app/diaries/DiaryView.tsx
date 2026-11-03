@@ -125,7 +125,7 @@ export function DiaryView() {
             </Link>
             {own ? (
               <button type="button" className="btn btn--ghost" onClick={() => setEditing((v) => !v)} aria-expanded={editing}>
-                Change cover
+                Edit diary
               </button>
             ) : null}
           </div>
