@@ -309,7 +309,8 @@ export function Magazine({ sample, heading }: { sample: MagazineIssue; heading: 
               Print or save as PDF
             </Link>
           </div>
-          {!issue.sample ? <IssueCost days={issue.days} /> : null}
+          {/* The sample days are real runs (03.2-06), so the sample issue has a real cost too. */}
+          <IssueCost days={issue.days} />
           {cover.status === "error" ? (
             <p className={styles.coverError} role="alert">
               {cover.message}
