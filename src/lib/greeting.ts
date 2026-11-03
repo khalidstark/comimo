@@ -69,14 +69,16 @@ export interface GreetingInput {
   comics: number;
   /** True when a comic was already made today. */
   madeToday: boolean;
+  /** Which page asks ("home"), so two pages don't open with the same line on one day. */
+  place?: string;
 }
 
-export function greeting({ name, hour, dateKey, comics, madeToday }: GreetingInput): { title: string; lede: string | null } {
+export function greeting({ name, hour, dateKey, comics, madeToday, place }: GreetingInput): { title: string; lede: string | null } {
   const first = firstName(name);
   const lede = comics < NEW_USER_COMICS ? HOW_TO : null;
   if (!first) return { title: "Tell me about today", lede };
   const options = TITLES[madeToday ? "again" : partOfDay(hour)];
-  const title = options[daySeed(dateKey) % options.length].replaceAll("{name}", first);
+  const title = options[daySeed(place ? `${place}:${dateKey}` : dateKey) % options.length].replaceAll("{name}", first);
   return { title, lede };
 }
 

@@ -5,8 +5,9 @@ import { sessionCookieName } from "@/lib/server/cookieName";
 /**
  * Three checks before a page renders:
  *
- * - /: the landing page is for visitors without an account; with a session
- *   cookie it sends them to /record (until the signed-in home is designed).
+ * - /: the landing page for visitors without a session cookie; with one, the
+ *   signed-in home (a rewrite to /home, so the address stays /). /home itself
+ *   redirects to / so the home has one address.
  * - /record and /welcome: an optimistic sign-in check. With no session cookie at all, a
  *   visitor who taps Record goes to the quick sign-up and comes straight back
  *   after. This only looks at the cookie's presence; the API routes check the
@@ -56,12 +57,17 @@ export async function proxy(request: NextRequest) {
   }
 
   const signedIn = request.cookies.has(sessionCookieName());
-  // The landing page is for newcomers; someone with an account goes straight to their day.
+  // `/` is the landing page for newcomers and the signed-in home for everyone else, at the same address.
   if (pathname === "/") {
     if (!signedIn) return NextResponse.next();
     const url = request.nextUrl.clone();
-    url.pathname = "/record";
-    url.search = "";
+    url.pathname = "/home";
+    return NextResponse.rewrite(url);
+  }
+  // The home has one address: `/`.
+  if (pathname === "/home") {
+    const url = request.nextUrl.clone();
+    url.pathname = "/";
     return NextResponse.redirect(url);
   }
 
@@ -73,5 +79,5 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/", "/record", "/welcome", "/album/:id"],
+  matcher: ["/", "/home", "/record", "/welcome", "/album/:id"],
 };

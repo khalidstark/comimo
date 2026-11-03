@@ -26,6 +26,11 @@ describe("greeting", () => {
     expect(greeting({ ...base, hour: 9 }).title).not.toBe(again);
   });
 
+  it("lets another page pick its own line", () => {
+    const days = ["01", "02", "03", "04", "05", "06", "07"].map((d) => ({ ...base, dateKey: `2026-11-${d}` }));
+    expect(days.some((day) => greeting({ ...day, place: "home" }).title !== greeting(day).title)).toBe(true);
+  });
+
   it("falls back without a name", () => {
     expect(greeting({ ...base, name: "  " }).title).toBe("Tell me about today");
   });

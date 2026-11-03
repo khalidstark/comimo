@@ -1,0 +1,588 @@
+.home {
+  overflow-x: clip;
+  padding-block-end: var(--space-2xl);
+}
+
+/* ==========================================================================
+   The desk: the night cover again, cut short, with today on it. The hello
+   rises on load, the week's days pop in one by one, and the light page cuts
+   in underneath on a slant like the landing page.
+   ========================================================================== */
+.desk {
+  position: relative;
+  isolation: isolate;
+  background: var(--night);
+  color: var(--on-night);
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 3vw), 0 100%);
+  padding-block: var(--space-xl) calc(3vw + var(--space-xl));
+}
+
+/* Printed dots fading out from the top corner. */
+.desk::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image: radial-gradient(color-mix(in srgb, var(--on-night) 16%, transparent) 30%, transparent 32%);
+  background-size: 11px 11px;
+  mask-image: linear-gradient(210deg, #000 0%, transparent 55%);
+}
+
+.deskInner {
+  display: grid;
+  gap: var(--space-l);
+}
+
+@media (min-width: 56rem) {
+  .deskInner {
+    grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
+    grid-template-areas:
+      "hello today"
+      "week today";
+    align-items: start;
+    column-gap: var(--space-2xl);
+  }
+
+  .hello {
+    grid-area: hello;
+  }
+
+  .today {
+    grid-area: today;
+    align-self: center;
+  }
+
+  .week {
+    grid-area: week;
+  }
+}
+
+.hello {
+  display: grid;
+  gap: var(--space-xs);
+  justify-items: start;
+}
+
+.date {
+  font-family: var(--font-display-stack);
+  font-weight: 700;
+  font-size: var(--step-0);
+  color: var(--highlight);
+  letter-spacing: 0.02em;
+}
+
+.greeting {
+  font-size: var(--step-5);
+  line-height: 0.98;
+  letter-spacing: -0.02em;
+  color: var(--on-night);
+  text-wrap: balance;
+  max-inline-size: 15ch;
+  min-block-size: 1em;
+  animation: rise 700ms var(--ease-cine) both;
+}
+
+.pending {
+  opacity: 0;
+  animation: none;
+}
+
+.lede {
+  max-inline-size: 36ch;
+  font-size: var(--step-1);
+  line-height: 1.45;
+  color: var(--on-night-soft);
+}
+
+/* ---------- Today's page ---------- */
+.today {
+  min-block-size: 1px;
+}
+
+.todayCard {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-s);
+  padding: var(--space-m);
+  background: var(--surface);
+  color: var(--ink);
+  border: var(--panel-border) solid var(--line);
+  border-radius: var(--radius-panel);
+  box-shadow: var(--shadow-panel);
+  rotate: -1.5deg;
+  transition:
+    rotate 320ms var(--ease-pop),
+    translate 320ms var(--ease-pop);
+  animation: deal 650ms var(--ease-pop) 120ms both;
+}
+
+.todayCard:hover,
+.todayCard:focus-within {
+  rotate: 0deg;
+  translate: 0 -4px;
+}
+
+.todayLabel {
+  rotate: -2deg;
+}
+
+.question {
+  font-size: var(--step-1);
+  max-inline-size: 24ch;
+}
+
+.magnet {
+  display: inline-block;
+  justify-self: center;
+  transition: translate 380ms var(--ease-cine);
+}
+
+.todayComic {
+  display: grid;
+  gap: var(--space-2xs);
+  inline-size: 100%;
+  color: inherit;
+  text-decoration: none;
+}
+
+.todayArt {
+  display: block;
+  aspect-ratio: 16 / 10;
+  overflow: hidden;
+  border: var(--panel-border-thin) solid var(--line);
+  border-radius: calc(var(--radius-panel) - 4px);
+  background: var(--paper-deep);
+}
+
+.todayArt img {
+  inline-size: 100%;
+  block-size: 100%;
+  object-fit: cover;
+  transition: scale 600ms var(--ease-cine);
+}
+
+.todayComic:hover .todayArt img,
+.todayComic:focus-visible .todayArt img {
+  scale: 1.05;
+}
+
+.todayComic .todayLabel {
+  justify-self: start;
+  margin-block-start: calc(-1 * var(--space-m));
+  margin-inline-start: var(--space-xs);
+  position: relative;
+}
+
+.todayTitle {
+  font-family: var(--font-display-stack);
+  font-weight: 800;
+  font-size: var(--step-2);
+  line-height: 1.05;
+  text-wrap: balance;
+}
+
+.another {
+  justify-self: start;
+}
+
+/* ---------- This week ---------- */
+.week {
+  display: grid;
+  gap: var(--space-xs);
+  max-inline-size: 34rem;
+}
+
+.weekHead {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--space-2xs) var(--space-s);
+}
+
+.weekTitle {
+  font-family: var(--font-display-stack);
+  font-weight: 800;
+  font-size: var(--step-1);
+}
+
+.weekCount {
+  color: var(--on-night-soft);
+  font-weight: 600;
+}
+
+.weekRow {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: var(--space-3xs);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.weekSlot {
+  display: grid;
+}
+
+.weekDay {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  padding-block: var(--space-2xs);
+  border: 2px solid color-mix(in srgb, var(--on-night) 22%, transparent);
+  border-radius: 12px;
+  color: inherit;
+  font-weight: 700;
+  font-size: var(--step--1);
+  text-decoration: none;
+  transition:
+    translate 240ms var(--ease-pop),
+    border-color 240ms;
+  animation: pop 520ms var(--ease-pop) both;
+  animation-delay: calc(var(--i) * 60ms + 220ms);
+}
+
+a.weekDay:hover,
+a.weekDay:focus-visible {
+  translate: 0 -4px;
+  border-color: var(--highlight);
+}
+
+.weekDay[data-today] {
+  border-color: var(--highlight);
+  background: color-mix(in srgb, var(--highlight) 16%, transparent);
+}
+
+.weekDay[data-future] {
+  opacity: 0.45;
+}
+
+.weekIcon {
+  inline-size: min(2.4rem, 100%);
+  block-size: auto;
+  aspect-ratio: 1;
+}
+
+.weekBlank {
+  inline-size: min(2.4rem, 100%);
+  aspect-ratio: 1;
+  border: 2px dashed color-mix(in srgb, var(--on-night) 38%, transparent);
+  border-radius: 50%;
+}
+
+/* ---------- Put yourself in ---------- */
+.face {
+  display: flex;
+  align-items: center;
+  gap: var(--space-m);
+  margin-block-start: var(--space-l);
+  padding: var(--space-s) var(--space-m);
+  background: var(--highlight);
+  color: var(--on-highlight);
+  border: var(--panel-border) solid #1b2148;
+  border-radius: var(--radius-card-soft);
+  box-shadow: var(--shadow-small);
+  text-decoration: none;
+  transition: translate 260ms var(--ease-pop);
+}
+
+.face:hover,
+.face:focus-visible {
+  translate: 0 -3px;
+}
+
+.faceArt {
+  flex: none;
+  inline-size: 4.5rem;
+  block-size: auto;
+}
+
+.faceText {
+  display: grid;
+  gap: 2px;
+}
+
+.faceText strong {
+  font-family: var(--font-display-stack);
+  font-size: var(--step-1);
+}
+
+/* ---------- Sections ---------- */
+.goodThings {
+  padding-block-end: 0;
+}
+
+.sectionHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-xs) var(--space-m);
+  margin-block-end: var(--space-l);
+}
+
+.opening {
+  padding-block: var(--space-2xl);
+  color: var(--ink-soft);
+}
+
+/* ---------- Lately: comics dealt onto the table ---------- */
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 15rem), 1fr));
+  gap: var(--space-l) var(--space-m);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.card {
+  display: grid;
+}
+
+.cardLink {
+  display: grid;
+  gap: var(--space-2xs);
+  padding: var(--space-xs) var(--space-xs) var(--space-s);
+  background: var(--surface);
+  color: inherit;
+  border: var(--panel-border-thin) solid var(--line);
+  border-radius: var(--radius-panel);
+  box-shadow: var(--shadow-small);
+  text-decoration: none;
+  rotate: var(--tilt);
+  transition:
+    rotate 320ms var(--ease-pop),
+    translate 320ms var(--ease-pop),
+    box-shadow 320ms;
+  animation: deal 620ms var(--ease-pop) both;
+  animation-delay: calc(var(--i) * 70ms);
+}
+
+.cardLink:hover,
+.cardLink:focus-visible {
+  rotate: 0deg;
+  translate: 0 -6px;
+  box-shadow: var(--shadow-panel);
+}
+
+.cardArt {
+  position: relative;
+  display: block;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  border: 2px solid var(--line);
+  border-radius: calc(var(--radius-panel) - 4px);
+  background: var(--paper-deep);
+}
+
+.cardArt img {
+  inline-size: 100%;
+  block-size: 100%;
+  object-fit: cover;
+  transition: scale 600ms var(--ease-cine);
+}
+
+.cardLink:hover .cardArt img,
+.cardLink:focus-visible .cardArt img {
+  scale: 1.06;
+}
+
+.cardMood {
+  position: absolute;
+  inset-block-start: 6px;
+  inset-inline-end: 6px;
+  inline-size: 2.4rem;
+  padding: 2px;
+  background: var(--surface);
+  border: 2px solid var(--line);
+  border-radius: 50%;
+}
+
+.cardMood img {
+  inline-size: 100%;
+  block-size: auto;
+}
+
+.cardDate {
+  padding-inline: var(--space-3xs);
+  color: var(--ink-soft);
+  font-size: var(--step--1);
+  font-weight: 700;
+}
+
+.cardTitle {
+  padding-inline: var(--space-3xs);
+  font-family: var(--font-display-stack);
+  font-weight: 800;
+  font-size: var(--step-1);
+  line-height: 1.1;
+}
+
+/* ---------- This month's issue ---------- */
+.month {
+  display: grid;
+  gap: var(--space-xl);
+  align-items: center;
+}
+
+@media (min-width: 48rem) {
+  .month {
+    grid-template-columns: minmax(0, 20rem) minmax(0, 1fr);
+  }
+}
+
+.issue {
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  align-content: start;
+  gap: var(--space-3xs);
+  inline-size: min(100%, 20rem);
+  aspect-ratio: 2 / 3;
+  overflow: hidden;
+  padding: var(--space-m);
+  background: var(--night);
+  color: #ffffff;
+  border: var(--panel-border) solid #1b2148;
+  border-radius: 10px;
+  box-shadow: var(--shadow-panel);
+  text-decoration: none;
+  rotate: -2deg;
+  transition:
+    rotate 360ms var(--ease-pop),
+    translate 360ms var(--ease-pop);
+}
+
+.issue:hover,
+.issue:focus-visible {
+  rotate: 0deg;
+  translate: 0 -6px;
+}
+
+.issueArt {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+}
+
+.issueArt img {
+  inline-size: 100%;
+  block-size: 100%;
+  object-fit: cover;
+  transition: scale 900ms var(--ease-cine);
+}
+
+.issue:hover .issueArt img {
+  scale: 1.05;
+}
+
+.issueArt .issueEmpty {
+  object-fit: contain;
+  padding: 18% 10% 26%;
+}
+
+/* Dark at the top for the masthead, dark at the bottom for the cover lines. */
+.issueArt::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to bottom, rgb(12 14 34 / 0.78), transparent 34%, transparent 52%, rgb(12 14 34 / 0.88));
+}
+
+.masthead {
+  font-family: var(--font-display-stack);
+  font-weight: 900;
+  font-size: clamp(2.4rem, 9vw, 3.4rem);
+  line-height: 0.85;
+  letter-spacing: -0.04em;
+  color: var(--highlight);
+}
+
+.issueMonth {
+  font-weight: 800;
+  font-size: var(--step--1);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.issueLines {
+  position: absolute;
+  inset-inline: var(--space-m);
+  inset-block-end: var(--space-m);
+  display: grid;
+  justify-items: start;
+  gap: 6px;
+}
+
+.issueLine {
+  max-inline-size: 100%;
+  padding: 2px 8px;
+  background: var(--highlight);
+  color: #1b2148;
+  font-family: var(--font-display-stack);
+  font-weight: 800;
+  font-size: var(--step-0);
+  line-height: 1.15;
+  rotate: -1deg;
+}
+
+.issueLine:nth-child(2) {
+  background: var(--accent);
+  rotate: 1deg;
+}
+
+.issueLine:nth-child(3) {
+  background: #ffffff;
+  rotate: -0.5deg;
+}
+
+.monthText {
+  display: grid;
+  gap: var(--space-s);
+  align-content: start;
+}
+
+/* ---------- Motion ---------- */
+@keyframes rise {
+  from {
+    opacity: 0;
+    translate: 0 0.35em;
+  }
+}
+
+@keyframes pop {
+  from {
+    opacity: 0;
+    scale: 0.6;
+  }
+}
+
+@keyframes deal {
+  from {
+    opacity: 0;
+    translate: 0 28px;
+    rotate: calc(var(--tilt, -1.5deg) * 3);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .greeting,
+  .todayCard,
+  .weekDay,
+  .cardLink {
+    animation: none;
+  }
+
+  .todayCard,
+  .weekDay,
+  .cardLink,
+  .issue,
+  .face,
+  .todayArt img,
+  .cardArt img,
+  .issueArt img {
+    transition: none;
+  }
+}

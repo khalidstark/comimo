@@ -9,7 +9,6 @@ import { MoodCalendar } from "@/components/MoodCalendar";
 import { StartNudge } from "@/components/account/StartNudge";
 import { UnderTheHood } from "@/components/home/UnderTheHood";
 import { WeekStrip } from "@/components/home/WeekStrip";
-import { YourBook } from "@/components/home/YourBook";
 import { PAGE_TURN, PageTurn } from "@/components/PageTurn";
 import { RecordStamp } from "@/components/RecordStamp";
 import { sampleCheckInQuestions, sampleDays } from "@/fixtures/days";
@@ -83,9 +82,6 @@ export default function Home() {
             />
           </div>
         </section>
-
-        {/* ---------- Signed in: the week's good things and the diaries ---------- */}
-        <YourBook />
 
         {/* ---------- A real day ---------- */}
         <section id="demo" className={`page section ${styles.demo}`} aria-labelledby="demo-title">
