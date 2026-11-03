@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
 import { artAt } from "@/art/manifest";
 import { PageTurn } from "@/components/PageTurn";
-import { toPanelViews } from "@/components/comic/view";
+import { facesSummary, fixedFaces, oneOffFaces, toPanelViews, type PanelArt } from "@/components/comic/view";
 import { starterCastById } from "@/fixtures/cast";
 import { getSampleDay, sampleDays } from "@/fixtures/days";
 import { pageLayoutChain } from "@/lib/layout/comicPages";
+import type { ImageRef } from "@/lib/types";
 import { DayReader } from "./DayReader";
 import { DayView } from "./DayView";
 
@@ -39,13 +40,15 @@ export default async function DayPage({ params }: DayPageProps) {
   const index = sampleDays.findIndex((d) => d.id === day.id);
   const previous = sampleDays[index - 1];
   const next = sampleDays[index + 1];
-  const panels = toPanelViews(
+  const artOf = (ref: ImageRef | null): PanelArt | null => (ref?.kind === "art" ? { kind: "art", asset: artAt(ref.path) } : null);
+  const snapshot = new Map(day.panels.flatMap((panel) => Object.entries(panel.names ?? {})));
+  const nameOf = (characterId: string) => starterCastById[characterId]?.name ?? snapshot.get(characterId) ?? characterId;
+  const panels = toPanelViews(day.panels, nameOf, (panel, which) => artOf(which === "image" ? panel.image : panel.consistency.beforeImage));
+  // The samples are real runs (03.2-06): the note says what SAM 3.1 and Muse Spark did, from what is stored on the panels.
+  const faces = facesSummary(
     day.panels,
-    (characterId) => starterCastById[characterId]?.name ?? characterId,
-    (panel, which) => {
-      const ref = which === "image" ? panel.image : panel.consistency.beforeImage;
-      return ref?.kind === "art" ? { kind: "art", asset: artAt(ref.path) } : null;
-    },
+    fixedFaces(day.panels, nameOf, (characterId) => artOf(starterCastById[characterId]?.portrait ?? null)),
+    oneOffFaces(day.panels, nameOf),
   );
 
   return (
@@ -53,7 +56,7 @@ export default async function DayPage({ params }: DayPageProps) {
       <DayView
         day={day}
         panels={panels}
-        faces={null}
+        faces={faces}
         layouts={pageLayoutChain(sampleDays).get(day.id) ?? []}
         previous={previous ? { href: `/day/${previous.id}`, title: previous.title } : undefined}
         next={next ? { href: `/day/${next.id}`, title: next.title } : undefined}

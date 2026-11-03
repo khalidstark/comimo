@@ -9,16 +9,6 @@ import { PAGE_TURN } from "@/components/PageTurn";
 import { listDays } from "@/lib/store";
 import { weekStart } from "@/lib/week";
 
-/** The sample week shown to visitors (invented moods). */
-const SAMPLE: { day: string; mood?: MoodKey }[] = [
-  { day: "Sat", mood: "sunny" },
-  { day: "Sun", mood: "cloudy" },
-  { day: "Mon", mood: "rainy" },
-  { day: "Tue" },
-  { day: "Wed", mood: "sunny" },
-  { day: "Thu", mood: "rainbow" },
-  { day: "Fri" },
-];
 const NAMES = ["Sat", "Sun", "Mon", "Tue", "Wed", "Thu", "Fri"];
 
 function isoAfter(first: string, days: number): string {
@@ -27,14 +17,28 @@ function isoAfter(first: string, days: number): string {
   return [date.getFullYear(), String(date.getMonth() + 1).padStart(2, "0"), String(date.getDate()).padStart(2, "0")].join("-");
 }
 
+export interface WeekCell {
+  /** "Sat" to "Fri". */
+  day: string;
+  mood?: MoodKey;
+}
+
+const BLANK_WEEK: WeekCell[] = NAMES.map((day) => ({ day }));
+
 /**
- * The hero's "This week" strip: the sample week for visitors; for a
- * signed-in user, this week's own day weather (Saturday to Friday), the
- * newest comic of each day.
+ * The hero's week strip: for visitors, Nour's sample week (`sample`, the
+ * weather her real sample comics were given); for a signed-in user, this
+ * week's own day weather (Saturday to Friday), the newest comic of each day.
  */
-export function WeekStrip({ classes }: { classes: Record<"week" | "weekTitle" | "weekRow" | "weekDay" | "weekIcon" | "weekBlank", string> }) {
+export function WeekStrip({
+  classes,
+  sample = BLANK_WEEK,
+}: {
+  classes: Record<"week" | "weekTitle" | "weekRow" | "weekDay" | "weekIcon" | "weekBlank", string>;
+  sample?: WeekCell[];
+}) {
   const account = useAccount();
-  const [week, setWeek] = useState<{ day: string; mood?: MoodKey }[] | null>(null);
+  const [week, setWeek] = useState<WeekCell[] | null>(null);
   const signedIn = account.status === "signed-in";
 
   useEffect(() => {
@@ -57,10 +61,10 @@ export function WeekStrip({ classes }: { classes: Record<"week" | "weekTitle" | 
     };
   }, [signedIn]);
 
-  const shown = signedIn && week ? week : SAMPLE;
+  const shown = signedIn && week ? week : sample;
   return (
     <Link href="/month" className={classes.week} transitionTypes={PAGE_TURN}>
-      <span className={classes.weekTitle}>{signedIn ? "Your week" : "This week"}</span>
+      <span className={classes.weekTitle}>{signedIn ? "Your week" : "Nour's week"}</span>
       <ol className={classes.weekRow}>
         {shown.map(({ day, mood }) => (
           <li key={day} className={classes.weekDay}>

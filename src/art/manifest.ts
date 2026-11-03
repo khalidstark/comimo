@@ -7,6 +7,8 @@
  * public/art/placeholder as the fallback for any slot that isn't drawn yet.
  */
 
+import { samplePanels } from "./samplePanels";
+
 export interface ArtAsset {
   /** Public path to the file. */
   src: string;
@@ -74,13 +76,12 @@ export const art = {
     cast: drawn("site/empty-cast.webp", "", 1200, 921),
     month: drawn("site/empty-month.webp", "", 1200, 1084),
   },
-  /** Backgrounds for the sample comic panels. */
-  scenes: {
-    street: placeholder("scene-street.svg", "A bus stop on a grey morning", 600, 400),
-    home: placeholder("scene-home.svg", "A kitchen table with a birthday cake", 600, 400),
-    desk: placeholder("scene-desk.svg", "A desk at night, laptop full of tabs", 600, 400),
-    rooftop: placeholder("scene-rooftop.svg", "Two cups of tea on a rooftop at sunset", 600, 400),
-  },
+  /**
+   * The sample days' panels: one real Comimo run per sample transcript
+   * (03.2-06), drawn by Muse Image from the starter sheets below. Generated
+   * with their fixture data by scripts/sample-comics.mjs.
+   */
+  samples: samplePanels,
   /** Starter cast portraits: the first idle frame of each sprite sheet. */
   sprites: {
     nour: drawn("site/portrait-nour.webp", "Nour", 300, 360),
@@ -144,14 +145,13 @@ export const art = {
 
 export type MoodKey = keyof typeof art.mood;
 export type IconKey = keyof typeof art.icons;
-export type SceneKey = keyof typeof art.scenes;
 export type SpriteKey = keyof typeof art.sprites;
 export type SpriteSheetKey = keyof typeof art.spriteSheets;
 
 type ArtGroups = typeof art;
 
 /**
- * A slot in the manifest written as "group.key", e.g. "scenes.street".
+ * A slot in the manifest written as "group.key", e.g. "cast.nour".
  * Stored records (fixtures, sample days) point at art with this instead of a
  * file path, so swapping the art never touches the data.
  */

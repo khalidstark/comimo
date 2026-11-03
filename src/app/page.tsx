@@ -11,7 +11,7 @@ import { UnderTheHood } from "@/components/home/UnderTheHood";
 import { WeekStrip } from "@/components/home/WeekStrip";
 import { PAGE_TURN, PageTurn } from "@/components/PageTurn";
 import { RecordStamp } from "@/components/RecordStamp";
-import { sampleCheckInQuestions, sampleDays } from "@/fixtures/days";
+import { sampleCheckInQuestions, sampleDays, sampleWeek } from "@/fixtures/days";
 import styles from "./page.module.css";
 
 const STEPS = [
@@ -71,6 +71,7 @@ export default function Home() {
             </div>
 
             <WeekStrip
+              sample={sampleWeek()}
               classes={{
                 week: styles.week,
                 weekTitle: styles.weekTitle,
@@ -153,7 +154,9 @@ export default function Home() {
             </p>
             <ul className={styles.checkinList}>
               {sampleCheckInQuestions.map((q) => (
-                <li key={q}>{q}</li>
+                <li key={q} dir="auto">
+                  {q}
+                </li>
               ))}
             </ul>
           </aside>
