@@ -1,12 +1,13 @@
 /* "This week's good things": a corkboard of sticky notes inside a printed panel */
 .week {
+  --week-dot: color-mix(in srgb, var(--highlight) 30%, transparent);
   position: relative;
   display: grid;
   gap: var(--space-s);
   padding: var(--space-m);
   overflow: hidden;
   background:
-    radial-gradient(color-mix(in srgb, var(--highlight) 30%, transparent) 30%, transparent 32%) 0 0 / 12px 12px,
+    radial-gradient(var(--week-dot) 30%, transparent 32%) 0 0 / 12px 12px,
     var(--surface);
   border: var(--panel-border) solid var(--line);
   border-radius: var(--radius-panel);
@@ -16,6 +17,17 @@
 @media (min-width: 48rem) {
   .week {
     padding: var(--space-l) var(--space-xl);
+  }
+}
+
+/* At night the yellow dots turn muddy behind the grey closing lines: fainter there. */
+:global(:root[data-theme="dark"]) .week {
+  --week-dot: color-mix(in srgb, var(--highlight) 12%, transparent);
+}
+
+@media (prefers-color-scheme: dark) {
+  :global(:root:not([data-theme="light"])) .week {
+    --week-dot: color-mix(in srgb, var(--highlight) 12%, transparent);
   }
 }
 
