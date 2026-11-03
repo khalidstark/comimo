@@ -10,6 +10,7 @@ describe("safeNext", () => {
     expect(safeNext("/account")).toBe("/account");
     expect(safeNext("/welcome/x")).toBe("/");
     expect(safeNext("/month")).toBe("/month");
+    expect(safeNext("/diaries?d=every-day")).toBe("/diaries");
     expect(safeNext("/day/2026-10-31-ab12")).toBe("/day/2026-10-31-ab12");
   });
 
