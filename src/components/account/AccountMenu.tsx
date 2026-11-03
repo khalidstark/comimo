@@ -25,6 +25,8 @@ export function AccountMenu() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [leaving, setLeaving] = useState(false);
+  /** The last sign-out couldn't reach the server, so the cookie (and the session) are still there. */
+  const [stuck, setStuck] = useState(false);
   const [openedAt, setOpenedAt] = useState(pathname);
   const rootRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
@@ -126,9 +128,15 @@ export function AccountMenu() {
               type="button"
               className={styles.item}
               disabled={leaving}
+              aria-describedby={stuck ? `${menuId}-stuck` : undefined}
               onClick={() => {
                 setLeaving(true);
-                void signOut();
+                setStuck(false);
+                void signOut().then((left) => {
+                  if (left) return;
+                  setLeaving(false);
+                  setStuck(true);
+                });
               }}
             >
               <span className={styles.exit} aria-hidden="true" />
@@ -136,6 +144,11 @@ export function AccountMenu() {
             </button>
           </li>
         </ul>
+        {stuck ? (
+          <p id={`${menuId}-stuck`} className={styles.stuck} role="alert">
+            Comimo couldn&apos;t reach the server to sign you out. Check your connection and try again.
+          </p>
+        ) : null}
       </div>
     </div>
   );

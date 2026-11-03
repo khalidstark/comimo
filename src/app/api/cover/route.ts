@@ -45,7 +45,7 @@ function parseStars(value: unknown): CharacterReference[] | "untrusted" | "stale
  * Muse Spark writes a cover concept and a cover line from the month's titles;
  * Muse Image paints it starring the cast, from their reference sheets. The
  * browser keeps the result, so each month is drawn once. Mock mode answers
- * 503 "unavailable" and the issue keeps the shipped cover art.
+ * 503 "unavailable" and the issue keeps its own best panel as the cover.
  */
 export async function POST(request: Request) {
   const session = await requireSession(request);

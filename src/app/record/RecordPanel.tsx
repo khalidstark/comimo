@@ -24,9 +24,14 @@ const PROBLEM_TEXT: Record<RecorderProblem, string> = {
   failed: "The recording didn't work. Try again, or upload a voice note.",
   "too-short": "That was very short. Tap Start and tell me a bit more.",
   "too-big": "That file is over 25 MB. Try a shorter note (up to two minutes) or a smaller format like m4a or mp3.",
+  "too-long": "That voice note is longer than two minutes, the most Comimo listens to. Trim it, or record a new one.",
   "not-audio": "That doesn't look like an audio file. Try m4a, mp3, wav, webm or ogg.",
+  unreadable: "Comimo couldn't read that audio. Try another file, or record instead.",
   empty: "That file is empty. Try another one.",
 };
+
+/** The last stretch of a recording, when the time left is shown big. */
+const COUNTDOWN_MS = 20_000;
 
 /** The last art style picked on this device (a convenience; the default is the zine style). */
 const STYLE_KEY = "comimo.artStyle";
@@ -99,16 +104,25 @@ function spokenDuration(ms: number): string {
 }
 
 function statusText(recorder: Recorder): string {
-  const { status, problem, take, elapsedMs } = recorder;
+  const { status, problem, take, elapsedMs, refusedMs } = recorder;
+  if (problem === "too-long" && refusedMs !== null) {
+    return `That voice note is ${spokenDuration(refusedMs)} long. Comimo listens to two minutes at most, so trim it or record a new one.`;
+  }
   if (problem) return PROBLEM_TEXT[problem];
   switch (status) {
     case "requesting":
       return "Allow the microphone when your browser asks.";
     case "recording":
-      return "Recording. Tap Stop when you're done.";
+      // Changes once near the end, so a screen reader hears it once.
+      return MAX_RECORDING_MS - elapsedMs <= COUNTDOWN_MS
+        ? "Nearly two minutes. Recording stops by itself at 2:00."
+        : "Recording. Tap Stop when you're done.";
+    case "checking":
+      return "Checking the voice note…";
     case "review":
-      return take?.source === "upload"
-        ? `Loaded “${take.fileName ?? "your voice note"}”. Listen back, or make your comic.`
+      if (take?.source === "upload") return `Loaded “${take.fileName ?? "your voice note"}”. Listen back, or make your comic.`;
+      return elapsedMs >= MAX_RECORDING_MS - 500
+        ? "That's two minutes, so recording stopped there. Listen back, record again, or make your comic."
         : `Got ${spokenDuration(elapsedMs)}. Listen back, record again, or make your comic.`;
     default:
       return "Tap Start and talk for up to two minutes.";
@@ -150,13 +164,15 @@ export function RecordPanel() {
   const uploadHintId = useId();
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const busy = status === "requesting" || status === "recording";
+  const busy = status === "requesting" || status === "recording" || status === "checking";
   const micBlocked = problem !== null && MIC_BLOCKED.includes(problem);
+  const leftMs = Math.max(0, MAX_RECORDING_MS - elapsedMs);
+  const countingDown = status === "recording" && leftMs <= COUNTDOWN_MS;
 
   function onFileChange(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     event.target.value = "";
-    if (file) recorder.acceptFile(file);
+    if (file) void recorder.acceptFile(file);
   }
 
   const typedText = typed.trim();
@@ -299,7 +315,11 @@ export function RecordPanel() {
       {status === "review" && take ? (
         <div className={styles.review}>
           <p className={`caption ${styles.reviewCaption}`}>
-            {take.source === "upload" ? "Your voice note" : `Your voice note, ${clock(elapsedMs)}`}
+            {take.source === "upload"
+              ? take.durationMs
+                ? `Your voice note, ${clock(take.durationMs)}`
+                : "Your voice note"
+              : `Your voice note, ${clock(elapsedMs)}`}
           </p>
           {/* Native controls: keyboard and screen-reader friendly out of the box. */}
           <audio className={styles.player} src={take.url} controls preload="metadata">
@@ -334,6 +354,17 @@ export function RecordPanel() {
               / {clock(MAX_RECORDING_MS)}
             </span>
           </p>
+          {countingDown ? (
+            // The last 20 seconds: the time left, big, so the stop at 2:00 isn't a surprise. The status line says it once for screen readers.
+            <p className={styles.countdown} aria-hidden="true">
+              <span className={styles.countdownTime}>{Math.ceil(leftMs / 1000)}</span>
+              <span className={styles.countdownWords}>
+                {Math.ceil(leftMs / 1000) === 1 ? "second" : "seconds"} left
+                <br />
+                stops at {clock(MAX_RECORDING_MS)}
+              </span>
+            </p>
+          ) : null}
           {status === "recording" && analyser ? (
             <LevelMeter analyser={analyser} />
           ) : (
@@ -386,7 +417,7 @@ export function RecordPanel() {
           style={making.style}
           storyMode={making.storyMode}
           photos={making.photos}
-            diary={making.diary}
+          diary={making.diary}
           onClose={() => setMaking(null)}
         />
       ) : null}

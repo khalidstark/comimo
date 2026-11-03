@@ -1,5 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { castAppearances, issuePages, mainCast, monthInWords, spreadOf, spreadsFor, type CastInfo, type IssueDayInfo } from "./issue";
+import {
+  castAppearances,
+  dayCount,
+  daysAndComics,
+  issuePages,
+  mainCast,
+  monthInWords,
+  spreadOf,
+  spreadsFor,
+  type CastInfo,
+  type IssueDayInfo,
+} from "./issue";
 
 const cast: CastInfo[] = [
   { id: "nour", name: "Nour", role: "self" },
@@ -77,5 +88,15 @@ describe("the month in words", () => {
 
   it("reads naturally for a single day", () => {
     expect(monthInWords([day(1, "stormy", ["nour", "karim"])], cast)).toEqual(["One day.", "Stormy.", "Karim was in it."]);
+  });
+
+  it("counts days as dates, and says how many comics when a date has two", () => {
+    const twoOnOne = [day(1, "sunny", ["nour", "karim"]), { ...day(1, "sunny", ["nour"]), id: "d1b" }, day(2, "rainy", ["nour"])];
+    expect(dayCount(twoOnOne)).toBe(2);
+    expect(daysAndComics(twoOnOne)).toBe("2 days, 3 comics");
+    expect(daysAndComics(twoOnOne.slice(0, 2))).toBe("1 day, 2 comics");
+    expect(daysAndComics([day(1, "sunny", [])])).toBe("1 day");
+    expect(monthInWords(twoOnOne, cast)[0]).toBe("Two days, three comics.");
+    expect(monthInWords(days, cast)[0]).toBe("Five days.");
   });
 });

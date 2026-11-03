@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { dropAccountCache } from "@/lib/store";
 import { rememberCacheKey } from "@/lib/whoami";
 import authStyles from "@/app/(auth)/auth.module.css";
@@ -16,6 +16,20 @@ export function DeleteAccount() {
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const passwordRef = useRef<HTMLInputElement>(null);
+  const openerRef = useRef<HTMLButtonElement>(null);
+  /** Set by "Keep my account", so focus goes back to the button that opened the form. */
+  const returnFocus = useRef(false);
+
+  // Focus follows the form: into the password when it opens, back to the opener when it is closed.
+  useEffect(() => {
+    if (open) {
+      passwordRef.current?.focus();
+    } else if (returnFocus.current) {
+      returnFocus.current = false;
+      openerRef.current?.focus();
+    }
+  }, [open]);
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
@@ -53,7 +67,7 @@ export function DeleteAccount() {
         codes in your comics stop working, and every device you&apos;re signed in on is signed out.
       </p>
       {!open ? (
-        <button type="button" className="btn btn--ghost" onClick={() => setOpen(true)}>
+        <button ref={openerRef} type="button" className="btn btn--ghost" onClick={() => setOpen(true)}>
           Delete my account…
         </button>
       ) : (
@@ -63,6 +77,7 @@ export function DeleteAccount() {
               Type your password to confirm
             </label>
             <input
+              ref={passwordRef}
               id="delete-password"
               type="password"
               autoComplete="current-password"
@@ -83,7 +98,17 @@ export function DeleteAccount() {
             <button type="submit" className="btn btn--accent" disabled={busy || !password}>
               {busy ? "Deleting…" : "Delete everything"}
             </button>
-            <button type="button" className="btn btn--ghost" onClick={() => setOpen(false)} disabled={busy}>
+            <button
+              type="button"
+              className="btn btn--ghost"
+              onClick={() => {
+                returnFocus.current = true;
+                setOpen(false);
+                setPassword("");
+                setError(null);
+              }}
+              disabled={busy}
+            >
               Keep my account
             </button>
           </div>

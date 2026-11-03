@@ -28,7 +28,12 @@ export interface IssueCast extends CastInfo {
 }
 
 export interface IssueCover {
-  art: PanelArt;
+  /**
+   * The cover picture: the drawn cover, else the month's best panel (the
+   * sample issue has its own). Null only when no panel picture can be read;
+   * the cover is then plain ink, never the sample art.
+   */
+  art: PanelArt | null;
   /** One line from Muse Spark; null until a cover is drawn. */
   tagline: string | null;
   /** True when Muse Image drew this month's own cover. */
@@ -69,6 +74,35 @@ export function issueDay(day: Day, panels: PanelView[], layouts: (PageLayoutChoi
     panelCount: day.panels.length,
     ...(day.cost && !day.cost.mock ? { cost: day.cost.usd } : {}),
   };
+}
+
+/** How well a panel stands in for the month's cover (a tall frame): the splash first, then emphasis, the climax and a fuller cast. */
+function coverScore(panel: Day["panels"][number]): number {
+  let score = 0;
+  if (panel.shot === "splash") score += 3;
+  if (panel.emphasis) score += 1;
+  if (panel.beat === "climax") score += 1;
+  score += Math.min(panel.characterIds.length, 3) * 0.5;
+  if (panel.frame && panel.frame.aspect <= 1) score += 1;
+  return score;
+}
+
+/**
+ * Until a cover is drawn, the month's own panel goes on its cover: the best
+ * drawn panel (see coverScore), the earliest on a tie, so the first panel of
+ * the month when nothing stands out. Flashbacks (faded memories) only when
+ * there is nothing else. Days are in issue order; null when nothing is drawn.
+ */
+export function coverPanel(days: Pick<Day, "id" | "panels">[]): { dayId: string; index: number } | null {
+  let best: { dayId: string; index: number; score: number } | null = null;
+  for (const day of days) {
+    for (const panel of [...day.panels].sort((a, b) => a.index - b.index)) {
+      if (!panel.image) continue;
+      const score = coverScore(panel) - (panel.flashback ? 100 : 0);
+      if (!best || score > best.score) best = { dayId: day.id, index: panel.index, score };
+    }
+  }
+  return best ? { dayId: best.dayId, index: best.index } : null;
 }
 
 /**

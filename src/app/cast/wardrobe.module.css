@@ -23,17 +23,15 @@
   color: var(--ink);
 }
 
+/* Wraps inside the card: three across in a narrow cast column, more on a phone's full-width card */
 .rail {
   display: grid;
-  grid-auto-flow: column;
-  grid-auto-columns: 6.25rem;
-  gap: var(--space-xs);
+  grid-template-columns: repeat(auto-fill, minmax(4.25rem, 1fr));
+  gap: var(--space-xs) var(--space-2xs);
+  min-inline-size: 0;
   margin: 0;
   padding: var(--space-3xs) var(--space-3xs) var(--space-xs);
   list-style: none;
-  overflow-x: auto;
-  overscroll-behavior-x: contain;
-  scroll-snap-type: x proximity;
 }
 
 .tile {
@@ -41,7 +39,6 @@
   gap: 2px;
   justify-items: start;
   align-content: start;
-  scroll-snap-align: start;
   min-inline-size: 0;
 }
 
@@ -76,21 +73,26 @@
   box-shadow: 3px 3px 0 var(--accent);
 }
 
+/* Two lines at most in a small tile, so "Usual clothes" isn't cut to "Usual clo…" */
 .tileLabel {
+  display: -webkit-box;
   inline-size: 100%;
   overflow: hidden;
   font-size: var(--step--1);
   font-weight: 700;
   line-height: 1.25;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
 }
 
 .wornTag {
   display: inline-flex;
   align-items: center;
+  max-inline-size: 100%;
   min-block-size: 2rem;
-  padding-inline: 0.5em;
+  padding-inline: 0.4em;
   background: var(--highlight);
   color: var(--on-highlight);
   border: var(--panel-border-thin) solid #1b2148;
@@ -180,7 +182,7 @@
   gap: var(--space-3xs);
 }
 
-.field input:not([type="file"]),
+.field input,
 .field textarea {
   inline-size: 100%;
   min-block-size: 2.75rem;
@@ -189,13 +191,6 @@
   border-radius: 10px;
   background: var(--paper);
   font: inherit;
-}
-
-.field input[type="file"] {
-  max-inline-size: 100%;
-  min-block-size: 2.75rem;
-  font: inherit;
-  font-size: var(--step--1);
 }
 
 .label {

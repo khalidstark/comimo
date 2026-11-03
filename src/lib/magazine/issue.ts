@@ -141,13 +141,27 @@ function capitalise(text: string): string {
   return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
+/** How many different dates the comics are on: two comics on one date are one day. */
+export function dayCount(days: Pick<IssueDayInfo, "date">[]): number {
+  return new Set(days.map((day) => day.date)).size;
+}
+
+/** "3 days", or "2 days, 3 comics" when some days have more than one comic. */
+export function daysAndComics(days: Pick<IssueDayInfo, "date">[], words = false): string {
+  const count = (n: number) => (words ? countWord(n) : String(n));
+  const dates = dayCount(days);
+  const daysText = `${count(dates)} day${dates === 1 ? "" : "s"}`;
+  return dates === days.length ? daysText : `${daysText}, ${count(days.length)} comic${days.length === 1 ? "" : "s"}`;
+}
+
 /**
  * The back cover's lines: only counts of days, weather and who was there,
  * never a score. E.g. ["Eleven days.", "Four rainy, three sunny and two cloudy.", "Karim was in seven, Teta Samia in three."]
+ * Days are dates; with more than one comic on a date the first line counts the comics too, and the rest counts comics.
  */
 export function monthInWords(days: IssueDayInfo[], cast: CastInfo[]): string[] {
   if (days.length === 0) return [];
-  const lines = [`${capitalise(countWord(days.length))} day${days.length === 1 ? "" : "s"}.`];
+  const lines = [`${capitalise(daysAndComics(days, true))}.`];
 
   const weather = weatherCounts(days);
   if (weather.length === 1) {

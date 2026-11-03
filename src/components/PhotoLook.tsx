@@ -3,6 +3,7 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { PhotoError, describePhoto, preparePhoto } from "@/lib/photo";
 import type { WireImage } from "@/lib/types";
+import { FilePick } from "./FilePick";
 import styles from "./PhotoLook.module.css";
 
 interface PhotoLookProps {
@@ -31,7 +32,7 @@ export function PhotoLook({ name, onDescribed, onCleared, crop }: PhotoLookProps
   const id = useId();
   const fileRef = useRef<HTMLInputElement>(null);
   const [consent, setConsent] = useState(false);
-  const [hasFile, setHasFile] = useState(false);
+  const [file, setFile] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const controller = useRef<AbortController | null>(null);
@@ -42,7 +43,6 @@ export function PhotoLook({ name, onDescribed, onCleared, crop }: PhotoLookProps
 
   async function describe() {
     if (busy) return;
-    const file = fileRef.current?.files?.[0];
     if (!file) {
       setError("Choose a photo first.");
       fileRef.current?.focus();
@@ -60,8 +60,7 @@ export function PhotoLook({ name, onDescribed, onCleared, crop }: PhotoLookProps
       const photo = await preparePhoto(file);
       const result = await describePhoto(photo, controller.current.signal);
       // The picked file isn't needed any more; only the cut-out is kept, in memory.
-      if (fileRef.current) fileRef.current.value = "";
-      setHasFile(false);
+      setFile(null);
       onDescribed(result.look, result.crop);
     } catch (problem) {
       if (controller.current?.signal.aborted) return;
@@ -73,8 +72,7 @@ export function PhotoLook({ name, onDescribed, onCleared, crop }: PhotoLookProps
   }
 
   function clear() {
-    if (fileRef.current) fileRef.current.value = "";
-    setHasFile(false);
+    setFile(null);
     setError(null);
     onCleared();
   }
@@ -104,19 +102,18 @@ export function PhotoLook({ name, onDescribed, onCleared, crop }: PhotoLookProps
         </figure>
       ) : (
         <>
-          <label className={styles.file} htmlFor={`${id}-file`}>
-            <span className={styles.label}>Photo of {who}</span>
-            <input
-              ref={fileRef}
-              id={`${id}-file`}
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              onChange={(event) => {
-                setHasFile(Boolean(event.target.files?.length));
-                setError(null);
-              }}
-            />
-          </label>
+          <FilePick
+            inputRef={fileRef}
+            id={`${id}-file`}
+            label={`Choose a photo of ${who}`}
+            accept="image/jpeg,image/png,image/webp"
+            file={file}
+            onChange={(picked) => {
+              setFile(picked);
+              setError(null);
+            }}
+            disabled={busy}
+          />
           <label className={styles.consent} htmlFor={`${id}-consent`}>
             <input id={`${id}-consent`} type="checkbox" checked={consent} onChange={(event) => setConsent(event.target.checked)} />
             <span>I have {who === "this person" ? "this person's" : `${who}'s`} permission to use their photo.</span>
@@ -126,7 +123,7 @@ export function PhotoLook({ name, onDescribed, onCleared, crop }: PhotoLookProps
               type="button"
               className="btn btn--ghost"
               onClick={() => void describe()}
-              aria-disabled={busy || !hasFile || !consent || undefined}
+              aria-disabled={busy || !file || !consent || undefined}
               aria-describedby={`${id}-status`}
             >
               {busy ? "Looking at the photo…" : "Describe from photo"}
