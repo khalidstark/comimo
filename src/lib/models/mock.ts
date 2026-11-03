@@ -391,8 +391,10 @@ async function writeWeek(week: WeekRequest): Promise<{ headline: string; goodThi
     kind: i % 2 === 0 ? "did" : "happened",
     panel: 0,
   }));
+  // Days are dates: three comics from one Tuesday are one day.
+  const dates = new Set(week.days.map((day) => day.date)).size;
   return {
-    headline: week.days.length > 1 ? `${week.days.length} days worth remembering` : "A day worth remembering",
+    headline: dates > 1 ? `${dates} days worth remembering` : "A day worth remembering",
     goodThings,
     line: "Here's to the next one.",
   };

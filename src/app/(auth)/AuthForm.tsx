@@ -32,7 +32,8 @@ const COPY: Record<Mode, Copy> = {
     switchText: "New here?",
     switchLink: "Start your comic book",
     switchHref: "/signup",
-    fallbackNext: "/record",
+    // A returning reader opens their book on the home page, not straight into recording.
+    fallbackNext: "/",
   },
 };
 

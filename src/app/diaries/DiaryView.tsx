@@ -2,11 +2,11 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useId, useState, type CSSProperties, type FormEvent } from "react";
+import { useEffect, useId, useRef, useState, type CSSProperties, type FormEvent } from "react";
 import { Art } from "@/art/Art";
 import { art } from "@/art/manifest";
 import { DiarySticker } from "@/components/diary/DiarySticker";
-import { NewDiary } from "@/components/diary/NewDiary";
+import { COLOR_NAMES, NewDiary } from "@/components/diary/NewDiary";
 import { Notebook } from "@/components/diary/Notebook";
 import { PAGE_TURN } from "@/components/PageTurn";
 import { DiaryError, EVERY_DAY, daysIn, deleteDiary, diaryNameProblem, loadDiaries, updateDiary } from "@/lib/diaries";
@@ -36,6 +36,20 @@ export function DiaryView() {
   const [editing, setEditing] = useState(false);
   const [making, setMaking] = useState(false);
   const [confirm, setConfirm] = useState(false);
+  const tabsRef = useRef<HTMLElement>(null);
+  const opened = state?.open;
+  const shelfSize = state?.diaries.length;
+
+  // On a phone the tabs scroll sideways: keep the open diary's tab in sight (sideways only, the page stays put).
+  useEffect(() => {
+    const rail = tabsRef.current;
+    const tab = rail?.querySelector<HTMLElement>('[aria-current="page"]');
+    if (!rail || !tab) return;
+    const outer = rail.getBoundingClientRect();
+    const inner = tab.getBoundingClientRect();
+    if (inner.right > outer.right) rail.scrollLeft += inner.right - outer.right + 16;
+    else if (inner.left < outer.left) rail.scrollLeft -= outer.left - inner.left + 16;
+  }, [opened, shelfSize]);
 
   useEffect(() => {
     let cancelled = false;
@@ -73,7 +87,7 @@ export function DiaryView() {
 
   return (
     <div className={styles.view} data-color={diary.color}>
-      <nav className={styles.tabs} aria-label="Your diaries">
+      <nav ref={tabsRef} className={styles.tabs} aria-label="Your diaries">
         <ul className={styles.tabList}>
           {all.map((d) => (
             <li key={d.id}>
@@ -125,7 +139,7 @@ export function DiaryView() {
             </Link>
             {own ? (
               <button type="button" className="btn btn--ghost" onClick={() => setEditing((v) => !v)} aria-expanded={editing}>
-                Change cover
+                Edit diary
               </button>
             ) : null}
           </div>
@@ -163,7 +177,8 @@ export function DiaryView() {
             >
               Delete diary
             </button>
-            <button type="button" className="btn btn--ghost" onClick={() => setConfirm(false)}>
+            {/* Focus lands on the safe answer when the question opens. */}
+            <button type="button" className="btn btn--ghost" onClick={() => setConfirm(false)} autoFocus>
               Keep it
             </button>
           </div>
@@ -241,7 +256,7 @@ function EditDiary({ diary, others, onSaved, onDelete }: { diary: Diary; others:
         {DIARY_COLORS.map((value) => (
           <label key={value} className={styles.swatch} data-color={value}>
             <input type="radio" name={`${id}-color`} checked={color === value} onChange={() => setColor(value)} />
-            <span className="visually-hidden">{value}</span>
+            <span className="visually-hidden">{COLOR_NAMES[value]}</span>
           </label>
         ))}
       </div>

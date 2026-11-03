@@ -2,10 +2,12 @@ import { connection } from "next/server";
 import { readBoundedJson } from "@/lib/requestBody";
 import { albumForDay, createAlbum } from "@/lib/server/album";
 import { albumFailure, albumJson } from "@/lib/server/albumHttp";
+import { NO_STORE } from "@/lib/server/libraryHttp";
 import { requireSession } from "@/lib/server/session";
 
 /**
- * GET /api/album?day=<dayId> — the signed-in account's album for one of its days (404 when it has none).
+ * GET /api/album?day=<dayId> — the signed-in account's album for one of its days (204 when it has none:
+ *   most days have no album, so that's an answer, not an error the browser console shows in red).
  * POST /api/album { dayId, title, link? } — start the album for a day (or get the one it has).
  */
 export async function GET(request: Request) {
@@ -15,7 +17,9 @@ export async function GET(request: Request) {
   if (!session.ok) return session.response;
   const day = new URL(request.url).searchParams.get("day") ?? "";
   try {
-    return albumJson(await albumForDay(session.account.id, day));
+    const result = await albumForDay(session.account.id, day);
+    if (!result.ok && result.status === 404) return new Response(null, { status: 204, headers: NO_STORE });
+    return albumJson(result);
   } catch (error) {
     return albumFailure("read", error);
   }
