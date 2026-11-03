@@ -278,3 +278,15 @@ a.noteLink:focus-visible {
     transition: none;
   }
 }
+
+@media (max-width: 30rem) {
+  .empty {
+    grid-template-columns: 3.75rem 1fr;
+    gap: var(--space-s);
+    align-items: start;
+  }
+
+  .mascot {
+    inline-size: 3.75rem;
+  }
+}
