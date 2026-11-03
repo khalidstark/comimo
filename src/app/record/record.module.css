@@ -278,11 +278,6 @@
   border-block-start: 2px dashed color-mix(in srgb, var(--ink) 25%, transparent);
 }
 
-.otherActions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-s);
-}
 
 .note {
   color: var(--ink-soft);

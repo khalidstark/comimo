@@ -147,9 +147,6 @@ export function MissingDay() {
               <Link href="/record" className="btn btn--accent" transitionTypes={PAGE_TURN}>
                 Record today
               </Link>
-              <Link href="/day/sample" className="link" transitionTypes={PAGE_TURN}>
-                Read a sample day
-              </Link>
             </div>
           }
         >

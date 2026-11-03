@@ -11,6 +11,9 @@ import { loadIssue, loadLibrary, type Library, type LoadedIssue } from "@/lib/ma
 import { FlipBook, type PageRole } from "./FlipBook";
 import { IssuePageView, issueLine, type IssueContext } from "./IssuePages";
 import { saveCoverImage } from "./saveCover";
+import { useAccount } from "@/components/account/useAccount";
+import { EmptyState } from "@/components/EmptyState";
+import { art } from "@/art/manifest";
 import styles from "./reader.module.css";
 
 const TWO_UP = "(min-width: 64rem)";
@@ -51,8 +54,9 @@ function issueStyle(issue: MagazineIssue): ArtStyleId {
 }
 
 /**
- * The month as a comic magazine you can hold. Opens on the sample issue
- * (rendered on the server), then on the newest month kept on this device.
+ * The month as a comic magazine you can hold. A visitor who hasn't signed in
+ * reads the sample issue; an account opens on its newest month and never
+ * sees the invented cast's issue.
  */
 export function Magazine({ sample, heading }: { sample: MagazineIssue; heading: ReactNode }) {
   const twoUp = useSyncExternalStore(
@@ -70,7 +74,9 @@ export function Magazine({ sample, heading }: { sample: MagazineIssue; heading: 
   const [saving, setSaving] = useState(false);
   const loadedRef = useRef<LoadedIssue | null>(null);
 
-  const issue = selected === "sample" ? sample : loaded?.issue.key === selected ? loaded.issue : null;
+  const account = useAccount();
+  const showSample = account.status === "signed-out";
+  const issue = selected === "sample" ? (showSample ? sample : null) : loaded?.issue.key === selected ? loaded.issue : null;
 
   // The months on this device; open the newest unless the link asks for another issue.
   useEffect(() => {
@@ -237,12 +243,14 @@ export function Magazine({ sample, heading }: { sample: MagazineIssue; heading: 
                 </button>
               </li>
             ))}
-            <li>
-              <button type="button" className={styles.issueChip} aria-pressed={selected === "sample"} onClick={() => choose("sample")}>
-                <span className={styles.issueMonth}>{monthLabel(sample.month)}</span>
-                <span className={styles.issueNo}>Sample</span>
-              </button>
-            </li>
+            {showSample ? (
+              <li>
+                <button type="button" className={styles.issueChip} aria-pressed={selected === "sample"} onClick={() => choose("sample")}>
+                  <span className={styles.issueMonth}>{monthLabel(sample.month)}</span>
+                  <span className={styles.issueNo}>Sample</span>
+                </button>
+              </li>
+            ) : null}
           </ul>
         </nav>
       </div>
@@ -318,6 +326,18 @@ export function Magazine({ sample, heading }: { sample: MagazineIssue; heading: 
           ) : null}
           <p className={styles.hint}>Drag a page, use the arrow keys or the slider to turn.</p>
         </>
+      ) : account.status === "signed-in" && library && months.length === 0 ? (
+        <EmptyState
+          art={art.empty.month}
+          title="Your first issue starts with your first comic"
+          action={
+            <Link href="/record" className="btn btn--accent">
+              Record a day
+            </Link>
+          }
+        >
+          <p>Every day you record lands in this month&rsquo;s magazine, with a drawn cover and the month&rsquo;s weather.</p>
+        </EmptyState>
       ) : (
         <div className={styles.loading} role="status" aria-busy={!failed}>
           {failed ? "This month couldn't be opened on this device." : "Opening the issue…"}
