@@ -150,6 +150,14 @@
   color: var(--ink);
 }
 
+/* Sign-out couldn't reach the server */
+.stuck {
+  padding: var(--space-2xs) var(--space-2xs) 0;
+  color: var(--accent-text);
+  font-size: var(--step--1);
+  font-weight: 600;
+}
+
 .items {
   display: grid;
   gap: var(--space-3xs);
