@@ -2,7 +2,7 @@ import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { FileKV, upstashCredentials } from "./kv";
+import { FileKV, hashFromReply, upstashCredentials } from "./kv";
 
 let dir: string;
 
@@ -97,10 +97,32 @@ describe("upstashCredentials", () => {
     ).toEqual({ url: "https://x.upstash.io", token: "t" });
   });
 
+  it("never mixes a URL from one pair with a token from the other", () => {
+    const integration = { KV_REST_API_URL: "https://y.upstash.io", KV_REST_API_TOKEN: "k" };
+    expect(upstashCredentials({ ...integration, UPSTASH_REDIS_REST_URL: "https://x.upstash.io" })).toEqual({ url: "https://y.upstash.io", token: "k" });
+    expect(upstashCredentials({ ...integration, UPSTASH_REDIS_REST_TOKEN: "t" })).toEqual({ url: "https://y.upstash.io", token: "k" });
+    expect(upstashCredentials({ UPSTASH_REDIS_REST_URL: " ", UPSTASH_REDIS_REST_TOKEN: "t" })).toBeNull();
+  });
+
   it("accepts the names Vercel's Upstash integration uses", () => {
     expect(upstashCredentials({ KV_REST_API_URL: "https://y.upstash.io", KV_REST_API_TOKEN: "k" })).toEqual({
       url: "https://y.upstash.io",
       token: "k",
     });
+  });
+});
+
+describe("hashFromReply", () => {
+  it("turns Redis's flat HGETALL reply into an object (the SDK passes it through raw)", () => {
+    expect(hashFromReply(["a", "1", "b", '{"s":2}'])).toEqual({ a: "1", b: '{"s":2}' });
+    expect(hashFromReply([])).toEqual({});
+    expect(hashFromReply(null)).toEqual({});
+    expect(hashFromReply({ a: "1" })).toEqual({ a: "1" });
+  });
+
+  it("keeps a __proto__ field as a plain field", () => {
+    const hash = hashFromReply(["__proto__", "x", "a", "1"]);
+    expect(Object.keys(hash)).toEqual(["__proto__", "a"]);
+    expect(Object.getPrototypeOf(hash)).toBe(Object.prototype);
   });
 });

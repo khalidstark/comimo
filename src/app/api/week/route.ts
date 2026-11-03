@@ -5,7 +5,8 @@ import { BODY_LIMITS, readBoundedJson } from "@/lib/requestBody";
 import { requireSession } from "@/lib/server/session";
 import type { WeekRequest, WeekResponse } from "@/lib/types";
 
-export const maxDuration = 60;
+/** One Muse Spark call with a 60 s timeout and one retry. */
+export const maxDuration = 300;
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 const MAX_DAYS = 14;

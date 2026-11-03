@@ -7,7 +7,8 @@ import { albumFailure, type AlbumContext } from "@/lib/server/albumHttp";
 import { jsonNoStore, libraryError } from "@/lib/server/libraryHttp";
 import { requireSession } from "@/lib/server/session";
 
-export const maxDuration = 120;
+/** One vision call with a 90 s timeout and one retry. */
+export const maxDuration = 300;
 
 const MOCK_CAPTIONS = ["A good moment from the day.", "Everyone in one place.", "Worth keeping.", "The light was just right."];
 
