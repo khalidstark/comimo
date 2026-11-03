@@ -1,0 +1,275 @@
+/* "This week's good things": a corkboard of sticky notes inside a printed panel */
+.week {
+  position: relative;
+  display: grid;
+  gap: var(--space-s);
+  padding: var(--space-m);
+  overflow: hidden;
+  background:
+    radial-gradient(color-mix(in srgb, var(--highlight) 30%, transparent) 30%, transparent 32%) 0 0 / 12px 12px,
+    var(--surface);
+  border: var(--panel-border) solid var(--line);
+  border-radius: var(--radius-panel);
+  box-shadow: var(--shadow-x, 5px) 6px 0 var(--shadow);
+}
+
+@media (min-width: 48rem) {
+  .week {
+    padding: var(--space-l) var(--space-xl);
+  }
+}
+
+/* A burst of speed lines behind the title */
+.week::before {
+  content: "";
+  position: absolute;
+  inset-block-start: -40%;
+  inset-inline-end: -10%;
+  inline-size: 60%;
+  aspect-ratio: 1;
+  background: repeating-conic-gradient(from 0deg, color-mix(in srgb, var(--accent) 16%, transparent) 0 4deg, transparent 4deg 12deg);
+  border-radius: 50%;
+  pointer-events: none;
+  animation: spin 60s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    rotate: 360deg;
+  }
+}
+
+.head {
+  position: relative;
+  display: grid;
+  gap: var(--space-3xs);
+}
+
+.kicker {
+  color: var(--ink-soft);
+  font-family: var(--font-lettering-stack);
+  font-weight: 600;
+}
+
+.title {
+  font-size: var(--step-3);
+  line-height: 1;
+}
+
+.titleMark {
+  background: linear-gradient(transparent 55%, color-mix(in srgb, var(--highlight) 85%, transparent) 55%);
+  padding-inline: 0.1em;
+}
+
+.headline {
+  position: relative;
+  max-inline-size: 40ch;
+  font-family: var(--font-lettering-stack);
+  font-size: var(--step-1);
+  font-weight: 700;
+}
+
+.board {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 14rem), 1fr));
+  gap: var(--space-m);
+  margin: 0;
+  padding: var(--space-2xs) 0 var(--space-xs);
+  list-style: none;
+}
+
+.note {
+  --note: #fff3b8;
+  rotate: var(--tilt, 0deg);
+  animation: pin 560ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  animation-delay: calc(var(--i, 0) * 90ms);
+}
+
+.note[data-kind="happened"] {
+  --note: #d4efea;
+}
+
+.note:nth-child(3n) {
+  --note: #ffd6e5;
+}
+
+@keyframes pin {
+  from {
+    opacity: 0;
+    transform: translateY(-24px) rotate(-8deg) scale(0.9);
+  }
+}
+
+.noteLink {
+  position: relative;
+  display: grid;
+  gap: var(--space-2xs);
+  min-block-size: 100%;
+  padding: var(--space-m) var(--space-s) var(--space-s);
+  background: var(--note);
+  border: var(--panel-border-thin) solid #1b2148;
+  color: #1b2148;
+  text-decoration: none;
+  box-shadow: 4px 5px 0 color-mix(in srgb, #1b2148 80%, transparent);
+  transition: translate 260ms cubic-bezier(0.34, 1.56, 0.64, 1), rotate 260ms ease, box-shadow 260ms ease;
+}
+
+/* A strip of tape holding the note */
+.noteLink::before {
+  content: "";
+  position: absolute;
+  inset-block-start: -10px;
+  inset-inline-start: 50%;
+  inline-size: 4.5rem;
+  block-size: 1.2rem;
+  translate: -50% 0;
+  rotate: -4deg;
+  background: repeating-linear-gradient(-45deg, rgb(255 255 255 / 0.55) 0 5px, rgb(255 255 255 / 0.25) 5px 10px);
+  border: 1px solid color-mix(in srgb, #1b2148 35%, transparent);
+}
+
+a.noteLink:hover,
+a.noteLink:focus-visible {
+  translate: 0 -5px;
+  rotate: calc(var(--tilt, 0deg) * -0.6);
+  box-shadow: 7px 9px 0 color-mix(in srgb, #1b2148 80%, transparent);
+  outline: none;
+}
+
+a.noteLink:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 3px;
+}
+
+.noteTag {
+  font-family: var(--font-display-stack);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.noteDay {
+  font-weight: 600;
+  text-transform: none;
+}
+
+.noteText {
+  font-family: var(--font-lettering-stack);
+  font-size: var(--step-0);
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.line {
+  position: relative;
+  max-inline-size: 52ch;
+  color: var(--ink-soft);
+  font-style: italic;
+}
+
+.again {
+  position: relative;
+  font-size: var(--step--1);
+  color: var(--ink-soft);
+}
+
+.againButton {
+  min-block-size: 2.5rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent-text);
+  font-family: var(--font-display-stack);
+  font-weight: 700;
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 0.2em;
+  cursor: pointer;
+}
+
+.small {
+  position: relative;
+  color: var(--ink-soft);
+  font-size: var(--step--1);
+}
+
+.empty {
+  position: relative;
+  display: grid;
+  grid-template-columns: 5.5rem 1fr;
+  gap: var(--space-m);
+  align-items: center;
+}
+
+.mascot {
+  inline-size: 5.5rem;
+  animation: bob 2.6s ease-in-out infinite;
+}
+
+@keyframes bob {
+  50% {
+    translate: 0 -6px;
+    rotate: -4deg;
+  }
+}
+
+.emptyText {
+  display: grid;
+  gap: var(--space-2xs);
+  justify-items: start;
+}
+
+.emptyLine {
+  font-family: var(--font-display-stack);
+  font-size: var(--step-1);
+  font-weight: 700;
+}
+
+.gather {
+  margin-block-start: var(--space-3xs);
+}
+
+.writing {
+  font-family: var(--font-lettering-stack);
+  font-size: var(--step-1);
+  font-weight: 700;
+}
+
+.dots span {
+  animation: blink 1.2s infinite;
+}
+
+.dots span:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.dots span:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+@keyframes blink {
+  50% {
+    opacity: 0.15;
+  }
+}
+
+.error {
+  color: var(--accent-text);
+  font-weight: 600;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .week::before,
+  .mascot,
+  .dots span {
+    animation: none;
+  }
+  .note {
+    animation: none;
+  }
+  .noteLink {
+    transition: none;
+  }
+}
