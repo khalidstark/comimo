@@ -158,7 +158,9 @@ export default function Home() {
             </p>
             <ul className={styles.checkinList}>
               {sampleCheckInQuestions.map((q) => (
-                <li key={q}>{q}</li>
+                <li key={q} dir="auto">
+                  {q}
+                </li>
               ))}
             </ul>
           </aside>
