@@ -43,7 +43,12 @@ const json = (method: string, body: unknown): RequestInit => ({
 });
 
 export const albumApi = {
-  forDay: (dayId: string) => call<OwnedAlbumView>(`/api/album?day=${encodeURIComponent(dayId)}`),
+  /** A day without an album answers 204, read here as "not found" (status 404) so callers keep one check. */
+  forDay: async (dayId: string): Promise<AlbumAnswer<OwnedAlbumView>> => {
+    const answer = await call<OwnedAlbumView | null>(`/api/album?day=${encodeURIComponent(dayId)}`);
+    if (answer.ok && !answer.value) return { ok: false, status: 404, error: "This day has no album yet." };
+    return answer as AlbumAnswer<OwnedAlbumView>;
+  },
   get: (id: string) => call<OwnedAlbumView>(`/api/album/${encodeURIComponent(id)}`),
   create: (dayId: string, title: string, link?: string) => call<OwnedAlbumView>("/api/album", json("POST", { dayId, title, link })),
   update: (id: string, change: { title?: string; link?: string | null; captions?: Record<string, string> }) =>

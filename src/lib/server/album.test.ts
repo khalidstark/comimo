@@ -87,7 +87,8 @@ describe("albums", () => {
 
     expect((await r.one.GET(req("GET", `/api/album/${albumId}`, cookieA), at(albumId))).status).toBe(200);
     expect((await r.one.GET(req("GET", `/api/album/${albumId}`, cookieB), at(albumId))).status).toBe(404);
-    expect((await r.album.GET(req("GET", "/api/album?day=day-1", cookieB))).status).toBe(404);
+    // Another account's day reads as a day without an album: 204, nothing about it.
+    expect((await r.album.GET(req("GET", "/api/album?day=day-1", cookieB))).status).toBe(204);
     expect((await r.one.PATCH(req("PATCH", `/api/album/${albumId}`, cookieB, JSON.stringify({ title: "mine now" })), at(albumId))).status).toBe(404);
     expect((await r.link.POST(req("POST", `/api/album/${albumId}/link`, cookieB), at(albumId))).status).toBe(404);
     expect((await r.captions.POST(req("POST", `/api/album/${albumId}/captions`, cookieB), at(albumId))).status).toBe(404);
@@ -142,7 +143,7 @@ describe("albums", () => {
 
     expect((await r.one.DELETE(req("DELETE", `/api/album/${next}`, cookieA), at(next))).status).toBe(200);
     expect((await r.photo.GET(req("GET", "", null), atPhoto(next, photoId))).status).toBe(404);
-    expect((await r.album.GET(req("GET", "/api/album?day=day-1", cookieA))).status).toBe(404);
+    expect((await r.album.GET(req("GET", "/api/album?day=day-1", cookieA))).status).toBe(204);
   });
 });
 
