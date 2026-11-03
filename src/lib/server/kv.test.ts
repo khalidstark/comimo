@@ -97,6 +97,13 @@ describe("upstashCredentials", () => {
     ).toEqual({ url: "https://x.upstash.io", token: "t" });
   });
 
+  it("never mixes a URL from one pair with a token from the other", () => {
+    const integration = { KV_REST_API_URL: "https://y.upstash.io", KV_REST_API_TOKEN: "k" };
+    expect(upstashCredentials({ ...integration, UPSTASH_REDIS_REST_URL: "https://x.upstash.io" })).toEqual({ url: "https://y.upstash.io", token: "k" });
+    expect(upstashCredentials({ ...integration, UPSTASH_REDIS_REST_TOKEN: "t" })).toEqual({ url: "https://y.upstash.io", token: "k" });
+    expect(upstashCredentials({ UPSTASH_REDIS_REST_URL: " ", UPSTASH_REDIS_REST_TOKEN: "t" })).toBeNull();
+  });
+
   it("accepts the names Vercel's Upstash integration uses", () => {
     expect(upstashCredentials({ KV_REST_API_URL: "https://y.upstash.io", KV_REST_API_TOKEN: "k" })).toEqual({
       url: "https://y.upstash.io",

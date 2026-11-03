@@ -435,9 +435,14 @@ export class UpstashKV implements KV {
 
 /** The Upstash REST credentials from the environment, if any. */
 export function upstashCredentials(env: Record<string, string | undefined> = process.env): { url: string; token: string } | null {
-  const url = env.UPSTASH_REDIS_REST_URL || env.KV_REST_API_URL;
-  const token = env.UPSTASH_REDIS_REST_TOKEN || env.KV_REST_API_TOKEN;
-  return url && token ? { url, token } : null;
+  // URL and token come as a pair from one source, so a half-set UPSTASH_* never mixes with the integration's KV_* (a 401 on every call).
+  for (const [url, token] of [
+    [env.UPSTASH_REDIS_REST_URL, env.UPSTASH_REDIS_REST_TOKEN],
+    [env.KV_REST_API_URL, env.KV_REST_API_TOKEN],
+  ]) {
+    if (url?.trim() && token?.trim()) return { url: url.trim(), token: token.trim() };
+  }
+  return null;
 }
 
 let shared: KV | null = null;
