@@ -494,7 +494,7 @@ export const sampleComics: Record<"sample-teta" | "sample-deadline" | "sample-ro
     ]
   },
   "sample-deadline": {
-    "title": "تلات tabs وآخر نفس",
+    "title": "مخلّصة خالص",
     "languages": {
       "spoken": [
         "ar",
@@ -507,8 +507,9 @@ export const sampleComics: Record<"sample-teta" | "sample-deadline" | "sample-ro
     "heavy": true,
     "checkIn": {
       "questions": [
-        "بعد الـ report والـ presentation و tabs اللي مش بتخلص، حاسة بإيه في جسمك دلوقتي؟",
-        "لما تيتا دخلت وسألتك كلتي حاجة، الكلمة دي عملت فيكي إيه؟"
+        "النهاردة كان فيه الـ report والـ presentation ورا بعض، حسيتي بإيه وانت بتقفلي وتفتحي الـ tabs؟",
+        "لما تيتا دخلت عليك بالليل وسألتك عن الأكل، كان إيه اللي شاغلك ساعتها؟",
+        "بعد ما بعتّي الشغل الساعة 11:52 وقعدتي لوحدك، القعدة دي كان طعمها إيه؟"
       ],
       "answers": []
     },
@@ -516,8 +517,8 @@ export const sampleComics: Record<"sample-teta" | "sample-deadline" | "sample-ro
     "artStyle": "zine",
     "storyMode": "both",
     "layout": {
-      "template": "steps-5",
-      "focus": 3
+      "template": "vista-5",
+      "focus": 4
     },
     "pages": [
       {
@@ -529,22 +530,22 @@ export const sampleComics: Record<"sample-teta" | "sample-deadline" | "sample-ro
           4
         ],
         "layout": {
-          "template": "steps-5",
-          "focus": 3
+          "template": "vista-5",
+          "focus": 4
         }
       }
     ],
     "cost": {
-      "usd": 0.123348,
+      "usd": 0.137777,
       "calls": {
         "spark": 6,
         "image": 5,
         "sam": 16
       },
       "byStep": {
-        "script": 0.008195,
+        "script": 0.012499,
         "panels": 0.05,
-        "faceCheck": 0.065153
+        "faceCheck": 0.075278
       },
       "models": {
         "spark": "muse-spark-1.3",
@@ -552,13 +553,13 @@ export const sampleComics: Record<"sample-teta" | "sample-deadline" | "sample-ro
         "sam": "sam-3.1",
         "transcribe": "muse-voice-transcribe-1.0"
       },
-      "createdAt": "2026-11-03T01:01:56.995Z"
+      "createdAt": "2026-11-03T01:28:57.611Z"
     },
     "panels": [
       {
         "index": 0,
-        "scene": "Morning light in Nour's small bedroom office. Nour sits hunched at a crowded desk with a laptop open, papers around her, tired eyes.",
-        "narration": "كنت فاتحة تلات tabs والـ report والـ presentation بيبصولي، وأنا بقفل واحدة وأرجع أفتحها تاني.",
+        "scene": "Evening in Nour's small bedroom, cool blue light. Nour sits hunched at a cluttered desk facing a glowing laptop, her face tired.",
+        "narration": "مش عارفة أبدأ منين. كان عندي two deadlines في نفس اليوم، والشاشة منورة في وشي من بدري.",
         "dialogue": [],
         "characterIds": [
           "nour"
@@ -569,10 +570,10 @@ export const sampleComics: Record<"sample-teta" | "sample-deadline" | "sample-ro
         "shot": "establishing",
         "beat": "setup",
         "frame": {
-          "aspect": 2.5,
+          "aspect": 1,
           "zone": {
             "side": "top",
-            "size": 0.36
+            "size": 0.32
           }
         },
         "image": {
@@ -600,22 +601,22 @@ export const sampleComics: Record<"sample-teta" | "sample-deadline" | "sample-ro
           }
         },
         "figures": {
-          "aspect": 2.5,
+          "aspect": 1,
           "items": [
             {
               "characterId": "nour",
               "kind": "person",
               "box": {
-                "x": 0.637,
-                "y": 0.32,
-                "w": 0.159,
-                "h": 0.68
+                "x": 0.369,
+                "y": 0.47,
+                "w": 0.234,
+                "h": 0.47
               },
               "head": {
-                "x": 0.652,
-                "y": 0.457,
-                "w": 0.074,
-                "h": 0.162
+                "x": 0.427,
+                "y": 0.546,
+                "w": 0.082,
+                "h": 0.083
               }
             }
           ]
@@ -623,8 +624,74 @@ export const sampleComics: Record<"sample-teta" | "sample-deadline" | "sample-ro
       },
       {
         "index": 1,
-        "scene": "Mid-morning, doorway of the same room. Teta Samia stands in the doorway looking soft and worried. Nour half-turns from her laptop toward her.",
-        "narration": "تيتا دخلت عليا في عز الدوشة، وأنا ما كنتش واكلة أي حاجة من الصبح.",
+        "scene": "Close on the laptop screen over Nour's shoulder. Three crowded tabs open, her hand hovering on the touchpad, eyes strained.",
+        "narration": "كنت فاتحة تلات tabs، الـ report والـ presentation. كل شوية أقفل واحدة وأرجع أفتحها تاني.",
+        "dialogue": [],
+        "characterIds": [
+          "nour"
+        ],
+        "names": {
+          "nour": "Nour"
+        },
+        "shot": "detail",
+        "beat": "build",
+        "frame": {
+          "aspect": 1.7778,
+          "zone": {
+            "side": "top",
+            "size": 0.36
+          }
+        },
+        "image": {
+          "kind": "art",
+          "path": "samples.sample-deadline-1"
+        },
+        "consistency": {
+          "checked": true,
+          "driftedCharacterIds": [],
+          "fixedCharacterIds": [],
+          "beforeImage": null,
+          "method": "sam",
+          "sam": {
+            "sought": [
+              "nour"
+            ],
+            "found": [
+              "nour"
+            ],
+            "judged": [
+              "nour"
+            ],
+            "redraws": 0,
+            "checked": true
+          }
+        },
+        "figures": {
+          "aspect": 1.7778,
+          "items": [
+            {
+              "characterId": "nour",
+              "kind": "person",
+              "box": {
+                "x": 0.425,
+                "y": 0.208,
+                "w": 0.575,
+                "h": 0.792
+              },
+              "head": {
+                "x": 0.51,
+                "y": 0.282,
+                "w": 0.161,
+                "h": 0.342
+              }
+            }
+          ]
+        }
+      },
+      {
+        "index": 2,
+        "scene": "Night, warm hallway light spilling into the dark room. Teta Samia stands in the doorway looking at Nour, who turns from the desk, surprised and pale.",
+        "narration": "بالليل تيتا دخلت عليا بهدوء. أنا ما كنتش واكلة حاجة من الصبح، وريحة الأكل كانت وراها.",
         "dialogue": [
           {
             "speakerId": "teta",
@@ -643,95 +710,10 @@ export const sampleComics: Record<"sample-teta" | "sample-deadline" | "sample-ro
         "shot": "medium",
         "beat": "build",
         "frame": {
-          "aspect": 1,
+          "aspect": 1.5,
           "zone": {
             "side": "top",
-            "size": 0.42
-          }
-        },
-        "image": {
-          "kind": "art",
-          "path": "samples.sample-deadline-1"
-        },
-        "consistency": {
-          "checked": true,
-          "driftedCharacterIds": [],
-          "fixedCharacterIds": [],
-          "beforeImage": null,
-          "method": "sam",
-          "sam": {
-            "sought": [
-              "teta",
-              "nour"
-            ],
-            "found": [
-              "teta",
-              "nour"
-            ],
-            "judged": [
-              "teta",
-              "nour"
-            ],
-            "redraws": 0,
-            "checked": true
-          }
-        },
-        "figures": {
-          "aspect": 1,
-          "items": [
-            {
-              "characterId": "teta",
-              "kind": "person",
-              "box": {
-                "x": 0.098,
-                "y": 0.273,
-                "w": 0.352,
-                "h": 0.727
-              },
-              "head": {
-                "x": 0.245,
-                "y": 0.311,
-                "w": 0.119,
-                "h": 0.151
-              }
-            },
-            {
-              "characterId": "nour",
-              "kind": "person",
-              "box": {
-                "x": 0.584,
-                "y": 0.266,
-                "w": 0.341,
-                "h": 0.73
-              },
-              "head": {
-                "x": 0.623,
-                "y": 0.33,
-                "w": 0.133,
-                "h": 0.157
-              }
-            }
-          ]
-        }
-      },
-      {
-        "index": 2,
-        "scene": "Close on laptop screen showing slide four of a presentation and the small clock reading 9:40. Nour's tired hands hover over the keyboard.",
-        "narration": "At 9:40 I was still on slide four، والوقت بيجري وأنا واقفة مكاني.",
-        "dialogue": [],
-        "characterIds": [
-          "nour"
-        ],
-        "names": {
-          "nour": "Nour"
-        },
-        "shot": "detail",
-        "beat": "turn",
-        "frame": {
-          "aspect": 1.25,
-          "zone": {
-            "side": "top",
-            "size": 0.24
+            "size": 0.44
           }
         },
         "image": {
@@ -746,12 +728,15 @@ export const sampleComics: Record<"sample-teta" | "sample-deadline" | "sample-ro
           "method": "sam",
           "sam": {
             "sought": [
+              "teta",
               "nour"
             ],
             "found": [
+              "teta",
               "nour"
             ],
             "judged": [
+              "teta",
               "nour"
             ],
             "redraws": 0,
@@ -759,22 +744,38 @@ export const sampleComics: Record<"sample-teta" | "sample-deadline" | "sample-ro
           }
         },
         "figures": {
-          "aspect": 1.25,
+          "aspect": 1.5,
           "items": [
+            {
+              "characterId": "teta",
+              "kind": "person",
+              "box": {
+                "x": 0.132,
+                "y": 0.353,
+                "w": 0.245,
+                "h": 0.647
+              },
+              "head": {
+                "x": 0.24,
+                "y": 0.393,
+                "w": 0.085,
+                "h": 0.168
+              }
+            },
             {
               "characterId": "nour",
               "kind": "person",
               "box": {
-                "x": 0,
-                "y": 0.209,
-                "w": 0.566,
-                "h": 0.791
+                "x": 0.56,
+                "y": 0.294,
+                "w": 0.332,
+                "h": 0.703
               },
               "head": {
-                "x": 0,
-                "y": 0.209,
-                "w": 0.321,
-                "h": 0.458
+                "x": 0.599,
+                "y": 0.365,
+                "w": 0.113,
+                "h": 0.174
               }
             }
           ]
@@ -782,8 +783,8 @@ export const sampleComics: Record<"sample-teta" | "sample-deadline" | "sample-ro
       },
       {
         "index": 3,
-        "scene": "Late morning, same desk now messier with an empty cold cup. Nour leans forward clicking send, screen glow on her drained face, shoulders tight.",
-        "narration": "بعتّهم الساعة 11:52، الـ report والـ presentation مع بعض، وصوت الـ sent كان تقيل على ودني.",
+        "scene": "Night, Nour alone in closeup. Her tired face lit only by the laptop glow, eyes fixed and glassy, clock blurred behind her.",
+        "narration": "At 9:40 at night I was still on slide four. الساعة كانت بتتحرك وأنا واقفة في نفس المكان.",
         "dialogue": [],
         "characterIds": [
           "nour"
@@ -791,13 +792,13 @@ export const sampleComics: Record<"sample-teta" | "sample-deadline" | "sample-ro
         "names": {
           "nour": "Nour"
         },
-        "shot": "splash",
-        "beat": "climax",
+        "shot": "closeup",
+        "beat": "turn",
         "frame": {
-          "aspect": 1.7778,
+          "aspect": 0.8,
           "zone": {
             "side": "top",
-            "size": 0.22
+            "size": 0.28
           }
         },
         "image": {
@@ -825,22 +826,22 @@ export const sampleComics: Record<"sample-teta" | "sample-deadline" | "sample-ro
           }
         },
         "figures": {
-          "aspect": 1.7778,
+          "aspect": 0.8,
           "items": [
             {
               "characterId": "nour",
               "kind": "person",
               "box": {
-                "x": 0.295,
-                "y": 0.136,
-                "w": 0.373,
-                "h": 0.689
+                "x": 0.019,
+                "y": 0.233,
+                "w": 0.796,
+                "h": 0.759
               },
               "head": {
-                "x": 0.488,
-                "y": 0.31,
-                "w": 0.146,
-                "h": 0.243
+                "x": 0.349,
+                "y": 0.406,
+                "w": 0.331,
+                "h": 0.338
               }
             }
           ]
@@ -848,8 +849,8 @@ export const sampleComics: Record<"sample-teta" | "sample-deadline" | "sample-ro
       },
       {
         "index": 4,
-        "scene": "A quiet moment after. Nour sits back in her chair staring blankly, hands limp in her lap, afternoon light flat and pale on her face.",
-        "narration": "and after that I just sat there. حاسة إني مخلصة خالص، مفيش حاجة تتقال.",
+        "scene": "Late night, room dark except laptop light. Nour leans back in her chair, hands empty in her lap, staring at the blank sent screen.",
+        "narration": "بعتّهم الساعة 11:52 بالليل, and after that I just sat there. حاسة إني مخلّصة خالص.",
         "dialogue": [],
         "characterIds": [
           "nour"
@@ -857,14 +858,13 @@ export const sampleComics: Record<"sample-teta" | "sample-deadline" | "sample-ro
         "names": {
           "nour": "Nour"
         },
-        "shot": "closeup",
-        "beat": "release",
-        "emphasis": true,
+        "shot": "splash",
+        "beat": "climax",
         "frame": {
-          "aspect": 3,
+          "aspect": 1.3333,
           "zone": {
             "side": "top",
-            "size": 0.32
+            "size": 0.2
           }
         },
         "image": {
@@ -892,22 +892,22 @@ export const sampleComics: Record<"sample-teta" | "sample-deadline" | "sample-ro
           }
         },
         "figures": {
-          "aspect": 3,
+          "aspect": 1.3333,
           "items": [
             {
               "characterId": "nour",
               "kind": "person",
               "box": {
-                "x": 0.288,
-                "y": 0.028,
-                "w": 0.364,
-                "h": 0.972
+                "x": 0.152,
+                "y": 0.177,
+                "w": 0.54,
+                "h": 0.823
               },
               "head": {
-                "x": 0.352,
-                "y": 0.15,
-                "w": 0.116,
-                "h": 0.328
+                "x": 0.243,
+                "y": 0.255,
+                "w": 0.135,
+                "h": 0.198
               }
             }
           ]

@@ -27,7 +27,7 @@ const notes: (Pick<Day, "date" | "transcript" | "createdAt"> & { id: SampleId })
     id: "sample-deadline",
     date: "2026-10-12",
     transcript:
-      "مش عارفة أبدأ منين. I had two deadlines today، الـ report والـ presentation، وكنت فاتحة تلات tabs وكل شوية أقفل واحدة وأرجع أفتحها تاني. تيتا دخلت عليا وسألتني كلتي حاجة؟ وأنا ما كنتش واكلة من الصبح. At 9:40 I was still on slide four. بعتّهم الساعة 11:52، and after that I just sat there. حاسة إني مخلّصة خالص.",
+      "مش عارفة أبدأ منين. I had two deadlines today، الـ report والـ presentation، وكنت فاتحة تلات tabs وكل شوية أقفل واحدة وأرجع أفتحها تاني. بالليل تيتا دخلت عليا وسألتني كلتي حاجة؟ وأنا ما كنتش واكلة من الصبح. At 9:40 at night I was still on slide four. بعتّهم الساعة 11:52 بالليل، and after that I just sat there. حاسة إني مخلّصة خالص.",
     createdAt: "2026-10-12T22:10:00.000Z",
   },
   {
