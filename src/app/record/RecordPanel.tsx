@@ -123,7 +123,8 @@ function statusText(recorder: Recorder): string {
       if (take?.source === "upload") return `Loaded “${take.fileName ?? "your voice note"}”. Listen back, or make your comic.`;
       return elapsedMs >= MAX_RECORDING_MS - 500
         ? "That's two minutes, so recording stopped there. Listen back, record again, or make your comic."
-        : `Got ${spokenDuration(elapsedMs)}. Listen back, record again, or make your comic.`;
+        : // Whole seconds, as the clock shows them ("0:03" and "Got 3 seconds", never "Got 4").
+          `Got ${spokenDuration(Math.floor(elapsedMs / 1000) * 1000)}. Listen back, record again, or make your comic.`;
     default:
       return "Tap Start and talk for up to two minutes.";
   }
