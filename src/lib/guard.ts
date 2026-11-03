@@ -30,7 +30,8 @@ import { sessionAccount, type SessionAccount } from "@/lib/server/session";
  *   COMIMO_DAILY_COMIC_CAP   comics per day for everyone (default 200)
  *   COMIMO_DAILY_IMAGE_CAP   image and SAM calls per day for everyone (default 600), counted per call
  *   COMIMO_DAILY_UPLOAD_CAP  reference-sheet uploads per day for everyone (default 300); per account 4x comics an hour
- *   COMIMO_PAUSE_GENERATION  "1" pauses all real calls
+ *   COMIMO_PAUSE_GENERATION  "1" pauses all real calls (an env change needs a redeploy on Vercel;
+ *                            for an instant pause, set the store key `guard:paused` to "1", e.g. in the Upstash console)
  *   COMIMO_GUARD_SALT        salt for hashed ids (account tag sent to Meta, IP tags); set it in production
  */
 
@@ -190,6 +191,16 @@ const DOWN: Extract<GuardResult, { ok: false }> = {
   status: 503,
   error: "Comimo can't check its limits right now. Try again in a minute.",
   retryAfterSec: 60,
+};
+
+/** The kill switch in the shared store; "1" pauses every real call, like COMIMO_PAUSE_GENERATION=1. */
+export const PAUSE_KEY = "guard:paused";
+
+const PAUSED: Extract<GuardResult, { ok: false }> = {
+  ok: false,
+  status: 503,
+  error: "Making new comics is paused right now. The sample days still work.",
+  retryAfterSec: 3600,
 };
 
 /** Keep the counter writes alive after the response on serverless hosts. */
@@ -370,12 +381,12 @@ export async function guard(request: Request, action: GuardAction, options: { re
   const tally = createTally((action === "character" || action === "wardrobe") && forComic ? "sheets" : COST_STEP[action]);
   if (!options.real) return { ok: true, visitorId, meter: freeMeter(tally), refundIfUnbilled: () => {} };
 
-  if (process.env.COMIMO_PAUSE_GENERATION === "1") {
-    return { ok: false, status: 503, error: "Making new comics is paused right now. The sample days still work.", retryAfterSec: 3600 };
-  }
+  if (process.env.COMIMO_PAUSE_GENERATION === "1") return PAUSED;
 
   const { hourly, dailyComics, dailyImages } = limits();
   try {
+    // The same switch in the shared store: takes effect at once, with no redeploy.
+    if ((await kv.get(PAUSE_KEY)) === "1") return PAUSED;
     const slot = await hit(kv, accountKey(account, action), hourly[action], HOUR_SEC);
     if (!slot.ok) return { ok: false, status: 429, error: limitMessage(action, slot.retryAfterSec), retryAfterSec: slot.retryAfterSec };
 
