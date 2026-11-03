@@ -8,7 +8,7 @@ Built from scratch for the Meta Global AI Developer Hackathon (October 27 to Nov
 
 ## What it does
 
-- **A comic from a voice note.** Record up to two minutes, or type it. Egyptian Arabic, English and mixed sentences all work, and the comic keeps the language you spoke.
+- **A comic from a voice note.** Record up to two minutes, or type it. Egyptian Arabic, English and mixed sentences all work, and the comic keeps the language you spoke. Missed a day? Make it the next morning and pick Yesterday.
 - **Your cast, drawn once.** Add someone from a photo or a description. Comimo makes a reference sheet for them, and every comic draws them from that sheet.
 - **You're in it.** "About you" asks for a photo, your interests and how you deal with people (sarcastic, quiet, loud, caring, and so on). That decides how you look and how you talk in your comics.
 - **Clothes that change.** Change your clothes from a photo or by describing them. Attach today's photos before making a comic and Comimo finds you in them and dresses you the way you really were that day.
@@ -103,7 +103,7 @@ A spending guard limits every real model call:
 ## Tests
 
 ```bash
-npm test             # Vitest: 205 tests
+npm test             # Vitest: 229 tests
 npx tsc --noEmit     # types
 npx eslint src       # lint
 ```
