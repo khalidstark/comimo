@@ -20,6 +20,7 @@ import type {
   WireImage,
 } from "./types";
 import { blobToWire, wireToBlob } from "./wireImage";
+import { whoAmI } from "./whoami";
 import { costFromResponse, type CostRecord } from "./costs";
 import { afterBaseRedraw, outfitSheet, wearingFor, withCharacterCost, withOutfitSheet, type Wearing } from "./wardrobe";
 
@@ -59,6 +60,22 @@ function isUntouchedExtra(character: Character): boolean {
   );
 }
 
+/**
+ * The narrator is the user. One still called by the stand-in's name (About
+ * you skipped) takes the account's first name; the stand-in look stays until
+ * they add a photo.
+ */
+async function withAccountName(cast: Character[]): Promise<Character[]> {
+  const at = cast.findIndex((member) => member.role === "self" && member.starter && member.name === starterCastById[member.id]?.name);
+  if (at === -1) return cast;
+  const me = await whoAmI().catch(() => null);
+  const first = me?.name.trim().split(/\s+/)[0]?.slice(0, 40);
+  if (!first) return cast;
+  const renamed: Character = { ...cast[at], name: first, aliases: [] };
+  await saveCharacter(renamed);
+  return cast.map((member, i) => (i === at ? renamed : member));
+}
+
 /** Takes the untouched invented extras out of a cast seeded with them. Comics already made keep them. */
 async function removeStarterExtras(cast: Character[]): Promise<Character[]> {
   const extras = cast.filter(isUntouchedExtra);
@@ -88,12 +105,12 @@ export async function loadCast(): Promise<Character[]> {
   if (seeded || stored.length > 0) {
     // Devices seeded before the flag existed get it now.
     if (!seeded) await setMeta(SEEDED_KEY, true);
-    const cast = extrasRemoved ? stored : await removeStarterExtras(stored);
+    const cast = await withAccountName(extrasRemoved ? stored : await removeStarterExtras(stored));
     return cast.map(withStarterAliases).sort(byShippedOrder);
   }
   const saved = await Promise.all(accountSeed.map((character) => saveCharacter(character)));
   if (saved.every(Boolean)) await Promise.all([setMeta(SEEDED_KEY, true), setMeta(EXTRAS_REMOVED_KEY, true)]);
-  return accountSeed;
+  return withAccountName(accountSeed);
 }
 
 /**

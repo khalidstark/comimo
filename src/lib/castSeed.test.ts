@@ -17,6 +17,8 @@ vi.mock("./store", () => ({
   newId: () => "new-id",
 }));
 
+vi.mock("./whoami", () => ({ whoAmI: async () => ({ name: "Salma Adel", cacheKey: "0".repeat(32) }) }));
+
 const { loadCast } = await import("./cast");
 
 beforeEach(() => {
@@ -25,10 +27,11 @@ beforeEach(() => {
 });
 
 describe("an account's cast", () => {
-  it("starts with only its narrator: the invented friends are for signed-out samples", async () => {
+  it("starts with only its narrator, under the account's name: the invented friends are for signed-out samples", async () => {
     const cast = await loadCast();
-    expect(cast.map((member) => member.role)).toEqual(["self"]);
+    expect(cast.map((member) => [member.role, member.name])).toEqual([["self", "Salma"]]);
     expect([...db.cast.keys()]).toEqual(["nour"]);
+    expect((db.cast.get("nour") as Character).name).toBe("Salma");
     expect(db.meta.get("starterExtrasRemoved")).toBe(true);
   });
 
