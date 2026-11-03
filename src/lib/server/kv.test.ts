@@ -2,7 +2,7 @@ import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { FileKV, upstashCredentials } from "./kv";
+import { FileKV, hashFromReply, upstashCredentials } from "./kv";
 
 let dir: string;
 
@@ -102,5 +102,20 @@ describe("upstashCredentials", () => {
       url: "https://y.upstash.io",
       token: "k",
     });
+  });
+});
+
+describe("hashFromReply", () => {
+  it("turns Redis's flat HGETALL reply into an object (the SDK passes it through raw)", () => {
+    expect(hashFromReply(["a", "1", "b", '{"s":2}'])).toEqual({ a: "1", b: '{"s":2}' });
+    expect(hashFromReply([])).toEqual({});
+    expect(hashFromReply(null)).toEqual({});
+    expect(hashFromReply({ a: "1" })).toEqual({ a: "1" });
+  });
+
+  it("keeps a __proto__ field as a plain field", () => {
+    const hash = hashFromReply(["__proto__", "x", "a", "1"]);
+    expect(Object.keys(hash)).toEqual(["__proto__", "a"]);
+    expect(Object.getPrototypeOf(hash)).toBe(Object.prototype);
   });
 });

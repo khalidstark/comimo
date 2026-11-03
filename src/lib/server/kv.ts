@@ -334,6 +334,23 @@ if tonumber(ARGV[2]) > 0 and redis.call("TTL", KEYS[1]) == -1 then
 end
 return value`;
 
+/**
+ * An HGETALL reply as an object. Redis answers a flat [field, value, ...]
+ * list, which the SDK passes through as is when automaticDeserialization is
+ * off; an object (or nothing) is accepted too.
+ */
+export function hashFromReply(reply: unknown): Record<string, string> {
+  if (!reply) return {};
+  if (Array.isArray(reply)) {
+    const pairs: [string, string][] = [];
+    for (let i = 0; i + 1 < reply.length; i += 2) pairs.push([String(reply[i]), String(reply[i + 1])]);
+    // fromEntries defines own properties, so a "__proto__" field stays a plain field.
+    return Object.fromEntries(pairs);
+  }
+  if (typeof reply === "object") return Object.fromEntries(Object.entries(reply as Record<string, unknown>).map(([field, value]) => [field, String(value)]));
+  return {};
+}
+
 export class UpstashKV implements KV {
   private readonly redis: Redis;
 
@@ -384,8 +401,8 @@ export class UpstashKV implements KV {
   }
 
   async hgetall(key: string): Promise<Record<string, string>> {
-    const all = await this.redis.hgetall<Record<string, string>>(key);
-    return all ?? {};
+    // With automaticDeserialization off, the SDK hands back Redis's raw reply: [field, value, field, value, ...].
+    return hashFromReply(await this.redis.hgetall<Record<string, string>>(key));
   }
 
   async sizedPut(hash: string, counter: string, field: string, value: string, size: number, caps: SizedCaps): Promise<SizedPutResult> {
