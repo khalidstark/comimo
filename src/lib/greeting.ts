@@ -12,11 +12,13 @@ export const HOW_TO = "Talk the way you'd tell a friend. Arabic, English, or bot
 
 type Part = "morning" | "afternoon" | "evening" | "night" | "again";
 
+// The Arabic lines are written so they read right for anyone (no gendered adjectives).
+
 const TITLES: Record<Part, readonly string[]> = {
   morning: ["Morning, {name}. Anything yet?", "Good morning, {name}. How did it start?", "صباح الخير يا {name}"],
   afternoon: ["Hey {name}, how's the day going?", "Afternoon, {name}. What happened so far?", "إزيك يا {name}؟ اليوم ماشي إزاي؟"],
   evening: ["Evening, {name}. How was today?", "So, {name}… how did it go?", "{name}, what happened today?", "يومك كان عامل إزاي يا {name}؟"],
-  night: ["Still up, {name}?", "Late one, {name}. What kept you up?", "لسه صاحي يا {name}؟ احكيلي"],
+  night: ["Still up, {name}?", "Late one, {name}. What kept you up?", "إيه اللي مسهرك يا {name}؟ احكيلي"],
   again: ["Back again, {name}? There's more to today.", "Another one from today, {name}?", "فيه حاجة كمان النهارده يا {name}؟"],
 };
 
