@@ -813,6 +813,7 @@
   z-index: 4;
   display: none;
   overflow: hidden;
+  clip-path: var(--clip);
   direction: ltr;
   pointer-events: none;
 }
