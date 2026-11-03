@@ -612,11 +612,11 @@ export class ComicPipeline {
   private async writeScript(transcript: Transcript, signal: AbortSignal): Promise<ComicScript> {
     this.setStep("write", "active");
     this.cast ??= await loadCast();
-    // An emptied cast is left out, so the server falls back to the starter cast instead of refusing the request.
+    // Always sent, even emptied: the invented starter cast never stands in for an account's own people.
     const cast = this.cast.slice(0, 20).map((member) => toBrief(member, this.dayOutfits));
     const body: ScriptRequest = {
       transcript: transcript.text,
-      ...(cast.length > 0 ? { cast } : {}),
+      cast,
       storyMode: this.input.storyMode,
       ...(this.input.diary ? { diary: this.input.diary.name } : {}),
     };

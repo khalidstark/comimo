@@ -542,7 +542,7 @@ export interface TranscribeResponse {
 /** POST /api/script */
 export interface ScriptRequest {
   transcript: string;
-  /** Defaults to the starter cast. */
+  /** The account's own people; may be empty (the starter cast is only for signed-out samples). */
   cast?: CastBrief[];
   /** Defaults to DEFAULT_STORY_MODE. */
   storyMode?: StoryMode;

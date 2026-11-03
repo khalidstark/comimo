@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useId, useRef, useState, type CSSProperties, type FormEvent } from "react";
+import { useEffect, useEffectEvent, useId, useRef, useState, type CSSProperties, type FormEvent } from "react";
 import { Art } from "@/art/Art";
 import { Icon } from "@/art/Icon";
 import { art, artAt } from "@/art/manifest";
@@ -18,6 +18,7 @@ import {
   SheetError,
   animateCharacter,
   canAnimate,
+  canAnimateNow,
   characterFromDraft,
   defaultRoleLabel,
   drawReferenceSheet,
@@ -44,8 +45,8 @@ type Editing = { kind: "new" } | { kind: "edit"; id: string } | null;
 
 /**
  * The cast screen: the user's characters from this device, with add, edit
- * and remove. The starter cast is written to the store on the first run, so
- * it can be edited or removed like anyone else.
+ * and remove. A new account starts with only its narrator; the invented
+ * starter cast is for signed-out samples.
  */
 export function CastEditor() {
   const [cast, setCast] = useState<Character[] | null>(null);
@@ -59,10 +60,17 @@ export function CastEditor() {
   /** Where focus goes after the list re-renders (a card's edit button, or the add button). */
   const focusAfter = useRef<string | null>(null);
 
+  /** Anyone drawn but still standing still (About you closed early, a sprite that failed) comes to life one at a time. */
+  const animateTheStill = useEffectEvent(async (loaded: Character[]) => {
+    for (const member of loaded) if (canAnimateNow(member)) await animate(member);
+  });
+
   useEffect(() => {
     let cancelled = false;
     void loadCast().then((loaded) => {
-      if (!cancelled) setCast(loaded);
+      if (cancelled) return;
+      setCast(loaded);
+      void animateTheStill(loaded);
     });
     return () => {
       cancelled = true;
@@ -219,7 +227,7 @@ export function CastEditor() {
             <h2 className={styles.addTitle}>{list.length === 0 ? "Your cast is empty" : "Add someone from your life"}</h2>
             <p className={styles.addBody}>
               A name, how they look, how they talk. Comimo keeps them looking the same in every panel.
-              {list.length === 0 ? " Until you add someone, comics use the starter cast." : ""}
+              {list.length === 0 ? " Until you add someone, Comimo draws the people in your note as it meets them." : ""}
             </p>
             <button
               id="add-character"

@@ -3,7 +3,7 @@ import { starterCast, starterCastById } from "@/fixtures/cast";
 import { PERSONALITY_MAX, applyAboutYou, findSelf, type AboutAnswers } from "./aboutYou";
 import { ALIAS_LIMITS, namesOf, normalizeName, parseAliases } from "./names";
 import { ANIMATIONS } from "@/art/sprites";
-import { getCharacter, getImage, getMeta, listCast, newId, putImage, saveCharacter, setMeta } from "./store";
+import { deleteCharacter, getCharacter, getImage, getMeta, listCast, newId, putImage, saveCharacter, setMeta } from "./store";
 import type { ArtStyleId } from "./artStyles";
 import type {
   ApiError,
@@ -36,6 +36,37 @@ function byShippedOrder(a: Character, b: Character): number {
 }
 
 const SEEDED_KEY = "starterCastSeeded";
+/** Set once the invented extras were taken out of a cast seeded before 03.2-07. Follows the account. */
+const EXTRAS_REMOVED_KEY = "starterExtrasRemoved";
+
+/**
+ * What a new account starts with: only its narrator, in the stand-in look
+ * until About you draws their own face. Karim, Teta and Mishmish are examples
+ * for visitors who haven't signed in; an account's cast is the people in
+ * the user's own life.
+ */
+const accountSeed: Character[] = starterCast.filter((character) => character.role === "self");
+
+/** An invented extra the user never made their own (renamed, redrawn or dressed). */
+function isUntouchedExtra(character: Character): boolean {
+  const shipped = starterCastById[character.id];
+  return (
+    character.starter &&
+    character.role !== "self" &&
+    shipped !== undefined &&
+    character.name === shipped.name &&
+    !character.outfits?.length
+  );
+}
+
+/** Takes the untouched invented extras out of a cast seeded with them. Comics already made keep them. */
+async function removeStarterExtras(cast: Character[]): Promise<Character[]> {
+  const extras = cast.filter(isUntouchedExtra);
+  const removed = await Promise.all(extras.map((character) => deleteCharacter(character.id)));
+  if (removed.every(Boolean)) await setMeta(EXTRAS_REMOVED_KEY, true);
+  const gone = new Set(extras.filter((_, i) => removed[i]).map((character) => character.id));
+  return cast.filter((character) => !gone.has(character.id));
+}
 
 /**
  * Starter characters stored before aliases existed have none; they get the
@@ -48,20 +79,21 @@ function withStarterAliases(character: Character): Character {
 }
 
 /**
- * The user's cast from the store. The invented starter cast is written once,
- * on the first run; after that the store is the truth, so a cast the user
- * emptied stays empty.
+ * The user's cast from the store. The narrator is written once, on the first
+ * run; after that the store is the truth, so a cast the user emptied stays
+ * empty.
  */
 export async function loadCast(): Promise<Character[]> {
-  const [cast, seeded] = await Promise.all([listCast(), getMeta(SEEDED_KEY)]);
-  if (seeded || cast.length > 0) {
+  const [stored, seeded, extrasRemoved] = await Promise.all([listCast(), getMeta(SEEDED_KEY), getMeta(EXTRAS_REMOVED_KEY)]);
+  if (seeded || stored.length > 0) {
     // Devices seeded before the flag existed get it now.
     if (!seeded) await setMeta(SEEDED_KEY, true);
+    const cast = extrasRemoved ? stored : await removeStarterExtras(stored);
     return cast.map(withStarterAliases).sort(byShippedOrder);
   }
-  const saved = await Promise.all(starterCast.map((character) => saveCharacter(character)));
-  if (saved.every(Boolean)) await setMeta(SEEDED_KEY, true);
-  return starterCast;
+  const saved = await Promise.all(accountSeed.map((character) => saveCharacter(character)));
+  if (saved.every(Boolean)) await Promise.all([setMeta(SEEDED_KEY, true), setMeta(EXTRAS_REMOVED_KEY, true)]);
+  return accountSeed;
 }
 
 /**
@@ -356,6 +388,11 @@ const animating = new Map<string, Promise<Character | null>>();
 /** Set when the server said sprites aren't available (mock mode), so nobody asks again this session. */
 let spritesUnavailable = false;
 
+/** canAnimate, unless this session already learned the server can't make sprites. */
+export function canAnimateNow(character: Character): boolean {
+  return !spritesUnavailable && canAnimate(character);
+}
+
 /**
  * Give a character their animated sprite once: five Muse Image poses from
  * their reference sheet, assembled on the server. Resolves to the updated
@@ -401,6 +438,9 @@ export function animateCharacter(character: Character): Promise<Character | null
       animations: ANIMATIONS,
     };
     const cost = costFromResponse(response);
+    // Redrawn while the poses were being made: this sprite shows the old drawing, so the new one gets its own.
+    const now = await getCharacter(character.id);
+    if (now && animatableSheet(now)?.sheetToken !== sheet.sheetToken) return null;
     return updateStoredCharacter(character, (current) => withCharacterCost({ ...current, spriteSheet, portrait: { kind: "blob", id: portraitId } }, cost));
   })().finally(() => animating.delete(character.id));
   animating.set(character.id, run);

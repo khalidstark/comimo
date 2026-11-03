@@ -1,4 +1,3 @@
-import { starterCastBriefs } from "@/fixtures/cast";
 import { guard, guardResponse, withCost } from "@/lib/guard";
 import { requireSession } from "@/lib/server/session";
 import { getModels } from "@/lib/models";
@@ -21,7 +20,7 @@ function isAliasList(value: unknown): value is string[] {
 }
 
 function parseCast(value: unknown): CastBrief[] | null {
-  if (!Array.isArray(value) || value.length === 0 || value.length > MAX_CAST) return null;
+  if (!Array.isArray(value) || value.length > MAX_CAST) return null;
   const cast: CastBrief[] = [];
   for (const item of value) {
     if (!isRecord(item)) return null;
@@ -40,7 +39,8 @@ function parseCast(value: unknown): CastBrief[] | null {
 
 /**
  * POST /api/script
- * JSON: { transcript: string, cast?: CastBrief[], storyMode?: StoryMode }  (cast defaults to the starter cast, storyMode to "both")
+ * JSON: { transcript: string, cast?: CastBrief[], storyMode?: StoryMode }  (cast defaults to none, storyMode to "both")
+ * The cast is the account's own people, possibly none (new people are found in the note); the invented starter cast is only for signed-out samples.
  */
 export async function POST(request: Request) {
   const session = await requireSession(request);
@@ -55,7 +55,7 @@ export async function POST(request: Request) {
     return jsonError(400, `\`transcript\` must be non-empty text up to ${MAX_TRANSCRIPT} characters.`);
   }
 
-  let cast = starterCastBriefs;
+  let cast: CastBrief[] = [];
   if (body.cast !== undefined) {
     const parsed = parseCast(body.cast);
     if (!parsed) return jsonError(400, "`cast` must be a list of characters with id, name, role, look and personality.");

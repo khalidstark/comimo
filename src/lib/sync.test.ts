@@ -59,7 +59,7 @@ describe("settings, images and refs", () => {
 describe("synced settings", () => {
   it("keeps the About-you flag with the account, on both sides", async () => {
     const server = await import("./server/library");
-    for (const key of ["aboutYou:asked", "starterCastSeeded", "newPeople:never", "cover:2026-11"]) {
+    for (const key of ["aboutYou:asked", "starterCastSeeded", "starterExtrasRemoved", "newPeople:never", "cover:2026-11"]) {
       expect(isSyncedMetaKey(key)).toBe(true);
       expect(server.isSyncedMetaKey(key)).toBe(true);
     }
