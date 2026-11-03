@@ -67,6 +67,8 @@ export function NewFacesStep({ people, style, onDone }: NewFacesStepProps) {
 
   const keys = people.map(keyOf);
   const left = keys.filter((key) => !choices[key]).length;
+  /** Anyone kept just for this story (the line about one-offs only makes sense then). */
+  const anyOneOff = keys.some((key) => choices[key] && choices[key].kind !== "cast");
   const styleLabel = ART_STYLES[style].label.toLowerCase();
 
   function choose(key: string, person: NewPerson, choice: FaceChoice) {
@@ -224,7 +226,9 @@ export function NewFacesStep({ people, style, onDone }: NewFacesStepProps) {
             ? "The comic waits for the sheet, then carries on."
             : left > 0
               ? "Skip all keeps everyone left just for this story."
-              : "All set. One-offs stay the same within this comic."}
+              : anyOneOff
+                ? "All set. One-offs stay the same within this comic."
+                : "All set."}
         </p>
       </footer>
     </section>
