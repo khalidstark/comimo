@@ -17,7 +17,7 @@ import {
   type DrawnFace,
 } from "@/lib/aboutYou";
 import { ART_STYLE_IDS, ART_STYLES, DEFAULT_ART_STYLE, artStyleOf, type ArtStyleId } from "@/lib/artStyles";
-import { ABOUT_ASKED_KEY, SheetError, draftFrom, drawSheet, loadSelf, referenceSheetFor, saveSelf, updateStoredCharacter, validateDraft } from "@/lib/cast";
+import { ABOUT_ASKED_KEY, SheetError, animateCharacter, draftFrom, drawSheet, loadSelf, referenceSheetFor, saveSelf, updateStoredCharacter, validateDraft } from "@/lib/cast";
 import { withCharacterCost } from "@/lib/wardrobe";
 import { namesOf, normalizeName, parseAliases } from "@/lib/names";
 import { PhotoError, describePhoto, preparePhoto } from "@/lib/photo";
@@ -358,11 +358,14 @@ export function AboutYouFlow() {
       return;
     }
     await setMeta(ABOUT_ASKED_KEY, true);
+    // Their face is final now: bring them to life in the background (a couple of minutes; the cast page shows it).
+    void animateCharacter(saved);
     router.replace(next);
   }
 
   async function later() {
     await setMeta(ABOUT_ASKED_KEY, true);
+    if (loaded?.self) void animateCharacter(loaded.self);
     router.replace(next);
   }
 
