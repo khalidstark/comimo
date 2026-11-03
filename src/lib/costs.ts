@@ -29,6 +29,7 @@ export const COST_STEPS = [
   "wardrobe",
   "cover",
   "caption",
+  "week",
 ] as const;
 export type CostStep = (typeof COST_STEPS)[number];
 

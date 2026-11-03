@@ -22,7 +22,7 @@ import {
   type StepStatus,
 } from "@/lib/pipeline";
 import type { ArtStyleId } from "@/lib/artStyles";
-import type { LanguageHint, LanguageMix, ScriptPanel, StoryMode } from "@/lib/types";
+import type { Diary, LanguageHint, LanguageMix, ScriptPanel, StoryMode } from "@/lib/types";
 import styles from "./making.module.css";
 
 const REDUCED_MOTION = "(prefers-reduced-motion: reduce)";
@@ -169,6 +169,8 @@ interface MakingComicProps {
   storyMode: StoryMode;
   /** Photos of the day, for today's outfit and the album. */
   photos?: File[];
+  /** The diary the comic goes in; null or missing for the daily one. */
+  diary?: Diary | null;
   /** Called after the screen is cancelled and closed. */
   onClose: () => void;
 }
@@ -178,8 +180,19 @@ interface MakingComicProps {
  * finishes. Panels are pencilled from the script, inked when drawn, and a
  * panel whose face was fixed flips from before to after.
  */
-export function MakingComic({ audio, text, language, style, storyMode, photos, onClose }: MakingComicProps) {
-  const [pipeline] = useState(() => new ComicPipeline({ audio, text, language, style, storyMode, ...(photos?.length ? { photos } : {}) }));
+export function MakingComic({ audio, text, language, style, storyMode, photos, diary, onClose }: MakingComicProps) {
+  const [pipeline] = useState(
+    () =>
+      new ComicPipeline({
+        audio,
+        text,
+        language,
+        style,
+        storyMode,
+        ...(photos?.length ? { photos } : {}),
+        ...(diary ? { diary: { id: diary.id, name: diary.name } } : {}),
+      }),
+  );
   const state = useSyncExternalStore(pipeline.subscribe, pipeline.getSnapshot, pipeline.getSnapshot);
   const [settled, setSettled] = useState<ReadonlySet<number>>(() => new Set());
   const dialogRef = useRef<HTMLDialogElement>(null);

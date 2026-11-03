@@ -35,7 +35,7 @@ import { deleteCharacter, saveCharacter } from "@/lib/store";
 import type { Character, CharacterRole, ImageRef, WireImage } from "@/lib/types";
 import { canChangeClothes } from "@/lib/wardrobe";
 import styles from "./cast.module.css";
-import { useSheetUrl } from "./useSheetUrl";
+import { useImageUrl as useSheetUrl } from "@/lib/useImageUrl";
 import { Wardrobe } from "./Wardrobe";
 
 const TILTS = ["-3deg", "2deg", "-1.5deg", "3deg"];

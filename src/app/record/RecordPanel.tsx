@@ -4,8 +4,9 @@ import { useEffect, useId, useRef, useState } from "react";
 import { Icon } from "@/art/Icon";
 import { RecordStamp } from "@/components/RecordStamp";
 import { ART_STYLE_IDS, ART_STYLES, DEFAULT_ART_STYLE, artStyleOf, type ArtStyleId } from "@/lib/artStyles";
-import { DEFAULT_STORY_MODE, STORY_MODES, isStoryMode, type LanguageHint, type StoryMode } from "@/lib/types";
+import { DEFAULT_STORY_MODE, STORY_MODES, isStoryMode, type Diary, type LanguageHint, type StoryMode } from "@/lib/types";
 import { DayPhotos } from "./DayPhotos";
+import { DiaryPick } from "./DiaryPick";
 import { MakingComic } from "./MakingComic";
 import styles from "./record.module.css";
 import { MAX_RECORDING_MS, useRecorder, type Recorder, type RecorderProblem } from "./useRecorder";
@@ -130,6 +131,8 @@ export function RecordPanel() {
   const [typed, setTyped] = useState("");
   /** Photos of the day, kept in memory until the comic is made (today's outfit, then the album). */
   const [photos, setPhotos] = useState<File[]>([]);
+  /** The diary the comic goes in; null for the daily one. */
+  const [diary, setDiary] = useState<Diary | null>(null);
   const [making, setMaking] = useState<{
     audio: Blob | null;
     text?: string;
@@ -137,6 +140,7 @@ export function RecordPanel() {
     style: ArtStyleId;
     storyMode: StoryMode;
     photos: File[];
+    diary: Diary | null;
   } | null>(null);
   const legendId = useId();
   const styleLegendId = useId();
@@ -209,6 +213,7 @@ export function RecordPanel() {
           ))}
         </div>
       </fieldset>
+      <DiaryPick value={diary} onChange={setDiary} />
       <DayPhotos photos={photos} onChange={setPhotos} />
     </>
   );
@@ -242,7 +247,7 @@ export function RecordPanel() {
               type="button"
               className={`btn btn--accent ${styles.make}`}
               disabled={!typedReady}
-              onClick={() => setMaking({ audio: null, text: typedText, language, style, storyMode, photos })}
+              onClick={() => setMaking({ audio: null, text: typedText, language, style, storyMode, photos, diary })}
             >
               Make my comic
             </button>
@@ -259,6 +264,7 @@ export function RecordPanel() {
             style={making.style}
             storyMode={making.storyMode}
             photos={making.photos}
+            diary={making.diary}
             onClose={() => setMaking(null)}
           />
         ) : null}
@@ -302,7 +308,7 @@ export function RecordPanel() {
             <button
               type="button"
               className={`btn btn--accent ${styles.make}`}
-              onClick={() => setMaking({ audio: take.blob, language, style, storyMode, photos })}
+              onClick={() => setMaking({ audio: take.blob, language, style, storyMode, photos, diary })}
             >
               Make my comic
             </button>
@@ -378,6 +384,7 @@ export function RecordPanel() {
           style={making.style}
           storyMode={making.storyMode}
           photos={making.photos}
+            diary={making.diary}
           onClose={() => setMaking(null)}
         />
       ) : null}

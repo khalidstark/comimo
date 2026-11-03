@@ -21,7 +21,7 @@ import { getKV, type KV } from "./kv";
  */
 
 /** The routes that write the ledger (the guard's actions). */
-export type LedgerAction = "transcribe" | "script" | "panel" | "character" | "sprite" | "photo" | "cover" | "caption" | "wardrobe" | "outfit";
+export type LedgerAction = "transcribe" | "script" | "panel" | "character" | "sprite" | "photo" | "cover" | "caption" | "wardrobe" | "outfit" | "week";
 
 export interface LedgerEntry {
   /** The comic (day id) this was for; missing for cast work outside a comic (onboarding, the cast page). */
@@ -44,7 +44,7 @@ const keys = {
   accounts: "cost:accounts",
 };
 
-const ACTIONS: LedgerAction[] = ["transcribe", "script", "panel", "character", "sprite", "photo", "cover", "caption", "wardrobe", "outfit"];
+const ACTIONS: LedgerAction[] = ["transcribe", "script", "panel", "character", "sprite", "photo", "cover", "caption", "wardrobe", "outfit", "week"];
 /** Same shape as library record ids (uuids, "nour"). */
 const DAY_ID = /^[A-Za-z0-9][A-Za-z0-9_.:-]{0,99}$/;
 

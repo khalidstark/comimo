@@ -414,11 +414,71 @@ export interface Day {
   outfits?: DayOutfit[];
   /** What making the comic cost (03.2-04); missing on older days. */
   cost?: ComicCost;
+  /** The diary it was written in (03.2-05); missing means "Every day", the daily diary. */
+  diaryId?: string;
   /** True for the invented sample days. */
   sample?: boolean;
   createdAt: string;
   /** Last change (set by the store on every save); the newer copy wins when devices sync. Missing on older records. */
   updatedAt?: string;
+}
+
+/* ------------------------------------------------------------------ */
+/* Diaries and the week (03.2-05)                                      */
+/* ------------------------------------------------------------------ */
+
+export const DIARY_COLORS = ["pink", "sun", "teal", "ink", "lilac", "grass"] as const;
+export type DiaryColor = (typeof DIARY_COLORS)[number];
+
+export const DIARY_STICKERS = ["heart", "cloud", "star", "bolt", "leaf", "moon", "spark", "rain"] as const;
+export type DiarySticker = (typeof DIARY_STICKERS)[number];
+
+/**
+ * A notebook the user named themselves ("Bad things", "Things I love"),
+ * written in any day. Its comics are the Days with its `diaryId`. Kept as
+ * the synced setting `diaries`, so it follows the account.
+ */
+export interface Diary {
+  id: string;
+  name: string;
+  color: DiaryColor;
+  sticker: DiarySticker;
+  createdAt: string;
+}
+
+/** One good thing of the week, tied to the comic it came from. */
+export interface GoodThing {
+  text: string;
+  /** The day (comic) it happened in. */
+  dayId: string;
+  /** "did" when the user did it, "happened" when it happened to them or someone was kind to them. */
+  kind: "did" | "happened";
+}
+
+/** The week's good things (Muse Spark), kept as the synced setting `week:<monday>`. */
+export interface WeekSummary {
+  /** The week's first day, a Saturday (YYYY-MM-DD, local). */
+  week: IsoDate;
+  headline: string;
+  goodThings: GoodThing[];
+  /** One warm closing line. */
+  line: string;
+  /** The comics it was written from, to tell when it is out of date. */
+  dayIds: string[];
+  mode: ModelMode;
+  writtenAt: string;
+}
+
+/** POST /api/week */
+export interface WeekRequest {
+  week: IsoDate;
+  days: { id: string; date: IsoDate; title: string; text: string }[];
+}
+export interface WeekResponse {
+  mode: ModelMode;
+  headline: string;
+  goodThings: GoodThing[];
+  line: string;
 }
 
 /** A month's issue: the days bound into it, in date order. */
@@ -483,6 +543,8 @@ export interface ScriptRequest {
   cast?: CastBrief[];
   /** Defaults to DEFAULT_STORY_MODE. */
   storyMode?: StoryMode;
+  /** The diary the entry is for (03.2-05), by name; missing for the daily diary. */
+  diary?: string;
 }
 export interface ScriptResponse {
   mode: ModelMode;

@@ -6,6 +6,7 @@ import { drawOutfitSheet, matchPeople, writeOutfit } from "./outfit";
 import { findPeople } from "./photo";
 import { writeScript } from "./script";
 import { transcribe } from "./transcribe";
+import { writeWeekSummary } from "./week";
 
 /**
  * The Meta Model API implementation. Methods are connected one plan at a time;
@@ -14,7 +15,7 @@ import { transcribe } from "./transcribe";
  */
 export const metaModels: ComicModels = {
   mode: "meta",
-  sources: { transcribe: "meta", writeScript: "meta", drawReferenceSheet: "meta", drawPanel: "meta", checkConsistency: "meta", outfit: "meta" },
+  sources: { transcribe: "meta", writeScript: "meta", drawReferenceSheet: "meta", drawPanel: "meta", checkConsistency: "meta", outfit: "meta", week: "meta" },
   transcribe,
   writeScript,
   drawReferenceSheet,
@@ -25,4 +26,5 @@ export const metaModels: ComicModels = {
   writeOutfit,
   drawOutfitSheet,
   matchPeople,
+  writeWeek: writeWeekSummary,
 };

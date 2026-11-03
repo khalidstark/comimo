@@ -41,7 +41,7 @@ import { sessionAccount, type SessionAccount } from "@/lib/server/session";
  * `wardrobe`: a new outfit for a character (a SAM call with a photo, one text and one image call).
  * `outfit`: today's clothes from the day's photos (a SAM call per photo, one vision call, an image call per person dressed).
  */
-export type GuardAction = "transcribe" | "script" | "panel" | "character" | "sprite" | "photo" | "cover" | "caption" | "wardrobe" | "outfit";
+export type GuardAction = "transcribe" | "script" | "panel" | "character" | "sprite" | "photo" | "cover" | "caption" | "wardrobe" | "outfit" | "week";
 
 /** Where a request's money goes in the cost records, unless the model code names a step (face check, redraws). */
 const COST_STEP: Record<GuardAction, CostStep> = {
@@ -55,6 +55,7 @@ const COST_STEP: Record<GuardAction, CostStep> = {
   caption: "caption",
   wardrobe: "wardrobe",
   outfit: "outfit",
+  week: "week",
 };
 
 /**
@@ -143,6 +144,8 @@ function limits() {
       wardrobe: comics * 2,
       // Today's clothes from photos: once per comic, plus a retry.
       outfit: comics * 2,
+      // The week's good things (one text call): written once a week, again when new comics come.
+      week: comics,
     } satisfies Record<GuardAction, number>,
     // Reference-sheet uploads: a few per comic (one per character), more only on stale tokens.
     uploadsPerHour: comics * 4,

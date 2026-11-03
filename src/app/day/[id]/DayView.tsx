@@ -8,6 +8,7 @@ import type { FacesSummary, PanelView } from "@/components/comic/view";
 import { AlbumPanel } from "@/components/AlbumPanel";
 import { AlbumQr } from "@/components/album/AlbumQr";
 import { CheckInCard } from "@/components/CheckInCard";
+import { DiaryTag } from "@/components/diary/DiaryTag";
 import { EmptyState } from "@/components/EmptyState";
 import { NewPeopleCard } from "@/components/NewPeopleCard";
 import { PAGE_TURN } from "@/components/PageTurn";
@@ -65,6 +66,7 @@ export function DayView({ day, panels, faces, layouts, previous, next }: DayView
         <p className={styles.date}>
           <time dateTime={day.date}>{date}</time>
         </p>
+        {day.sample ? null : <DiaryTag diaryId={day.diaryId} />}
         <h1 dir="auto">{crisis ? "Your day" : day.title}</h1>
         {crisis ? (
           <p className="page-head__lede">Comimo didn&apos;t turn this note into a comic.</p>

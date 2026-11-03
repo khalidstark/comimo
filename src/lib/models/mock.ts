@@ -3,7 +3,7 @@ import { starterCastById } from "@/fixtures/cast";
 import { sampleDays, sampleNarration } from "@/fixtures/days";
 import { localPanels } from "@/lib/layout/comicPages";
 import { normalizeStory } from "@/lib/layout/pickLayout";
-import { DEFAULT_STORY_MODE, type CastBrief, type ComicPage, type ComicScript, type Day, type PanelFrame, type ScriptPanel, type Transcript } from "@/lib/types";
+import { DEFAULT_STORY_MODE, type GoodThing, type WeekRequest, type CastBrief, type ComicPage, type ComicScript, type Day, type PanelFrame, type ScriptPanel, type Transcript } from "@/lib/types";
 import type { AudioInput, CharacterReference, ComicModels, ConsistencyResult, ModelImage, OutfitText, PanelOptions, PersonMatch, PhotoPerson, ScriptOptions, SheetSubject } from "./index";
 import { applyStoryMode } from "./storyMode";
 import { NEW_PERSON_IDS, isNewPersonId, remapPanel, resolveNewPeople } from "@/lib/newPeople";
@@ -381,9 +381,26 @@ async function matchPeople(crops: ModelImage[], references: CharacterReference[]
   return [{ crop: 0, characterId: self.characterId, confidence: 0.9, ...mockOutfit(self.look, MOCK_PHOTO_CLOTHES) }];
 }
 
+/* ---------- The week ---------- */
+
+/** Practice mode: one good thing per comic, from its title. */
+async function writeWeek(week: WeekRequest): Promise<{ headline: string; goodThings: GoodThing[]; line: string }> {
+  await wait(DELAY_MS.check);
+  const goodThings: GoodThing[] = week.days.slice(0, 6).map((day, i) => ({
+    text: i % 2 === 0 ? `You turned “${day.title}” into a comic worth keeping.` : `Something good found you in “${day.title}”.`,
+    dayId: day.id,
+    kind: i % 2 === 0 ? "did" : "happened",
+  }));
+  return {
+    headline: week.days.length > 1 ? `${week.days.length} days worth remembering` : "A day worth remembering",
+    goodThings,
+    line: "Practice mode wrote this from your titles; the real Muse Spark reads your own words.",
+  };
+}
+
 export const mockModels: ComicModels = {
   mode: "mock",
-  sources: { transcribe: "mock", writeScript: "mock", drawReferenceSheet: "mock", drawPanel: "mock", checkConsistency: "mock", outfit: "mock" },
+  sources: { transcribe: "mock", writeScript: "mock", drawReferenceSheet: "mock", drawPanel: "mock", checkConsistency: "mock", outfit: "mock", week: "mock" },
   transcribe,
   writeScript,
   drawReferenceSheet,
@@ -394,4 +411,5 @@ export const mockModels: ComicModels = {
   writeOutfit,
   drawOutfitSheet,
   matchPeople,
+  writeWeek,
 };

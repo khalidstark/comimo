@@ -1,0 +1,409 @@
+.view {
+  --cover: var(--accent);
+  display: grid;
+  gap: var(--space-l);
+  padding-block: var(--space-m) var(--space-3xl);
+}
+
+.view[data-color="sun"] {
+  --cover: #ffc738;
+}
+.view[data-color="teal"] {
+  --cover: #0f9e8e;
+}
+.view[data-color="ink"] {
+  --cover: #2a3366;
+}
+.view[data-color="lilac"] {
+  --cover: #b9a4f2;
+}
+.view[data-color="grass"] {
+  --cover: #47b26b;
+}
+
+.loading {
+  padding-block: var(--space-2xl);
+  color: var(--ink-soft);
+  font-family: var(--font-lettering-stack);
+  font-weight: 600;
+}
+
+/* ---------- Tabs: every diary, as index-card tabs ---------- */
+.tabs {
+  margin-inline: calc(var(--page-pad) * -1);
+  padding-inline: var(--page-pad);
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+}
+
+.tabList {
+  display: flex;
+  gap: var(--space-2xs);
+  margin: 0;
+  padding: var(--space-2xs) 0 var(--space-3xs);
+  list-style: none;
+  inline-size: max-content;
+}
+
+.tab {
+  --tab: var(--accent);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4em;
+  min-block-size: 2.75rem;
+  padding: 0.3em 0.9em 0.3em 0.5em;
+  border: var(--panel-border-thin) solid var(--line);
+  border-radius: 10px 10px 4px 4px;
+  background: var(--surface);
+  color: var(--ink);
+  font-family: var(--font-display-stack);
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: translate 220ms var(--ease-pop), background 220ms ease;
+}
+
+.tab[data-color="sun"] {
+  --tab: #ffc738;
+}
+.tab[data-color="teal"] {
+  --tab: #0f9e8e;
+}
+.tab[data-color="ink"] {
+  --tab: #2a3366;
+}
+.tab[data-color="lilac"] {
+  --tab: #b9a4f2;
+}
+.tab[data-color="grass"] {
+  --tab: #47b26b;
+}
+
+.tab:hover,
+.tab:focus-visible {
+  translate: 0 -3px;
+}
+
+.tab[aria-current="page"] {
+  background: color-mix(in srgb, var(--tab) 45%, var(--surface));
+  box-shadow: 3px 3px 0 var(--shadow);
+}
+
+.tabSticker {
+  inline-size: 1.4rem;
+  block-size: 1.4rem;
+}
+
+.tabNew {
+  border-style: dashed;
+  color: var(--accent-text);
+}
+
+/* ---------- Head: the open diary ---------- */
+.head {
+  display: grid;
+  gap: var(--space-l);
+  align-items: center;
+  padding: var(--space-m);
+  border: var(--panel-border) solid var(--line);
+  border-radius: var(--radius-panel);
+  background:
+    linear-gradient(115deg, color-mix(in srgb, var(--cover) 30%, var(--surface)) 0 40%, var(--surface) 40%),
+    var(--surface);
+  box-shadow: var(--shadow-x, 5px) 6px 0 var(--shadow);
+}
+
+@media (min-width: 44rem) {
+  .head {
+    grid-template-columns: 12rem 1fr;
+    padding: var(--space-l) var(--space-xl);
+  }
+}
+
+.headCover {
+  justify-self: center;
+  inline-size: min(11rem, 55vw);
+  padding-inline-end: 8px;
+  perspective: 900px;
+}
+
+.headText {
+  display: grid;
+  gap: var(--space-2xs);
+  justify-items: start;
+}
+
+.kicker {
+  padding: 0.1em 0.6em 0.15em;
+  background: var(--highlight);
+  color: var(--on-highlight);
+  border: var(--panel-border-thin) solid #1b2148;
+  font-family: var(--font-lettering-stack);
+  font-weight: 600;
+  rotate: -2deg;
+}
+
+.title {
+  font-size: var(--step-4);
+  line-height: 0.95;
+  overflow-wrap: anywhere;
+}
+
+.lede {
+  color: var(--ink-soft);
+  max-inline-size: 46ch;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+  align-items: center;
+}
+
+/* ---------- Edit and delete ---------- */
+.edit,
+.confirm {
+  display: grid;
+  gap: var(--space-s);
+  max-inline-size: 40rem;
+  padding: var(--space-m);
+  border: var(--panel-border-thin) dashed var(--line);
+  border-radius: var(--radius-panel);
+  background: var(--surface);
+}
+
+.field {
+  display: grid;
+  gap: var(--space-3xs);
+}
+
+.fieldLabel {
+  font-weight: 700;
+}
+
+.field input {
+  inline-size: 100%;
+  min-block-size: 3rem;
+  padding: var(--space-2xs) var(--space-xs);
+  border: var(--panel-border-thin) solid var(--line);
+  border-radius: 10px;
+  background: var(--paper);
+  font: inherit;
+  font-family: var(--font-lettering-stack);
+  font-size: var(--step-1);
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2xs);
+}
+
+.swatch {
+  --swatch: var(--accent);
+  position: relative;
+  inline-size: 2.75rem;
+  block-size: 2.75rem;
+  border: var(--panel-border-thin) solid #1b2148;
+  border-radius: 6px 10px 10px 6px;
+  background: var(--swatch);
+  cursor: pointer;
+}
+
+.swatch[data-color="sun"] {
+  --swatch: #ffc738;
+}
+.swatch[data-color="teal"] {
+  --swatch: #0f9e8e;
+}
+.swatch[data-color="ink"] {
+  --swatch: #2a3366;
+}
+.swatch[data-color="lilac"] {
+  --swatch: #b9a4f2;
+}
+.swatch[data-color="grass"] {
+  --swatch: #47b26b;
+}
+
+.swatch input,
+.stickerPick input {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.swatch:has(input:checked),
+.stickerPick:has(input:checked) {
+  outline: 3px solid var(--ink);
+  outline-offset: 3px;
+}
+
+.swatch:has(input:focus-visible),
+.stickerPick:has(input:focus-visible) {
+  outline: 3px solid var(--accent);
+  outline-offset: 3px;
+}
+
+.stickerPick {
+  position: relative;
+  display: grid;
+  place-items: center;
+  inline-size: 2.75rem;
+  block-size: 2.75rem;
+  border: var(--panel-border-thin) solid var(--line);
+  border-radius: 10px;
+  background: var(--paper);
+  cursor: pointer;
+}
+
+.stickerIcon {
+  inline-size: 1.9rem;
+  block-size: 1.9rem;
+}
+
+.error {
+  color: var(--accent-text);
+  font-weight: 600;
+}
+
+.danger {
+  min-block-size: 2.75rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent-text);
+  font-family: var(--font-display-stack);
+  font-weight: 700;
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 0.2em;
+  cursor: pointer;
+}
+
+/* ---------- The diary's comics: first panels pinned in a strip ---------- */
+.strip {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 15rem), 1fr));
+  gap: var(--space-xl) var(--space-l);
+  margin: 0;
+  padding: var(--space-s) 0;
+  list-style: none;
+}
+
+.card {
+  rotate: var(--tilt, 0deg);
+  animation: deal 520ms var(--ease-pop) both;
+  animation-delay: calc(min(var(--i, 0), 8) * 70ms);
+}
+
+@keyframes deal {
+  from {
+    opacity: 0;
+    transform: translateY(20px) rotate(4deg);
+  }
+}
+
+.cardLink {
+  display: grid;
+  gap: var(--space-3xs);
+  padding: var(--space-xs) var(--space-xs) var(--space-s);
+  background: var(--surface);
+  border: var(--panel-border-thin) solid var(--line);
+  color: var(--ink);
+  text-decoration: none;
+  box-shadow: 4px 5px 0 var(--shadow);
+  transition: translate 260ms var(--ease-pop), rotate 260ms ease, box-shadow 260ms ease;
+}
+
+.cardLink:hover,
+.cardLink:focus-visible {
+  translate: 0 -6px;
+  rotate: calc(var(--tilt, 0deg) * -1);
+  box-shadow: 7px 9px 0 var(--shadow);
+}
+
+.cardLink:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 3px;
+}
+
+.cardArt {
+  position: relative;
+  display: block;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  border: var(--panel-border-thin) solid var(--line);
+  background: var(--paper-deep);
+}
+
+.cardArt img {
+  display: block;
+  inline-size: 100%;
+  block-size: 100%;
+  object-fit: cover;
+}
+
+.cardBlank {
+  display: block;
+  block-size: 100%;
+  background: repeating-linear-gradient(-45deg, transparent 0 9px, color-mix(in srgb, var(--ink) 8%, transparent) 9px 10px);
+}
+
+.cardMood {
+  position: absolute;
+  inset-block-start: 6px;
+  inset-inline-end: 6px;
+  inline-size: 2.4rem;
+  padding: 3px;
+  border: var(--panel-border-thin) solid #1b2148;
+  border-radius: 50%;
+  background: #fafbfc;
+}
+
+.cardMoodIcon {
+  display: block;
+  inline-size: 100%;
+}
+
+.cardDate {
+  color: var(--accent-text);
+  font-family: var(--font-lettering-stack);
+  font-size: var(--step--1);
+  font-weight: 600;
+}
+
+.cardTitle {
+  font-family: var(--font-display-stack);
+  font-size: var(--step-1);
+  font-weight: 700;
+  line-height: 1.15;
+}
+
+.empty {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-s);
+  padding: var(--space-xl) var(--space-m);
+  border: var(--panel-border-thin) dashed color-mix(in srgb, var(--ink) 45%, transparent);
+  border-radius: var(--radius-sticker);
+  color: var(--ink-soft);
+  text-align: center;
+}
+
+.emptyArt {
+  inline-size: min(100%, 18rem);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card {
+    animation: none;
+  }
+  .cardLink,
+  .tab {
+    transition: none;
+  }
+}

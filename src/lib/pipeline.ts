@@ -128,6 +128,8 @@ export interface PipelineInput {
    * day's photo album. Kept in memory only.
    */
   photos?: File[];
+  /** The diary the comic goes in (03.2-05); missing for the daily diary. */
+  diary?: { id: string; name: string };
 }
 
 /** Photos of the day read for today's outfit, and the size they are sent at. */
@@ -616,6 +618,7 @@ export class ComicPipeline {
       transcript: transcript.text,
       ...(cast.length > 0 ? { cast } : {}),
       storyMode: this.input.storyMode,
+      ...(this.input.diary ? { diary: this.input.diary.name } : {}),
     };
     const { script } = await this.call<ScriptResponse>("write", "/api/script", {
       method: "POST",
@@ -1017,6 +1020,7 @@ export class ComicPipeline {
     // Today's clothes (03.2-04) and what the whole comic cost, retries and redraws included.
     if (!crisis && this.dayOutfits.length > 0) day.outfits = this.dayOutfits;
     day.cost = this.comicCost();
+    if (this.input.diary) day.diaryId = this.input.diary.id;
 
     // Read it back: only route to the day once it is really on the device.
     const saved = (await saveDay(day)) && (await getDay(day.id));

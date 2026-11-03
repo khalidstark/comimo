@@ -106,6 +106,7 @@ const STEP_WORDS: Record<CostStep, string> = {
   wardrobe: "wardrobe",
   cover: "cover",
   caption: "captions",
+  week: "week of good things",
 };
 
 /** "Made for about $0.07 in model calls: listening $0.003, script $0.012, …" */

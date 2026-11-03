@@ -5,8 +5,8 @@ import { artAt } from "@/art/manifest";
 import { getImage } from "@/lib/store";
 import type { ImageRef } from "@/lib/types";
 
-/** An object URL for a sheet: a Blob from the store or a manifest file. */
-export function useSheetUrl(ref: ImageRef | null): string | null {
+/** An object URL for an image: a Blob from the store or a manifest file (sheets, panels, portraits). */
+export function useImageUrl(ref: ImageRef | null): string | null {
   const [blobUrl, setBlobUrl] = useState<{ id: string; url: string } | null>(null);
   const blobId = ref?.kind === "blob" ? ref.id : null;
 
