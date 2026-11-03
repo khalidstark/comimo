@@ -130,6 +130,8 @@ export interface PipelineInput {
   photos?: File[];
   /** The diary the comic goes in (03.2-05); missing for the daily diary. */
   diary?: { id: string; name: string };
+  /** The day the comic is about (YYYY-MM-DD), so a missed day can be caught up; today when missing. */
+  date?: string;
 }
 
 /** Photos of the day read for today's outfit, and the size they are sent at. */
@@ -158,6 +160,11 @@ function isAbort(error: unknown): boolean {
 }
 
 /** Today in the speaker's own time zone. */
+/** Yesterday's date on this device, for catching up a missed day. */
+export function yesterdayIsoDate(now = new Date()): string {
+  return localIsoDate(new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1));
+}
+
 export function localIsoDate(date = new Date()): string {
   const y = date.getFullYear();
   const m = String(date.getMonth() + 1).padStart(2, "0");
@@ -316,6 +323,7 @@ export class ComicPipeline {
 
   constructor(private readonly input: PipelineInput) {
     this.typed = !input.audio && Boolean(input.text?.trim());
+    if (input.date) this.state = { ...this.state, date: input.date };
   }
 
   subscribe = (listener: () => void): (() => void) => {

@@ -7,6 +7,7 @@ import { ART_STYLE_IDS, ART_STYLES, DEFAULT_ART_STYLE, artStyleOf, type ArtStyle
 import { DEFAULT_STORY_MODE, STORY_MODES, isStoryMode, type Diary, type LanguageHint, type StoryMode } from "@/lib/types";
 import { DayPhotos } from "./DayPhotos";
 import { DiaryPick } from "./DiaryPick";
+import { yesterdayIsoDate } from "@/lib/pipeline";
 import { MakingComic } from "./MakingComic";
 import styles from "./record.module.css";
 import { MAX_RECORDING_MS, useRecorder, type Recorder, type RecorderProblem } from "./useRecorder";
@@ -148,6 +149,8 @@ export function RecordPanel() {
   const [photos, setPhotos] = useState<File[]>([]);
   /** The diary the comic goes in; null for the daily one. */
   const [diary, setDiary] = useState<Diary | null>(null);
+  /** Which day it's about: today, or yesterday to catch up a missed one. */
+  const [day, setDay] = useState<"today" | "yesterday">("today");
   const [making, setMaking] = useState<{
     audio: Blob | null;
     text?: string;
@@ -156,8 +159,10 @@ export function RecordPanel() {
     storyMode: StoryMode;
     photos: File[];
     diary: Diary | null;
+    date?: string;
   } | null>(null);
   const legendId = useId();
+  const dayLegendId = useId();
   const styleLegendId = useId();
   const modeLegendId = useId();
   const typedId = useId();
@@ -179,9 +184,25 @@ export function RecordPanel() {
   const typedText = typed.trim();
   const typedReady = typedText.length >= TYPED_MIN;
 
+  /** The date to send: nothing for today (the pipeline dates it as it starts). */
+  const date = day === "yesterday" ? yesterdayIsoDate() : undefined;
+
   /** Art style and story mode, picked once the day is ready to become a comic. */
   const options = (
     <>
+      <fieldset className={styles.languages} aria-labelledby={dayLegendId}>
+        <legend id={dayLegendId} className={styles.legend}>
+          Which day
+        </legend>
+        <div className={styles.chips}>
+          {(["today", "yesterday"] as const).map((value) => (
+            <label key={value} className={styles.chip}>
+              <input type="radio" name="which-day" value={value} checked={day === value} onChange={() => setDay(value)} />
+              <span>{value === "today" ? "Today" : "Yesterday"}</span>
+            </label>
+          ))}
+        </div>
+      </fieldset>
       <fieldset className={styles.languages} aria-labelledby={styleLegendId}>
         <legend id={styleLegendId} className={styles.legend}>
           Draw it as
@@ -266,7 +287,7 @@ export function RecordPanel() {
               type="button"
               className={`btn btn--accent ${styles.make}`}
               disabled={!typedReady}
-              onClick={() => setMaking({ audio: null, text: typedText, language, style, storyMode, photos, diary })}
+              onClick={() => setMaking({ audio: null, text: typedText, language, style, storyMode, photos, diary, date })}
             >
               Make my comic
             </button>
@@ -284,6 +305,7 @@ export function RecordPanel() {
             storyMode={making.storyMode}
             photos={making.photos}
             diary={making.diary}
+            date={making.date}
             onClose={() => setMaking(null)}
           />
         ) : null}
@@ -331,7 +353,7 @@ export function RecordPanel() {
             <button
               type="button"
               className={`btn btn--accent ${styles.make}`}
-              onClick={() => setMaking({ audio: take.blob, language, style, storyMode, photos, diary })}
+              onClick={() => setMaking({ audio: take.blob, language, style, storyMode, photos, diary, date })}
             >
               Make my comic
             </button>
@@ -419,6 +441,7 @@ export function RecordPanel() {
           storyMode={making.storyMode}
           photos={making.photos}
           diary={making.diary}
+          date={making.date}
           onClose={() => setMaking(null)}
         />
       ) : null}

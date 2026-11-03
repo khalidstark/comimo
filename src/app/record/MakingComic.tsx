@@ -171,6 +171,8 @@ interface MakingComicProps {
   photos?: File[];
   /** The diary the comic goes in; null or missing for the daily one. */
   diary?: Diary | null;
+  /** The day it's about (YYYY-MM-DD); today when missing. */
+  date?: string;
   /** Called after the screen is cancelled and closed. */
   onClose: () => void;
 }
@@ -180,7 +182,7 @@ interface MakingComicProps {
  * finishes. Panels are pencilled from the script, inked when drawn, and a
  * panel whose face was fixed flips from before to after.
  */
-export function MakingComic({ audio, text, language, style, storyMode, photos, diary, onClose }: MakingComicProps) {
+export function MakingComic({ audio, text, language, style, storyMode, photos, diary, date, onClose }: MakingComicProps) {
   const [pipeline] = useState(
     () =>
       new ComicPipeline({
@@ -191,6 +193,7 @@ export function MakingComic({ audio, text, language, style, storyMode, photos, d
         storyMode,
         ...(photos?.length ? { photos } : {}),
         ...(diary ? { diary: { id: diary.id, name: diary.name } } : {}),
+        ...(date ? { date } : {}),
       }),
   );
   const state = useSyncExternalStore(pipeline.subscribe, pipeline.getSnapshot, pipeline.getSnapshot);
