@@ -12,7 +12,7 @@ import { WeekStrip } from "@/components/home/WeekStrip";
 import { YourBook } from "@/components/home/YourBook";
 import { PAGE_TURN, PageTurn } from "@/components/PageTurn";
 import { RecordStamp } from "@/components/RecordStamp";
-import { sampleCheckInQuestions, sampleDays } from "@/fixtures/days";
+import { sampleCheckInQuestions, sampleDays, sampleWeek } from "@/fixtures/days";
 import styles from "./page.module.css";
 
 const STEPS = [
@@ -72,6 +72,7 @@ export default function Home() {
             </div>
 
             <WeekStrip
+              sample={sampleWeek()}
               classes={{
                 week: styles.week,
                 weekTitle: styles.weekTitle,
