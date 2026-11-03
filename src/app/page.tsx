@@ -7,6 +7,7 @@ import { Magnetic } from "@/components/home/Magnetic";
 import { MagazineCover } from "@/components/MagazineCover";
 import { MoodCalendar } from "@/components/MoodCalendar";
 import { StartNudge } from "@/components/account/StartNudge";
+import { UnderTheHood } from "@/components/home/UnderTheHood";
 import { WeekStrip } from "@/components/home/WeekStrip";
 import { YourBook } from "@/components/home/YourBook";
 import { PAGE_TURN, PageTurn } from "@/components/PageTurn";
@@ -117,6 +118,9 @@ export default function Home() {
           </ol>
         </section>
 
+        {/* ---------- Under the hood: the four Meta models and a real receipt ---------- */}
+        <UnderTheHood />
+
         {/* ---------- The cast ---------- */}
         <section className={`page section ${styles.cast}`} aria-labelledby="cast-title">
           <div className={styles.castHead}>
@@ -184,7 +188,12 @@ export default function Home() {
         </section>
 
         <footer className={`page ${styles.footer}`}>
-          <p>Your account keeps your place, and your comics follow it to every device.</p>
+          <p>
+            Your account keeps your place, and your comics follow it to every device.{" "}
+            <Link href="/privacy" className="link">
+              Where your words go
+            </Link>
+          </p>
         </footer>
       </main>
     </PageTurn>
