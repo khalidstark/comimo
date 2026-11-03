@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Nav } from "@/components/Nav";
 import { MoveComics } from "@/components/account/MoveComics";
+import { InkTransition } from "@/components/motion/InkTransition";
 import { fontVariables } from "@/lib/fonts";
 import "./globals.css";
 
@@ -43,6 +44,7 @@ export default function RootLayout({
         <Nav />
         {children}
         <MoveComics />
+        <InkTransition />
       </body>
     </html>
   );

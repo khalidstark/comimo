@@ -489,15 +489,19 @@ button.link:focus-visible {
   line-height: 1.45;
 }
 
-/* ---------- Page turn (route transition) ----------
-   Navigation links carry the "page-turn" type. The old page slides away
-   toward the inline-start like a turned leaf; the new page is wiped in
-   panel-style from the inline-end with a hard ink edge. */
+/* ---------- Route transitions ----------
+   In-app links now leave through the ink overlay (src/components/motion/
+   InkTransition.tsx): a generated ink splash covers the page from the click
+   point, the route changes under it, and the ink lifts off the new page.
+   Links still carry the "page-turn" transition type and pages still sit in
+   <PageTurn>, but that path is retired to a no-op: anything that still starts
+   a view transition (a programmatic push, a same-page link) swaps at once,
+   and back and forward stay instant. */
 ::view-transition {
   pointer-events: none;
 }
 
-/* The header and tab bar stay put while the page turns under them. */
+/* The header and tab bar stay put if a view transition does run. */
 ::view-transition-group(site-header),
 ::view-transition-group(site-nav) {
   animation: none;
@@ -514,58 +518,39 @@ button.link:focus-visible {
   animation: none;
 }
 
-::view-transition-old(.page-turn) {
-  animation: page-leave 420ms var(--ease-ink) both;
-  transform-origin: 0% 50%;
-}
-
+::view-transition-old(.page-turn),
 ::view-transition-new(.page-turn) {
-  animation: page-wipe 560ms var(--ease-ink) both;
+  animation: none;
 }
 
-@keyframes page-leave {
-  to {
-    translate: -14% 0;
-    rotate: y -18deg;
-    scale: 0.94;
-    filter: brightness(0.82);
-  }
+/* React still starts a view transition for the route change under the ink.
+   While the ink covers the page, that transition must not draw anything over
+   it (the named header and tab bar groups would sit on top): no old snapshot,
+   no animation, so it ends the moment the new page is in. */
+html.inking::view-transition-group(*),
+html.inking::view-transition-new(*) {
+  animation: none;
 }
 
-@keyframes page-wipe {
-  from {
-    clip-path: polygon(100% 0, 100% 0, 100% 100%, 100% 100%);
-  }
-  to {
-    clip-path: polygon(-12% 0, 100% 0, 100% 100%, 0% 100%);
-  }
+html.inking::view-transition-old(*),
+html.inking::view-transition-group(site-header),
+html.inking::view-transition-group(site-nav) {
+  display: none;
 }
 
-:root[dir="rtl"]::view-transition-new(.page-turn) {
-  animation-name: page-wipe-rtl;
+/* The ink overlay: above everything, and it only takes clicks while it covers. */
+.ink-transition {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483000;
+  inline-size: 100vw;
+  block-size: 100vh;
+  pointer-events: none;
 }
 
-:root[dir="rtl"]::view-transition-old(.page-turn) {
-  animation-name: page-leave-rtl;
-  transform-origin: 100% 50%;
-}
-
-@keyframes page-leave-rtl {
-  to {
-    translate: 14% 0;
-    rotate: y 18deg;
-    scale: 0.94;
-    filter: brightness(0.82);
-  }
-}
-
-@keyframes page-wipe-rtl {
-  from {
-    clip-path: polygon(0 0, 0 0, 0 100%, 0 100%);
-  }
-  to {
-    clip-path: polygon(0 0, 112% 0, 100% 100%, 0 100%);
-  }
+.ink-transition[data-blocking] {
+  pointer-events: auto;
+  cursor: progress;
 }
 
 /* ---------- Reduced motion ---------- */
