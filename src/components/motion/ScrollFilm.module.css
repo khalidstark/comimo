@@ -1,0 +1,168 @@
+/* ==========================================================================
+   ScrollFilm: a sticky full-screen canvas in a tall section, with chapters
+   laid over it. The still layout (reduced motion, no script) is the default;
+   the live layout is gated on the same media query the script checks.
+   ========================================================================== */
+.film {
+  /* Where the stage sticks, and how tall it is: under the sticky top bar from
+     tablets up; above the fixed tab bar on phones. */
+  --film-top: 0px;
+  --stage-h: calc(100dvh - var(--tabbar-h) - env(safe-area-inset-bottom));
+  position: relative;
+  isolation: isolate;
+}
+
+@media (min-width: 48rem) {
+  .film {
+    --film-top: var(--topbar-h);
+    --stage-h: calc(100dvh - var(--topbar-h));
+  }
+}
+
+.stage {
+  position: relative;
+  block-size: min(var(--stage-h), 56rem);
+  overflow: hidden;
+  background: var(--night-deep);
+}
+
+/* The poster and the canvas share one box, so the swap never shifts anything. */
+.poster,
+.canvas {
+  position: absolute;
+  inset: 0;
+  inline-size: 100%;
+  block-size: 100%;
+}
+
+.poster {
+  max-inline-size: none;
+  object-fit: cover;
+  object-position: var(--focus, 50% 50%);
+}
+
+.canvas {
+  display: none;
+}
+
+/* Night scrim behind the opening words: from the inline-start on wide
+   screens, from the bottom on phones. It lifts as the room whites out. */
+.scrim {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    0deg,
+    color-mix(in srgb, var(--night-deep) 92%, transparent) 0%,
+    color-mix(in srgb, var(--night-deep) 78%, transparent) 46%,
+    transparent 78%
+  );
+}
+
+@media (min-width: 48rem) {
+  .scrim {
+    background:
+      linear-gradient(
+        90deg,
+        color-mix(in srgb, var(--night-deep) 86%, transparent) 0%,
+        color-mix(in srgb, var(--night-deep) 62%, transparent) 30%,
+        transparent 60%
+      ),
+      linear-gradient(0deg, color-mix(in srgb, var(--night-deep) 55%, transparent) 0%, transparent 38%);
+  }
+
+  :global(:root[dir="rtl"]) .scrim {
+    background:
+      linear-gradient(
+        -90deg,
+        color-mix(in srgb, var(--night-deep) 86%, transparent) 0%,
+        color-mix(in srgb, var(--night-deep) 62%, transparent) 30%,
+        transparent 60%
+      ),
+      linear-gradient(0deg, color-mix(in srgb, var(--night-deep) 55%, transparent) 0%, transparent 38%);
+  }
+}
+
+/* Still layout: the first chapter sits on the first frame, the others follow
+   on the paper, then the last frame closes the story. */
+.chapters {
+  position: relative;
+}
+
+.chapters > :first-child {
+  position: absolute;
+  inset-inline: 0;
+  inset-block-end: 100%;
+  block-size: min(var(--stage-h), 56rem);
+}
+
+.endStill {
+  display: block;
+  inline-size: calc(100% - 2 * var(--page-pad));
+  max-inline-size: 64rem;
+  block-size: auto;
+  margin: var(--space-l) auto 0;
+  border-radius: var(--radius-card-soft);
+}
+
+/* ---------- Live: the film plays as you scroll ---------- */
+@media (prefers-reduced-motion: no-preference) and (scripting: enabled) {
+  .film {
+    block-size: calc(var(--film-length, 2.6) * 100svh);
+  }
+
+  .stage,
+  .chapters {
+    position: sticky;
+    inset-block-start: var(--film-top);
+    block-size: var(--stage-h);
+  }
+
+  .canvas {
+    display: block;
+    opacity: 0;
+  }
+
+  /* The canvas takes over from the poster once it has drawn a frame. */
+  .stage[data-drawn] .canvas {
+    opacity: 1;
+  }
+
+  .stage[data-drawn] .poster {
+    visibility: hidden;
+  }
+
+  .scrim {
+    opacity: clamp(0, calc((0.27 - var(--p, 0)) / 0.12), 1);
+  }
+
+  .chapters {
+    z-index: 1;
+    margin-block-start: calc(-1 * var(--stage-h));
+    pointer-events: none;
+  }
+
+  .chapters > *,
+  .chapters > :first-child {
+    position: absolute;
+    inset: 0;
+    block-size: auto;
+    opacity: var(--v, 0);
+    translate: 0 calc(var(--shift, 1) * 2.25rem);
+    pointer-events: none;
+  }
+
+  .chapters > [data-at="0"] {
+    --v: 1;
+    --shift: 0;
+  }
+
+  .chapters > [data-at="0"]:not([data-state]),
+  .chapters > [data-state="on"] {
+    pointer-events: auto;
+  }
+
+  .endStill {
+    display: none;
+  }
+}
