@@ -23,17 +23,15 @@
   color: var(--ink);
 }
 
+/* Wraps inside the card: three across in a narrow cast column, more on a phone's full-width card */
 .rail {
   display: grid;
-  grid-auto-flow: column;
-  grid-auto-columns: 6.25rem;
-  gap: var(--space-xs);
+  grid-template-columns: repeat(auto-fill, minmax(4.25rem, 1fr));
+  gap: var(--space-xs) var(--space-2xs);
+  min-inline-size: 0;
   margin: 0;
   padding: var(--space-3xs) var(--space-3xs) var(--space-xs);
   list-style: none;
-  overflow-x: auto;
-  overscroll-behavior-x: contain;
-  scroll-snap-type: x proximity;
 }
 
 .tile {
@@ -41,7 +39,6 @@
   gap: 2px;
   justify-items: start;
   align-content: start;
-  scroll-snap-align: start;
   min-inline-size: 0;
 }
 
@@ -89,8 +86,9 @@
 .wornTag {
   display: inline-flex;
   align-items: center;
+  max-inline-size: 100%;
   min-block-size: 2rem;
-  padding-inline: 0.5em;
+  padding-inline: 0.4em;
   background: var(--highlight);
   color: var(--on-highlight);
   border: var(--panel-border-thin) solid #1b2148;
