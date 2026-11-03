@@ -3,13 +3,16 @@
 import Link from "next/link";
 import { useEffect, useState, type CSSProperties } from "react";
 import { Art } from "@/art/Art";
-import { art } from "@/art/manifest";
+import { art, media } from "@/art/manifest";
 import { useAccount } from "@/components/account/useAccount";
 import { NewDiary } from "@/components/diary/NewDiary";
 import { Notebook } from "@/components/diary/Notebook";
 import { WeekGoodThings } from "@/components/diary/WeekGoodThings";
 import { Magnetic } from "@/components/home/Magnetic";
+import { MascotSprite } from "@/components/MascotSprite";
 import { MoodCalendar } from "@/components/MoodCalendar";
+import { LoopVideo } from "@/components/motion/LoopVideo";
+import { SmoothScroll } from "@/components/motion/SmoothScroll";
 import { PAGE_TURN } from "@/components/PageTurn";
 import { RecordStamp } from "@/components/RecordStamp";
 import { findSelf, hasOwnFace } from "@/lib/aboutYou";
@@ -75,6 +78,10 @@ function monthName(today: string): string {
  * The signed-in home: a greeting that changes with the day, today's page
  * (Record, or the comic already made), this week at a glance, the week's
  * good things, the diary shelf, the latest comics and this month's issue.
+ *
+ * The hello sits on Nour's night room, breathing behind a navy scrim, with
+ * Mimo waving by the greeting; the room tears off into the paper below. The
+ * sections after it rise in as they scroll into view (SmoothScroll).
  */
 export function HomeView() {
   const account = useAccount();
@@ -104,9 +111,15 @@ export function HomeView() {
     <main id="main" className={styles.home}>
       {/* ---------- The desk: hello, today's page, this week ---------- */}
       <section className={styles.desk} aria-labelledby="home-title">
+        <div className={styles.scene} aria-hidden="true">
+          <LoopVideo loop={media.home} className={styles.sceneVideo} />
+        </div>
         <div className={`page ${styles.deskInner}`}>
           <div className={styles.hello}>
-            <p className={styles.date}>{loaded ? formatDay(loaded.today) : " "}</p>
+            <div className={styles.helloTop}>
+              <MascotSprite className={styles.mimo} />
+              <p className={styles.date}>{loaded ? formatDay(loaded.today) : " "}</p>
+            </div>
             <h1 id="home-title" dir="auto" className={hello ? styles.greeting : `${styles.greeting} ${styles.pending}`}>
               {hello?.title ?? " "}
             </h1>
@@ -115,6 +128,7 @@ export function HomeView() {
           <div className={styles.today}>{loaded ? <TodayCard today={loaded.today} todays={todays} /> : null}</div>
           {loaded ? <ThisWeek monday={loaded.monday} today={loaded.today} comics={loaded.comics} /> : null}
         </div>
+        <div className={styles.tear} aria-hidden="true" />
       </section>
 
       {loaded ? (
@@ -132,7 +146,7 @@ export function HomeView() {
           ) : null}
 
           {/* ---------- The week's good things ---------- */}
-          <section className={`page section ${styles.goodThings}`} aria-label="This week's good things">
+          <section className={`page section ${styles.goodThings}`} aria-label="This week's good things" data-reveal>
             <WeekGoodThings
               monday={loaded.monday}
               days={weekDays(loaded.days, loaded.monday)}
@@ -142,7 +156,7 @@ export function HomeView() {
           </section>
 
           {/* ---------- The diary shelf ---------- */}
-          <section className={`page section ${shelf.book}`} aria-labelledby="shelf-title">
+          <section className={`page section ${shelf.book}`} aria-labelledby="shelf-title" data-reveal>
             <div className={shelf.shelfHead}>
               <h2 id="shelf-title" className="section__title">
                 {firstOf(name) ? (
@@ -203,7 +217,7 @@ export function HomeView() {
           {/* ---------- The latest comics ---------- */}
           {loaded.comics.length > 0 ? (
             <section className="page section" aria-labelledby="latest-title">
-              <div className={styles.sectionHead}>
+              <div className={styles.sectionHead} data-reveal>
                 <h2 id="latest-title" className="section__title">
                   Lately
                 </h2>
@@ -213,7 +227,7 @@ export function HomeView() {
                   </Link>
                 ) : null}
               </div>
-              <ul className={styles.cards}>
+              <ul className={styles.cards} data-reveal="stagger">
                 {loaded.comics.slice(0, LATEST).map((day, i) => (
                   <ComicCard key={day.id} day={day} index={i} />
                 ))}
@@ -223,6 +237,9 @@ export function HomeView() {
 
           {/* ---------- This month's issue ---------- */}
           <ThisMonth today={loaded.today} comics={loaded.comics} />
+
+          {/* Mounted once the sections exist; set up again if a sync changes which ones there are. */}
+          <SmoothScroll key={`${loaded.needsFace}-${loaded.comics.length > 0}`} />
         </>
       ) : (
         <p className={`page ${styles.opening}`} role="status">
@@ -296,13 +313,12 @@ function ThisWeek({ monday, today, comics }: { monday: string; today: string; co
         <span className={styles.weekCount}>{made === 0 ? "Nothing drawn yet" : `${capital(countWord(made))} ${made === 1 ? "comic" : "comics"}`}</span>
       </p>
       <ol className={styles.weekRow}>
-        {days.map(({ label, date, comic }, i) => {
-          const style = { "--i": i } as CSSProperties;
+        {days.map(({ label, date, comic }) => {
           const flags = { "data-today": date === today ? "" : undefined, "data-future": date > today ? "" : undefined };
           return (
             <li key={date} className={styles.weekSlot}>
               {comic ? (
-                <Link href={`/day/${comic.id}`} className={styles.weekDay} style={style} {...flags} transitionTypes={PAGE_TURN}>
+                <Link href={`/day/${comic.id}`} className={styles.weekDay} {...flags} transitionTypes={PAGE_TURN}>
                   <Art asset={art.mood[comic.mood]} alt="" className={styles.weekIcon} />
                   <span aria-hidden="true">{label}</span>
                   <span className="visually-hidden">
@@ -310,7 +326,7 @@ function ThisWeek({ monday, today, comics }: { monday: string; today: string; co
                   </span>
                 </Link>
               ) : (
-                <span className={styles.weekDay} style={style} {...flags}>
+                <span className={styles.weekDay} {...flags}>
                   <span className={styles.weekBlank} aria-hidden="true" />
                   <span aria-hidden="true">{label}</span>
                   <span className="visually-hidden">
@@ -329,7 +345,7 @@ function ThisWeek({ monday, today, comics }: { monday: string; today: string; co
 function ComicCard({ day, index }: { day: Day; index: number }) {
   const url = useImageUrl(day.panels[0]?.image ?? null);
   return (
-    <li className={styles.card} style={{ "--tilt": TILTS[index % TILTS.length], "--i": index } as CSSProperties}>
+    <li className={styles.card} style={{ "--tilt": TILTS[index % TILTS.length] } as CSSProperties}>
       <Link href={`/day/${day.id}`} className={styles.cardLink} transitionTypes={PAGE_TURN}>
         <span className={styles.cardArt}>
           {url ? (
@@ -361,8 +377,8 @@ function ThisMonth({ today, comics }: { today: string; comics: Day[] }) {
   const dates = new Set(inMonth.map((day) => day.date)).size;
 
   return (
-    <section className={`page section ${styles.month}`} aria-labelledby="month-title">
-      <Link href="/month" className={styles.issue} transitionTypes={PAGE_TURN} aria-label={`Open the ${label} issue`}>
+    <section className={`page section ${styles.month}`} aria-labelledby="month-title" data-reveal>
+      <Link href="/month" className={styles.issue} transitionTypes={PAGE_TURN} aria-label={`Open the ${label} issue`} data-parallax="6">
         <span className={styles.issueArt} aria-hidden="true">
           {url ? (
             // eslint-disable-next-line @next/next/no-img-element

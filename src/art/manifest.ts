@@ -196,6 +196,8 @@ export const media = {
   },
   /** The page transition's ink splash, keyed off its paper (alpha). */
   ink: { dir: "ink-cut", count: 11, width: 800, height: 450 },
+  /** The signed-in home's scene: Nour's night room, breathing (the room, the stars, the floating panels). */
+  home: { src: "/media/home-loop.mp4", poster: "/media/home-poster.webp", width: 1600, height: 900 },
   /** "How it works" loops on newsprint. */
   how: {
     talk: { src: "/media/how-talk-loop.mp4", poster: "/media/how-talk-poster.webp", width: 960, height: 960 },
