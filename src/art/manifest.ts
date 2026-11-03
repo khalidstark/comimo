@@ -164,3 +164,37 @@ export function artAt(path: ArtPath): ArtAsset {
   const [group, key] = path.split(".") as [keyof ArtGroups, string];
   return (art[group] as Record<string, ArtAsset>)[key];
 }
+
+/**
+ * Motion media, made once at design time from the Muse art by the pipeline in design/ (the app
+ * never calls a video model). Frame sequences live in public/media/<dir>/000.webp ...; loops are
+ * muted MP4s with their first frame as the poster.
+ */
+export const media = {
+  /** The landing film: Nour's night room whites out into a newsprint page of real panels. */
+  heroFilm: {
+    dir: "hero",
+    count: 48,
+    width: 1440,
+    height: 810,
+    alt: [
+      "Nour on her bed at night with her phone, her cat asleep beside her",
+      "A newsprint page of five comic panels from Nour's day",
+    ] as [string, string],
+  },
+  /** The page transition's ink splash, keyed off its paper (alpha). */
+  ink: { dir: "ink-cut", count: 11, width: 800, height: 450 },
+  /** "How it works" loops on newsprint. */
+  how: {
+    talk: { src: "/media/how-talk-loop.mp4", poster: "/media/how-talk-poster.webp", width: 960, height: 960 },
+    comic: { src: "/media/how-comic-loop.mp4", poster: "/media/how-comic-poster.webp", width: 960, height: 960 },
+    book: { src: "/media/how-book-loop.mp4", poster: "/media/how-book-poster.webp", width: 960, height: 960 },
+  },
+} as const;
+
+export interface LoopMedia {
+  src: string;
+  poster: string;
+  width: number;
+  height: number;
+}

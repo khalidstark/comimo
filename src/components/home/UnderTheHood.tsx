@@ -55,7 +55,7 @@ export function UnderTheHood() {
   const total = RECEIPT.reduce((sum, line) => sum + line.usd, 0);
   return (
     <section className={`page section ${styles.hood}`} aria-labelledby="hood-title">
-      <div className={styles.head}>
+      <div className={styles.head} data-reveal="stagger">
         <p className={styles.kicker}>Under the hood</p>
         <h2 id="hood-title" className="section__title">
           Four Meta models, one comic
@@ -64,7 +64,7 @@ export function UnderTheHood() {
       </div>
 
       <div className={styles.layout}>
-        <ol className={styles.strip}>
+        <ol className={styles.strip} data-reveal="stagger">
           {STEPS.map((step, i) => (
             <li key={step.title} className={styles.step} data-tone={step.tone} data-open={open === i || undefined}>
               <button type="button" className={styles.stepButton} aria-expanded={open === i} aria-controls={`hood-${i}`} onClick={() => setOpen(i)} onMouseEnter={() => setOpen(i)} onFocus={() => setOpen(i)}>
@@ -83,7 +83,7 @@ export function UnderTheHood() {
           ))}
         </ol>
 
-        <figure className={styles.receipt} aria-labelledby="receipt-title">
+        <figure className={styles.receipt} aria-labelledby="receipt-title" data-reveal>
           <figcaption id="receipt-title" className={styles.receiptTitle}>
             One real comic, itemised
           </figcaption>

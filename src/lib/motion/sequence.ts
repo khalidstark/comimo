@@ -8,18 +8,18 @@ export interface Sequence {
   ready(i: number): boolean;
   /** Load the frames nearest to i next (the reader jumped ahead). */
   focus(i: number): void;
-  /** The frame's edge colour (its paper or night), sampled once it decoded, for letterboxing. */
-  edge(i: number): string | undefined;
   /** Stops loading; frames already decoded stay usable. */
   stop(): void;
 }
 
 export interface DrawView {
-  /** 0 = cover the canvas (crop), 1 = contain (whole frame, edges filled with its edge colour). */
+  /** 0 = cover the canvas (crop), 1 = contain (the whole frame, on `fill`). */
   fit?: number;
-  /** Focal point (0..1 of the frame) kept in view when cover crops. */
+  /** Where the frame sits when it overflows or underfills, 0..1 like object-position. */
   x?: number;
   y?: number;
+  /** "r g b" channels of the colour around a contained frame; its edges feather into it. */
+  fill?: string;
 }
 
 /** `/media/<dir>/000.webp` ... for `count` frames. */
@@ -53,7 +53,6 @@ export function loadOrder(count: number, start = 0): number[] {
 export function loadSequence(urls: string[], { start = 0, parallel = 4 } = {}): Sequence {
   const images: HTMLImageElement[] = [];
   const done = urls.map(() => false);
-  const edges: (string | undefined)[] = urls.map(() => undefined);
   let queue = loadOrder(urls.length, start);
   let running = 0;
   let stopped = false;
@@ -72,7 +71,6 @@ export function loadSequence(urls: string[], { start = 0, parallel = 4 } = {}): 
         .then(() => {
           if (stopped) return;
           done[i] = true;
-          edges[i] = sampleEdge(img);
         })
         .catch(() => {
           // A frame that fails stays undrawn; its neighbours stand in for it.
@@ -93,7 +91,6 @@ export function loadSequence(urls: string[], { start = 0, parallel = 4 } = {}): 
       queue = loadOrder(urls.length, i).filter((k) => !images[k]);
       pump();
     },
-    edge: (i) => edges[i],
     stop() {
       stopped = true;
       queue = [];
@@ -112,8 +109,8 @@ function nearestReady(seq: Sequence, i: number, count: number): number {
 
 /**
  * Draws position `progress` (0..1) of the sequence into ctx, sized W x H, crossfading between
- * the two nearest decoded frames. `scale` zooms around the focal point. Returns false when no
- * frame is decoded yet, so the caller can keep its poster.
+ * the two nearest decoded frames. `scale` zooms the frame. Returns false when no frame is
+ * decoded yet, so the caller can keep its poster.
  */
 export function drawSequence(
   ctx: CanvasRenderingContext2D,
@@ -132,70 +129,58 @@ export function drawSequence(
   const b = nearestReady(seq, Math.ceil(pos), count);
   const mix = b > a ? (pos - a) / (b - a) : 0;
 
-  const fit = view.fit ?? 0;
-  if (fit > 0) {
-    ctx.fillStyle = seq.edge(mix > 0.5 ? b : a) ?? seq.edge(a) ?? "#eceff2";
+  const img = seq.images[a];
+  const box = frameBox(img.naturalWidth, img.naturalHeight, W, H, scale, view);
+  if (!box) return false;
+  const fill = view.fill ?? "236 239 242";
+  const inside = box.w < W - 0.5 || box.h < H - 0.5;
+  if (inside) {
+    ctx.fillStyle = `rgb(${fill})`;
     ctx.fillRect(0, 0, W, H);
   }
-  place(ctx, seq.images[a], W, H, scale, view, 1);
-  if (b !== a && mix > 0.02) place(ctx, seq.images[b], W, H, scale, view, mix);
+  ctx.drawImage(img, box.x, box.y, box.w, box.h);
+  if (b !== a && mix > 0.02) {
+    ctx.globalAlpha = mix;
+    ctx.drawImage(seq.images[b], box.x, box.y, box.w, box.h);
+    ctx.globalAlpha = 1;
+  }
+  if (inside) feather(ctx, box, fill);
   return true;
 }
 
-function place(
-  ctx: CanvasRenderingContext2D,
-  img: HTMLImageElement,
-  W: number,
-  H: number,
-  scale: number,
-  { fit = 0, x = 0.5, y = 0.5 }: DrawView,
-  alpha: number,
-) {
-  const iw = img.naturalWidth;
-  const ih = img.naturalHeight;
-  if (!iw || !ih) return;
+interface Box {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+/** Where a frame lands: between cover and contain by `fit`, times `scale`, placed like object-position. */
+export function frameBox(iw: number, ih: number, W: number, H: number, scale: number, { fit = 0, x = 0.5, y = 0.5 }: DrawView): Box | null {
+  if (!iw || !ih) return null;
   const cover = Math.max(W / iw, H / ih);
   const contain = Math.min(W / iw, H / ih);
   const s = (cover + (contain - cover) * fit) * scale;
-  const dw = iw * s;
-  const dh = ih * s;
-  // Keep the focal point as near the centre as the frame allows (no empty edge while covering).
-  const dx = clampOffset(W / 2 - x * dw, W, dw);
-  const dy = clampOffset(H / 2 - y * dh, H, dh);
-  ctx.globalAlpha = alpha;
-  ctx.drawImage(img, dx, dy, dw, dh);
-  ctx.globalAlpha = 1;
+  const w = iw * s;
+  const h = ih * s;
+  return { x: (W - w) * x, y: (H - h) * y, w, h };
 }
 
-function clampOffset(offset: number, box: number, drawn: number): number {
-  if (drawn <= box) return (box - drawn) / 2;
-  return Math.min(0, Math.max(box - drawn, offset));
-}
-
-/** Average colour of the frame's top and bottom rows, as rgb(). */
-function sampleEdge(img: HTMLImageElement): string | undefined {
-  try {
-    const c = document.createElement("canvas");
-    c.width = 8;
-    c.height = 2;
-    const g = c.getContext("2d", { willReadFrequently: true });
-    if (!g) return undefined;
-    const ih = img.naturalHeight;
-    const band = Math.max(1, Math.round(ih * 0.03));
-    g.drawImage(img, 0, 0, img.naturalWidth, band, 0, 0, 8, 1);
-    g.drawImage(img, 0, ih - band, img.naturalWidth, band, 0, 1, 8, 1);
-    const d = g.getImageData(0, 0, 8, 2).data;
-    let r = 0;
-    let gr = 0;
-    let b = 0;
-    for (let i = 0; i < d.length; i += 4) {
-      r += d[i];
-      gr += d[i + 1];
-      b += d[i + 2];
-    }
-    const n = d.length / 4;
-    return `rgb(${Math.round(r / n)} ${Math.round(gr / n)} ${Math.round(b / n)})`;
-  } catch {
-    return undefined;
-  }
+/** Melts a contained frame's edges into the fill around it. */
+function feather(ctx: CanvasRenderingContext2D, box: Box, fill: string) {
+  const band = Math.min(box.w, box.h) * 0.07;
+  const solid = `rgb(${fill})`;
+  const clear = `rgb(${fill} / 0)`;
+  const edge = (x0: number, y0: number, x1: number, y1: number, rx: number, ry: number, rw: number, rh: number) => {
+    const g = ctx.createLinearGradient(x0, y0, x1, y1);
+    g.addColorStop(0, solid);
+    g.addColorStop(1, clear);
+    ctx.fillStyle = g;
+    ctx.fillRect(rx, ry, rw, rh);
+  };
+  const { x, y, w, h } = box;
+  edge(x, 0, x + band, 0, x - 1, y - 1, band + 1, h + 2);
+  edge(x + w, 0, x + w - band, 0, x + w - band, y - 1, band + 1, h + 2);
+  edge(0, y, 0, y + band, x - 1, y - 1, w + 2, band + 1);
+  edge(0, y + h, 0, y + h - band, x - 1, y + h - band, w + 2, band + 1);
 }

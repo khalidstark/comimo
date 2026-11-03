@@ -3,69 +3,28 @@
 }
 
 /* ==========================================================================
-   Hero: the zine's night cover. One orchestrated moment on load: letterbox
-   bars open, the camera settles in on Nour, the headline rises line by line.
-   On scroll the camera drifts down while the light page cuts in on a slant.
+   Hero: a scroll film. Nour's night room (the zine's night cover) whites out
+   in her phone's glow, comic panels fly in, and the film settles on a calm
+   newsprint page of her comic, the same paper as the sections after it, so
+   the story hands over with no wipe. Three chapters ride on the film.
    ========================================================================== */
-.hero {
-  position: relative;
-  isolation: isolate;
-  overflow: clip;
-  background: var(--night);
-  color: var(--on-night);
-  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 3.5vw), 0 100%);
-  padding-block-end: calc(3.5vw + var(--space-l));
-}
 
-.heroArt {
-  position: relative;
-  aspect-ratio: 5 / 4;
-  overflow: hidden;
-  mask-image: linear-gradient(to bottom, #000 62%, transparent 98%);
-}
-
-.heroImage {
-  inline-size: 100%;
-  block-size: 100%;
-  object-fit: cover;
-  object-position: 74% 50%;
-}
-
-/* Letterbox bars, opened on load. */
-.heroArt::before,
-.heroArt::after {
-  content: "";
-  position: absolute;
-  inset-inline: 0;
-  z-index: 1;
-  block-size: 13%;
-  background: var(--night-deep);
-  scale: 1 0;
-  pointer-events: none;
-}
-
-.heroArt::before {
-  inset-block-start: 0;
-  transform-origin: top;
-}
-
-.heroArt::after {
-  inset-block-end: 0;
-  transform-origin: bottom;
-}
-
-.heroInner {
-  position: relative;
-  z-index: 2;
+/* ---------- Chapter 1: the opening words, on the night room ---------- */
+.chapterOpen {
   display: grid;
-  gap: var(--space-l);
-  margin-block-start: -18%;
+  align-items: end;
+  padding-block: var(--space-xl) calc(var(--space-l) + 3.5rem); /* phones: clear the header that scrolls away */
 }
 
 .heroText {
   display: grid;
   justify-items: start;
   gap: var(--space-s);
+  color: var(--on-night);
+}
+
+.heroText > * {
+  max-inline-size: 34rem;
 }
 
 .kicker {
@@ -73,11 +32,12 @@
 }
 
 .headline {
-  font-size: var(--step-5);
+  font-size: clamp(2.6rem, 1.6rem + 3.6vw, 5.4rem);
   line-height: 0.95;
   letter-spacing: -0.025em;
   color: var(--on-night);
   text-wrap: balance;
+  text-shadow: 0 2px 18px rgb(7 10 28 / 0.45);
 }
 
 .line {
@@ -103,6 +63,12 @@
   align-items: center;
   gap: var(--space-s) var(--space-l);
   padding-block-start: var(--space-2xs);
+}
+
+.links {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-xs);
 }
 
 .magnet {
@@ -135,6 +101,10 @@
   translate: 0 -0.15em;
 }
 
+.seeDemo:focus-visible {
+  outline-color: var(--highlight);
+}
+
 /* Sign-up for visitors: a real button, so it never reads as "scroll down". */
 .startLink {
   background: var(--highlight);
@@ -148,41 +118,212 @@
   font-size: 1.1em;
 }
 
-.seeDemo:focus-visible {
-  outline-color: var(--highlight);
+/* Phones: a smaller stamp beside the two links, so the room still shows above the words. */
+@media (max-width: 47.999rem) {
+  .actions {
+    flex-wrap: nowrap;
+    gap: var(--space-s);
+  }
+
+  .magnet :global(a) {
+    --size: 7.5rem;
+  }
+
+  .intro {
+    font-size: var(--step-0);
+  }
 }
 
-/* This week, kept quiet: small icons on the night band. */
+@media (min-width: 48rem) {
+  .chapterOpen {
+    padding-block: var(--space-xl) var(--space-2xl);
+  }
+}
+
+/* Short laptop screens: tighter, so the words never run under the top bar. */
+@media (min-width: 48rem) and (max-height: 50rem) {
+  .chapterOpen {
+    padding-block-end: var(--space-l);
+  }
+
+  .heroText {
+    gap: var(--space-xs);
+  }
+
+  .headline {
+    font-size: clamp(2.6rem, 1rem + 3.4vw + 2.4vh, 4.6rem);
+  }
+
+  .magnet :global(a) {
+    --size: 8.5rem;
+  }
+}
+
+/* ---------- Chapter 2: a speech bubble from the glowing phone ---------- */
+.chapterSay {
+  display: grid;
+  align-content: start;
+  justify-items: center;
+  padding: 14vh var(--page-pad) 0;
+}
+
+.sayBubble {
+  max-inline-size: 15ch;
+  padding: 0.5em 0.9em 0.55em;
+  font-size: clamp(1.6rem, 1rem + 2.6vw, 3.1rem);
+  font-weight: 600;
+  line-height: 1.15;
+  text-align: center;
+  box-shadow: 4px 5px 0 var(--accent);
+  rotate: -2deg;
+  translate: -12% 0;
+}
+
+@media (min-width: 48rem) {
+  .chapterSay {
+    justify-items: start;
+    padding-block-start: 10vh;
+    padding-inline-start: max(var(--page-pad), 12vw);
+  }
+
+  .sayBubble {
+    translate: none;
+  }
+}
+
+/* ---------- Chapter 3: a narration caption over the finished page ---------- */
+.chapterDrawn {
+  display: grid;
+  align-content: start;
+  justify-items: center;
+  padding: 22vh var(--page-pad) 0; /* phones: just above the page, which sits centred */
+}
+
+.drawnCaption {
+  padding: 0.3em 0.75em 0.38em;
+  font-size: clamp(1.4rem, 0.9rem + 2vw, 2.5rem);
+  line-height: 1.15;
+  box-shadow: 4px 4px 0 var(--ink);
+  rotate: -1.5deg;
+}
+
+@media (min-width: 48rem) {
+  /* Top right, over the plain wall of the second panel, never over a face. */
+  .chapterDrawn {
+    justify-items: end;
+    padding-block-start: 2vh;
+    padding-inline: var(--page-pad) max(var(--page-pad), 9vw);
+  }
+
+  .drawnCaption {
+    font-size: clamp(1.4rem, 0.6rem + 1.6vw + 1vh, 2.3rem);
+  }
+}
+
+/* Still page (reduced motion, no script): chapters 2 and 3 sit on the paper
+   between the first frame and the last. */
+@media not ((prefers-reduced-motion: no-preference) and (scripting: enabled)) {
+  .chapterSay,
+  .chapterDrawn {
+    padding: var(--space-l) var(--page-pad) 0;
+  }
+
+  .sayBubble {
+    translate: none;
+  }
+}
+
+/* The opening words arrive once, fast: a quick rise, no slow stagger. */
+@media (prefers-reduced-motion: no-preference) {
+  .kicker {
+    animation: rise 520ms var(--ease-cine) 120ms both;
+  }
+
+  .line > span {
+    animation: line-up 640ms var(--ease-cine) both;
+  }
+
+  .line:nth-child(1) > span {
+    animation-delay: 160ms;
+  }
+
+  .line:nth-child(2) > span {
+    animation-delay: 240ms;
+  }
+
+  .intro,
+  .actions {
+    animation: rise 560ms var(--ease-cine) 330ms both;
+  }
+}
+
+@keyframes line-up {
+  from {
+    translate: 0 105%;
+  }
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    translate: 0 1rem;
+  }
+}
+
+/* ==========================================================================
+   Light, airy sections after the hero
+   ========================================================================== */
+.film {
+  /* Under the film's last frame: the same newsprint the sections sit on. */
+  background: var(--paper);
+}
+
+.demo {
+  padding-block-start: var(--space-2xl);
+}
+
+/* The section head, with Nour's sample week beside it (it links to the month). */
+.demoHead {
+  display: grid;
+  gap: var(--space-m);
+  align-items: end;
+}
+
+@media (min-width: 60rem) {
+  .demoHead {
+    grid-template-columns: 1fr auto;
+    gap: var(--space-xl);
+  }
+}
+
+/* This week, kept quiet: small weather icons in a pill on the paper. */
 .week {
   display: inline-flex;
   flex-wrap: wrap;
   align-items: center;
   gap: var(--space-2xs) var(--space-s);
-  justify-self: start;
   padding: var(--space-2xs) var(--space-s);
-  border: 1px solid rgb(255 255 255 / 0.14);
+  border: 1.5px solid color-mix(in srgb, var(--ink) 22%, transparent);
   border-radius: var(--radius-pill);
-  background: rgb(255 255 255 / 0.05);
-  color: var(--on-night-soft);
+  background: var(--surface);
+  color: var(--ink-soft);
   text-decoration: none;
+  box-shadow: var(--lift);
   transition:
-    background var(--dur-quick),
-    border-color var(--dur-quick);
+    border-color var(--dur-quick),
+    translate var(--dur-quick) var(--ease-ink);
 }
 
 .week:hover {
-  background: rgb(255 255 255 / 0.1);
-  border-color: rgb(255 255 255 / 0.3);
-}
-
-.week:focus-visible {
-  outline-color: var(--highlight);
+  border-color: var(--ink);
+  translate: 0 -2px;
 }
 
 .weekTitle {
   font-family: var(--font-display-stack);
   font-size: var(--step--1);
   font-weight: 700;
+  color: var(--ink);
 }
 
 .weekRow {
@@ -213,141 +354,8 @@
   inline-size: 1.1rem;
   block-size: 1.1rem;
   margin-block: 0.25rem;
-  border: 1.5px dashed rgb(255 255 255 / 0.35);
+  border: 1.5px dashed color-mix(in srgb, var(--ink) 35%, transparent);
   border-radius: 50%;
-}
-
-@media (min-width: 56rem) {
-  .hero {
-    display: grid;
-    align-items: end;
-    min-block-size: min(50rem, calc(100svh - var(--topbar-h)));
-    padding-block: var(--space-2xl) calc(3.5vw + var(--space-xl));
-  }
-
-  /* The art takes the right of the frame and fades into the night on its
-     left edge, so the words sit on clear sky and the panels drift past them. */
-  .heroArt {
-    position: absolute;
-    inset-block: 0;
-    inset-inline: 30% 0;
-    aspect-ratio: auto;
-    mask-image: linear-gradient(90deg, transparent 0%, #000 24%);
-  }
-
-  .heroImage {
-    object-position: 72% 45%;
-  }
-
-  /* Scrim behind the words, over the window's night sky. */
-  .hero::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    z-index: 1;
-    background: linear-gradient(0deg, color-mix(in srgb, var(--night) 70%, transparent) 0%, transparent 30%);
-    pointer-events: none;
-  }
-
-  .heroInner {
-    margin-block-start: 0;
-    gap: var(--space-xl);
-  }
-
-  .heroText {
-    max-inline-size: 32rem;
-  }
-}
-
-/* The load sequence and the scroll camera. */
-@media (prefers-reduced-motion: no-preference) {
-  .heroArt::before,
-  .heroArt::after {
-    animation: letterbox 1300ms var(--ease-cine) 150ms both;
-  }
-
-  .heroImage {
-    animation: camera-in 2400ms var(--ease-cine) both;
-  }
-
-  .kicker {
-    animation: rise 700ms var(--ease-cine) 450ms both;
-  }
-
-  .line > span {
-    animation: line-up 900ms var(--ease-cine) both;
-  }
-
-  .line:nth-child(1) > span {
-    animation-delay: 550ms;
-  }
-
-  .line:nth-child(2) > span {
-    animation-delay: 700ms;
-  }
-
-  .intro {
-    animation: rise 800ms var(--ease-cine) 900ms both;
-  }
-
-  .actions,
-  .week {
-    animation: rise 800ms var(--ease-cine) 1050ms both;
-  }
-
-  @supports (animation-timeline: view()) {
-    .heroArt {
-      animation: camera-drift linear both;
-      animation-timeline: view();
-      animation-range: exit 0% exit 100%;
-    }
-  }
-}
-
-@keyframes letterbox {
-  from {
-    scale: 1 1;
-  }
-  to {
-    scale: 1 0;
-  }
-}
-
-@keyframes camera-in {
-  from {
-    scale: 1.14;
-    translate: 3% 2%;
-  }
-  to {
-    scale: 1;
-    translate: 0 0;
-  }
-}
-
-@keyframes camera-drift {
-  to {
-    translate: 0 18%;
-  }
-}
-
-@keyframes line-up {
-  from {
-    translate: 0 105%;
-  }
-}
-
-@keyframes rise {
-  from {
-    opacity: 0;
-    translate: 0 1.25rem;
-  }
-}
-
-/* ==========================================================================
-   Light, airy sections after the hero
-   ========================================================================== */
-.demo {
-  padding-block-start: var(--space-xl);
 }
 
 /* ---------- How it works ---------- */
@@ -380,36 +388,40 @@
   gap: var(--space-xs);
 }
 
-.stepArt {
+/* The loops are painted on newsprint: their edges melt into the page. The
+   frame drifts a little against the scroll (data-parallax), so it is clipped. */
+.stepMedia {
   inline-size: 100%;
   max-inline-size: 22rem;
+  aspect-ratio: 1;
+  margin-block-end: var(--space-2xs);
+  overflow: clip;
+  border-radius: var(--radius-card-soft);
+  mask-image: linear-gradient(90deg, transparent, #000 9%, #000 91%, transparent),
+    linear-gradient(180deg, transparent, #000 9%, #000 91%, transparent);
+  mask-composite: intersect;
+}
+
+.stepVideo {
+  display: block;
+  inline-size: 100%;
   block-size: auto;
-  aspect-ratio: 4 / 3;
-  object-fit: contain;
-  margin-block-end: var(--space-xs);
-  filter: drop-shadow(2px 0 0 #fff) drop-shadow(-2px 0 0 #fff) drop-shadow(0 2px 0 #fff) drop-shadow(0 -2px 0 #fff)
-    drop-shadow(0 12px 14px rgb(27 33 72 / 0.16));
+  aspect-ratio: 1;
+  object-fit: cover;
+  scale: 1.08; /* room for the drift */
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  @supports (animation-timeline: view()) {
-    .stepArt {
-      animation: drift-up linear both;
-      animation-timeline: view();
-      animation-range: entry 0% cover 50%;
-    }
+/* Dark theme: the newsprint loops read as printed cards on the night paper. */
+@media (prefers-color-scheme: dark) {
+  :global(:root:not([data-theme="light"])) .stepMedia {
+    mask-image: none;
+    box-shadow: var(--lift);
   }
 }
 
-@keyframes drift-up {
-  from {
-    translate: 0 2.5rem;
-    rotate: -2deg;
-  }
-  to {
-    translate: 0 0;
-    rotate: 0deg;
-  }
+:global(:root[data-theme="dark"]) .stepMedia {
+  mask-image: none;
+  box-shadow: var(--lift);
 }
 
 .stepTitle {
@@ -517,8 +529,10 @@
   }
 }
 
-.cover {
-  justify-self: center;
+/* The cover's width is a share of its column, so the reveal and drift wrappers span it. */
+.coverStage > div {
+  display: grid;
+  justify-items: center;
 }
 
 .monthText {

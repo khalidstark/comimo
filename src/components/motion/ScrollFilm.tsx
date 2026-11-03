@@ -11,6 +11,14 @@ const HOLD = 0.12;
 /** The live (scrubbed) film; anything else gets the posters. Mirrors the CSS gate. */
 const LIVE = "(prefers-reduced-motion: no-preference) and (scripting: enabled)";
 
+/** "#eceff2" -> "236 239 242" (empty for anything else). */
+function rgbChannels(hex: string): string {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
+  if (!m) return "";
+  const n = parseInt(m[1], 16);
+  return `${(n >> 16) & 255} ${(n >> 8) & 255} ${n & 255}`;
+}
+
 const clamp01 = (x: number) => Math.min(1, Math.max(0, x));
 const smooth = (x: number) => x * x * (3 - 2 * x);
 
@@ -18,21 +26,26 @@ export interface ScrollFilmProps {
   /** Frames in public/media/<dir>/000.webp ... */
   dir: string;
   count: number;
+  /** The frames' size, so the stills reserve their box before they load. */
+  width: number;
+  height: number;
   /** Section height in viewport heights; the film plays over (length - 1) screens of scrolling. */
   length?: number;
   /** Focal point of the frames (0..1, like object-position) kept in view when the screen crops them. */
   focus?: [number, number];
   /**
-   * Progress range over which a portrait screen eases from cropping the frame (cover) to showing
-   * all of it (contain), letterboxed in the frame's own edge colour. For a film that ends on a
-   * page that should be seen whole.
+   * The camera pulls back at the end: over progress `at`, the frame eases from cropping the screen
+   * (cover) to showing all of it (contain) at `scale`, anchored at `y` (0 top .. 1 bottom), on the
+   * page's own paper with its edges feathered in, so the film hands over to the next section with
+   * no seam. For a film that ends on a page that should be seen whole. Portrait screens keep at
+   * least 0.96 and stay centred, since the frame is already narrow there.
    */
-  containFrom?: [number, number];
-  /** Progress range over which the film settles into the page's own paper (dark theme hand-over). */
-  settle?: [number, number];
+  pullBack?: { at: [number, number]; scale: number; y: number };
   /** Alt text for the reduced-motion stills; empty keeps them decorative. */
   stillAlt?: [string, string];
-  label: string;
+  /** The section's name: the id of a heading inside it, or a label. */
+  labelledBy?: string;
+  label?: string;
   className?: string;
   /**
    * Chapters: elements with data-at (progress 0..1 where they arrive) and optional data-until
@@ -49,11 +62,13 @@ export interface ScrollFilmProps {
 export function ScrollFilm({
   dir,
   count,
+  width,
+  height,
   length = 2.6,
   focus = [0.5, 0.5],
-  containFrom,
-  settle,
+  pullBack,
   stillAlt = ["", ""],
+  labelledBy,
   label,
   className,
   children,
@@ -64,8 +79,9 @@ export function ScrollFilm({
   const chaptersRef = useRef<HTMLDivElement>(null);
   const urls = frameUrls(dir, count);
   const [fx, fy] = focus;
-  const [c0, c1] = containFrom ?? [2, 3];
-  const [s0, s1] = settle ?? [2, 3];
+  const [b0, b1] = pullBack?.at ?? [2, 3];
+  const bScale = pullBack?.scale ?? 1;
+  const bY = pullBack?.y ?? fy;
 
   useEffect(() => {
     const section = sectionRef.current;
@@ -95,7 +111,7 @@ export function ScrollFilm({
 
     const measure = () => {
       stickTop = parseFloat(getComputedStyle(stage).top) || 0;
-      paper = getComputedStyle(section).getPropertyValue("--paper").trim();
+      paper = rgbChannels(getComputedStyle(section).getPropertyValue("--paper"));
       last = { ...last, p: -1 };
     };
     measure();
@@ -145,20 +161,18 @@ export function ScrollFilm({
         canvas.width = w;
         canvas.height = h;
       }
-      // Portrait screens ease from a crop of the room to the whole page of panels.
+      // The camera pulls back from a crop of the room to the whole page of panels.
+      const back = smooth(clamp01((p - b0) / Math.max(0.001, b1 - b0)));
       const portrait = w / h < 1.2;
-      const fit = portrait ? smooth(clamp01((p - c0) / Math.max(0.001, c1 - c0))) : 0;
-      const drew = drawSequence(ctx, seq, p, w, h, 1, { fit, x: fx, y: fy });
-      if (drew) {
-        const calm = smooth(clamp01((p - s0) / Math.max(0.001, s1 - s0)));
-        if (calm > 0 && paper) {
-          ctx.globalAlpha = calm;
-          ctx.fillStyle = paper;
-          ctx.fillRect(0, 0, w, h);
-          ctx.globalAlpha = 1;
-        }
-        if (!last.drew) stage.dataset.drawn = "";
-      }
+      const endScale = portrait ? Math.max(bScale, 0.96) : bScale;
+      const endY = portrait ? 0.5 : bY;
+      const drew = drawSequence(ctx, seq, p, w, h, 1 + (endScale - 1) * back, {
+        fit: back,
+        x: fx,
+        y: fy + (endY - fy) * back,
+        fill: paper || undefined,
+      });
+      if (drew && !last.drew) stage.dataset.drawn = "";
       last = { p, w, h, ready, drew: last.drew || drew };
     };
 
@@ -200,7 +214,7 @@ export function ScrollFilm({
         delete w.el.dataset.state;
       }
     };
-  }, [dir, count, fx, fy, c0, c1, s0, s1]);
+  }, [dir, count, fx, fy, b0, b1, bScale, bY]);
 
   const style = {
     "--film-length": length,
@@ -208,11 +222,11 @@ export function ScrollFilm({
   } as CSSProperties;
 
   return (
-    <section ref={sectionRef} className={[styles.film, className].filter(Boolean).join(" ")} style={style} aria-label={label}>
+    <section ref={sectionRef} className={[styles.film, className].filter(Boolean).join(" ")} style={style} aria-labelledby={labelledBy} aria-label={labelledBy ? undefined : label}>
       <div ref={stageRef} className={styles.stage}>
         {/* The first frame, until the canvas draws (and for good with reduced motion). Same box as the canvas. */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img className={styles.poster} src={urls[0]} alt={stillAlt[0]} fetchPriority="high" decoding="async" />
+        <img className={styles.poster} src={urls[0]} alt={stillAlt[0]} width={width} height={height} fetchPriority="high" decoding="async" />
         <canvas ref={canvasRef} className={styles.canvas} aria-hidden="true" />
         <div className={styles.scrim} aria-hidden="true" />
       </div>
@@ -221,7 +235,7 @@ export function ScrollFilm({
       </div>
       {/* The film's last frame, shown under the chapters when the film doesn't play. */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img className={styles.endStill} src={urls[urls.length - 1]} alt={stillAlt[1]} loading="lazy" decoding="async" />
+      <img className={styles.endStill} src={urls[urls.length - 1]} alt={stillAlt[1]} width={width} height={height} loading="lazy" decoding="async" />
     </section>
   );
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { frameAt, frameUrls, loadOrder } from "./sequence";
+import { frameAt, frameBox, frameUrls, loadOrder } from "./sequence";
 
 describe("frameUrls", () => {
   it("zero-pads from 000 under /media/<dir>", () => {
@@ -59,5 +59,28 @@ describe("loadOrder", () => {
   it("clamps a start outside the sequence", () => {
     expect(loadOrder(3, 9)).toEqual([2, 1, 0]);
     expect(loadOrder(0, 0)).toEqual([]);
+  });
+});
+
+describe("frameBox", () => {
+  it("covers a wider screen, cropping top and bottom around the focal point", () => {
+    const box = frameBox(1600, 900, 1000, 400, 1, {});
+    expect(box?.w).toBeCloseTo(1000);
+    expect(box?.h).toBeCloseTo(562.5);
+    expect(box?.y).toBeCloseTo(-81.25);
+  });
+
+  it("contains with fit 1, placed like object-position", () => {
+    const box = frameBox(1600, 900, 400, 800, 1, { fit: 1, y: 0.5 });
+    expect(box).toEqual({ x: 0, y: 287.5, w: 400, h: 225 });
+  });
+
+  it("shrinks around the anchor with scale", () => {
+    const box = frameBox(100, 100, 200, 200, 0.5, { fit: 1, x: 0, y: 1 });
+    expect(box).toEqual({ x: 0, y: 100, w: 100, h: 100 });
+  });
+
+  it("is null before the image has a size", () => {
+    expect(frameBox(0, 0, 100, 100, 1, {})).toBeNull();
   });
 });
