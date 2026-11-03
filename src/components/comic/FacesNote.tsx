@@ -1,4 +1,5 @@
 import { Art } from "@/art/Art";
+import { SamSwitch } from "./SamSwitch";
 import { COMIC_STEPS, aboutUsd, type ComicCost, type CostStep } from "@/lib/costs";
 import type { FacesSummary, FixedFace, OneOffFace, PanelArt } from "./view";
 import styles from "./comic.module.css";
@@ -139,7 +140,10 @@ export function FacesNote({ summary, made }: { summary: FacesSummary; made?: Mad
         How Comimo kept faces the same
       </h2>
       {summary.kind === "sam" ? (
-        <SamLede summary={summary} />
+        <>
+          <SamLede summary={summary} />
+          {summary.sought > 0 ? <SamSwitch /> : null}
+        </>
       ) : (
         <p className={styles.facesLede}>
           {faces.length > 0

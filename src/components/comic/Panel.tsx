@@ -168,6 +168,62 @@ function useFreeLettering(ref: RefObject<HTMLDivElement | null>, panel: PanelVie
   }, [ref, panel, slot]);
 }
 
+/**
+ * "What SAM 3.1 saw": the boxes SAM found in this panel, stored with it,
+ * drawn over the art through the same crop as the lettering (cast members
+ * named, heads marked). Hidden until the reader turns it on (FacesNote's
+ * switch sets data-sam on the page); never drawn for practice-mode panels.
+ */
+function SamLayer({ panel, slot }: { panel: PanelView; slot: SlotView }) {
+  const ref = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const layer = ref.current;
+    const sheet = layer?.parentElement;
+    const figures = panel.figures;
+    if (!layer || !sheet || !figures) return;
+    const place = () => {
+      const box = sheet.getBoundingClientRect();
+      const W = box.width;
+      const H = box.height;
+      if (W < 40 || H < 40) return;
+      const style = getComputedStyle(sheet);
+      const band = (Number.parseFloat(style.getPropertyValue("--band")) || 0) / 100;
+      const desktop = style.getPropertyValue("--show-desktop").trim() === "inline";
+      const crop = slot.crop[desktop ? "desktop" : "phone"];
+      const art = { y: H * band, h: H * (1 - band) };
+      Array.from(layer.children).forEach((element, i) => {
+        const item = figures.items[Math.floor(i / 2)];
+        if (!item) return;
+        const unit = i % 2 === 0 ? item.box : item.head;
+        const view = throughCrop(unit, crop);
+        const el = element as HTMLElement;
+        el.style.left = `${(view.x * W).toFixed(1)}px`;
+        el.style.top = `${(art.y + view.y * art.h).toFixed(1)}px`;
+        el.style.width = `${(view.w * W).toFixed(1)}px`;
+        el.style.height = `${(view.h * art.h).toFixed(1)}px`;
+      });
+    };
+    place();
+    const observer = new ResizeObserver(place);
+    observer.observe(sheet);
+    return () => observer.disconnect();
+  }, [panel, slot]);
+  if (!panel.figures || panel.checkedBy !== "sam" || panel.figures.items.length === 0) return null;
+  return (
+    <div ref={ref} className={styles.samLayer} aria-hidden="true">
+      {panel.figures.items.flatMap((item, i) => {
+        const name = item.characterId ? panel.figureNames[item.characterId] : undefined;
+        return [
+          <span key={`b${i}`} className={styles.samBox} data-cast={name ? "" : undefined}>
+            <span className={styles.samTag}>{name ?? (item.kind === "animal" ? "animal" : "person")}</span>
+          </span>,
+          <span key={`h${i}`} className={styles.samHead} />,
+        ];
+      })}
+    </div>
+  );
+}
+
 interface ComicPanelProps {
   panel: PanelView;
   slot: SlotView;
@@ -286,6 +342,8 @@ export function ComicPanel({ panel, slot, total }: ComicPanelProps) {
             ) : null}
           </div>
         )}
+
+        <SamLayer panel={panel} slot={slot} />
 
         <SlotOutline slot={slot} />
 

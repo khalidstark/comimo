@@ -46,6 +46,8 @@ export interface PanelView {
   checkedBy: "sam" | "mock" | null;
   /** People and animals SAM found, for placing the lettering; null on older days. */
   figures: PanelFigures | null;
+  /** Names of the cast members SAM matched, by id, for the "what SAM saw" overlay. */
+  figureNames: Record<string, string>;
   /** Width over height of the drawn image, when known. */
   aspect: number | null;
 }
@@ -101,6 +103,7 @@ export function toPanelViews(
         fixedNames: before ? panel.consistency.fixedCharacterIds.map(nameOf) : [],
         checkedBy: panel.consistency.method ?? null,
         figures: panel.figures ?? null,
+        figureNames: Object.fromEntries((panel.figures?.items ?? []).flatMap((item) => (item.characterId ? [[item.characterId, nameOf(item.characterId)]] : []))),
         aspect: panel.figures?.aspect ?? panel.frame?.aspect ?? null,
       };
     });
