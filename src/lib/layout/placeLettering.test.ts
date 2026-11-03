@@ -50,6 +50,39 @@ describe("lettering placement", () => {
     expect(spot.x + spot.tail!.x).toBeGreaterThan(420);
   });
 
+  it("keeps each bubble on its own speaker's side, even over their shoulder (rooftop sample, panel 5)", () => {
+    // Two people in a wide closeup, heads high in the frame: the only roomy spots are the far edges,
+    // beyond each person. Karim (left) speaks first in a wide bubble, Nour (right) answers in a short one.
+    const W = 900;
+    const H = 300;
+    const karim = { x: 270, y: 40, w: 90, h: 95 };
+    const nour = { x: 520, y: 45, w: 90, h: 90 };
+    const pad = (r: Rect): Rect => ({ x: r.x - r.w * 0.22, y: r.y - r.h * 0.25, w: r.w * 1.44, h: r.h * 1.35 });
+    const plan = placeLettering({
+      width: W,
+      height: H,
+      area: { x: 10, y: 10, w: W - 20, h: H - 20 },
+      hard: [pad(karim), pad(nour)],
+      soft: [
+        { x: 115, y: 20, w: 315, h: 280 },
+        { x: 470, y: 15, w: 250, h: 285 },
+      ],
+      items: [
+        { kind: "bubble", sizes: [{ w: 220, h: 80 }, { w: 150, h: 110 }], target: karim, others: [nour] },
+        { kind: "bubble", sizes: [{ w: 70, h: 60 }], target: nour, others: [karim] },
+      ],
+    });
+    const centre = (i: number, w: number[]) => plan.spots[i].x + w[plan.spots[i].size] / 2;
+    const karimLine = centre(0, [220, 150]);
+    const nourLine = centre(1, [70]);
+    // Neither tail reaches across the other person's head to find its speaker.
+    expect(karimLine).toBeLessThan(nour.x + nour.w / 2);
+    expect(nourLine).toBeGreaterThan(karim.x + karim.w / 2);
+    expect(karimLine).toBeLessThan(nourLine);
+    // And still off both heads.
+    expect(plan.clear).toBe(true);
+  });
+
   it("says when a panel has no room left", () => {
     const plan = placeLettering({
       width: 200,

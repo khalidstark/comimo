@@ -142,7 +142,9 @@ function useFreeLettering(ref: RefObject<HTMLDivElement | null>, panel: PanelVie
           return {
             kind: "bubble",
             sizes: sizes[i],
-            ...(speaker ? { target: toPx(speaker.head) } : { side: element.dataset.tail === "right" ? ("right" as const) : ("left" as const) }),
+            ...(speaker
+              ? { target: toPx(speaker.head), others: figures.items.filter((item) => item !== speaker).map((item) => toPx(item.head)) }
+              : { side: element.dataset.tail === "right" ? ("right" as const) : ("left" as const) }),
           };
         });
         const plan = placeLettering({ width: W, height: H, area, hard, soft: bodies, items });

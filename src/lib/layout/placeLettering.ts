@@ -15,6 +15,8 @@ export interface LetteringItem {
   sizes: { w: number; h: number }[];
   /** The speaker's head, for a bubble whose speaker SAM found. */
   target?: Rect;
+  /** Everyone else's heads in the panel: a bubble whose tail would reach past one of them to its speaker reads as theirs. */
+  others?: Rect[];
   /** Right-to-left captions prefer the right edge. */
   rtl?: boolean;
   /** For a bubble without a found speaker: which side its speaker stands on. */
@@ -52,6 +54,14 @@ export interface LetteringPlan {
 }
 
 const STEPS = 22;
+
+/**
+ * A bubble with someone else's head between it and its speaker (side to
+ * side) reads as that person's line. This outweighs covering most of a
+ * body, so a bubble goes over its own speaker's shoulder before it crosses
+ * to the far side of the panel.
+ */
+const CROSSED_HEAD = 4;
 
 function overlap(a: Rect, b: Rect): number {
   const w = Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x);
@@ -101,6 +111,12 @@ export function placeLettering(scene: LetteringScene): LetteringPlan {
             const bottom = y + h;
             const dy = bottom <= t.y ? (t.y - bottom) / H : ((bottom - t.y) / H) * 2;
             cost += dx * 1.6 + dy * 1.4 + ((y - area.y) / H) * 0.6;
+            const from = x + w / 2;
+            const to = t.x + t.w / 2;
+            for (const other of item.others ?? []) {
+              const at = other.x + other.w / 2;
+              if ((at - from) * (at - to) < 0) cost += CROSSED_HEAD;
+            }
           } else {
             cost += ((y - area.y) / H) * 2;
             const sideGap = item.side === "right" ? area.x + area.w - (x + w) : x - area.x;
