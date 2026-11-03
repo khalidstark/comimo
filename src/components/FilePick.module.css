@@ -1,0 +1,53 @@
+/* One photo picked with the app's own button: the button, then the chosen photo taped beside it */
+.pick {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2xs) var(--space-s);
+  align-items: center;
+  min-inline-size: 0;
+}
+
+.button {
+  position: relative;
+  flex: none;
+  max-inline-size: 100%;
+  cursor: pointer;
+}
+
+.button:focus-within {
+  outline: 3px solid var(--accent-text);
+  outline-offset: 2px;
+}
+
+.chosen {
+  display: flex;
+  gap: var(--space-2xs);
+  align-items: center;
+  min-inline-size: 0;
+  margin: 0;
+  font-size: var(--step--1);
+  font-weight: 600;
+}
+
+.thumb {
+  flex: none;
+  inline-size: 2.75rem;
+  block-size: 2.75rem;
+  object-fit: cover;
+  padding: 2px;
+  background: #fff;
+  border: var(--panel-border-thin) solid var(--line);
+  box-shadow: 2px 2px 0 color-mix(in srgb, var(--ink) 80%, transparent);
+  rotate: -3deg;
+}
+
+.name {
+  min-inline-size: 0;
+  overflow-wrap: anywhere;
+}
+
+.none {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: var(--step--1);
+}

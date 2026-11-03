@@ -19,6 +19,7 @@ import {
   wornOutfit,
 } from "@/lib/wardrobe";
 import { useImageUrl as useSheetUrl } from "@/lib/useImageUrl";
+import { FilePick } from "@/components/FilePick";
 import styles from "./wardrobe.module.css";
 
 /** The record page's last style, so a new outfit is drawn in the style comics are made in. */
@@ -104,7 +105,6 @@ export function Wardrobe({ member, onChange, open: openAtFirst = false }: { memb
       const drawn = await drawNewOutfit(member, base, style, mode === "photo" ? { photo, clothes: clothes.trim() || undefined } : { clothes }, controller.current.signal);
       // The photo isn't needed any more.
       setFile(null);
-      if (fileRef.current) fileRef.current.value = "";
       // The drawing was paid for whether or not it is kept.
       await save((current) => withCharacterCost(current, drawn.cost), "");
       setWork({ phase: "preview", outfit: drawn.outfit, refused: drawn.photoRefused });
@@ -199,16 +199,14 @@ export function Wardrobe({ member, onChange, open: openAtFirst = false }: { memb
                     Comimo finds {self ? "you" : member.name} in the photo and copies only the clothes. Face and hair stay as drawn. The photo is
                     shrunk here, sent once and never kept.
                   </p>
-                  <label className={styles.field}>
-                    <span className={styles.label}>Photo</span>
-                    <input
-                      ref={fileRef}
-                      type="file"
-                      accept="image/jpeg,image/png,image/webp"
-                      onChange={(event) => setFile(event.target.files?.[0] ?? null)}
-                      disabled={busy}
-                    />
-                  </label>
+                  <FilePick
+                    inputRef={fileRef}
+                    label={self ? "Choose a photo of you" : `Choose a photo of ${member.name}`}
+                    accept="image/jpeg,image/png,image/webp"
+                    file={file}
+                    onChange={setFile}
+                    disabled={busy}
+                  />
                   <label className={styles.consent}>
                     <input type="checkbox" checked={consent} onChange={(event) => setConsent(event.target.checked)} disabled={busy} />
                     <span>{self ? "It's me in the photo." : `It's ${member.name} in the photo, and they're happy for me to use it.`}</span>

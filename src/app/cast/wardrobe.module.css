@@ -178,7 +178,7 @@
   gap: var(--space-3xs);
 }
 
-.field input:not([type="file"]),
+.field input,
 .field textarea {
   inline-size: 100%;
   min-block-size: 2.75rem;
@@ -187,13 +187,6 @@
   border-radius: 10px;
   background: var(--paper);
   font: inherit;
-}
-
-.field input[type="file"] {
-  max-inline-size: 100%;
-  min-block-size: 2.75rem;
-  font: inherit;
-  font-size: var(--step--1);
 }
 
 .label {

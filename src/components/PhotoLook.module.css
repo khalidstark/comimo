@@ -24,23 +24,6 @@
   font-weight: 500;
 }
 
-.label {
-  font-weight: 700;
-}
-
-.file {
-  display: grid;
-  gap: var(--space-3xs);
-}
-
-.file input {
-  inline-size: 100%;
-  max-inline-size: 100%;
-  min-block-size: 2.75rem;
-  font: inherit;
-  font-size: var(--step--1);
-}
-
 .consent {
   display: flex;
   gap: var(--space-2xs);
