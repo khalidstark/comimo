@@ -54,9 +54,13 @@ export function Wardrobe({ member, onChange, open: openAtFirst = false }: { memb
   const [file, setFile] = useState<File | null>(null);
   const [work, setWork] = useState<Work>({ phase: "idle" });
   const [note, setNote] = useState("");
+  /** The outfit whose Delete was tapped, waiting for a yes. */
+  const [deleting, setDeleting] = useState<Outfit | null>(null);
   const controller = useRef<AbortController | null>(null);
   const sectionRef = useRef<HTMLElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const keepRef = useRef<HTMLButtonElement>(null);
+  const headingRef = useRef<HTMLHeadingElement>(null);
 
   const outfits = outfitsOf(member);
   const worn = wornOutfit(member);
@@ -69,6 +73,9 @@ export function Wardrobe({ member, onChange, open: openAtFirst = false }: { memb
   useEffect(() => {
     if (openAtFirst) sectionRef.current?.scrollIntoView({ block: "center" });
   }, [openAtFirst]);
+  useEffect(() => {
+    if (deleting) keepRef.current?.focus();
+  }, [deleting]);
 
   async function save(change: (current: Character) => Character, message: string) {
     const saved = await updateStoredCharacter(member, change);
@@ -138,11 +145,23 @@ export function Wardrobe({ member, onChange, open: openAtFirst = false }: { memb
     }
   }
 
+  async function remove(outfit: Outfit) {
+    const ok = await save((current) => withoutOutfit(current, outfit.id), `${outfit.label} left the wardrobe. Comics already made keep it.`);
+    if (!ok) return;
+    setDeleting(null);
+    headingRef.current?.focus();
+  }
+
+  function keepOutfit(outfit: Outfit) {
+    setDeleting(null);
+    document.getElementById(`${id}-delete-${outfit.id}`)?.focus();
+  }
+
   const heading = `${id}-title`;
 
   return (
     <section ref={sectionRef} className={styles.wardrobe} aria-labelledby={heading}>
-      <h3 id={heading} className={styles.title}>
+      <h3 id={heading} ref={headingRef} tabIndex={-1} className={styles.title}>
         Wardrobe
       </h3>
       <p className={styles.wearing}>
@@ -167,10 +186,27 @@ export function Wardrobe({ member, onChange, open: openAtFirst = false }: { memb
             style={style}
             worn={worn?.id === outfit.id}
             onWear={() => void save((current) => wearing(current, outfit.id), `${member.name} wears ${outfit.label} in new comics.`)}
-            onDelete={() => void save((current) => withoutOutfit(current, outfit.id), `${outfit.label} left the wardrobe. Comics already made keep it.`)}
+            deleteId={`${id}-delete-${outfit.id}`}
+            onDelete={() => setDeleting(outfit)}
           />
         ))}
       </ul>
+
+      {deleting ? (
+        <div className={styles.confirm} role="group" aria-labelledby={`${id}-deleting`}>
+          <p id={`${id}-deleting`}>
+            Delete <bdi>{deleting.label}</bdi> from the wardrobe? Comics already made keep it.
+          </p>
+          <div className={styles.actions}>
+            <button type="button" className="btn btn--ink" onClick={() => void remove(deleting)}>
+              Delete
+            </button>
+            <button ref={keepRef} type="button" className="btn btn--ghost" onClick={() => keepOutfit(deleting)}>
+              Keep
+            </button>
+          </div>
+        </div>
+      ) : null}
 
       {!style ? (
         <p className={styles.hint}>Draw {self ? "your" : "their"} sheet first, then change clothes any time.</p>
@@ -321,6 +357,7 @@ function OutfitTile({
   style,
   worn,
   onWear,
+  deleteId,
   onDelete,
 }: {
   label: string;
@@ -330,6 +367,8 @@ function OutfitTile({
   style: ArtStyleId | null;
   worn: boolean;
   onWear: () => void;
+  /** The Delete button's id, so focus can come back to it. */
+  deleteId?: string;
   onDelete?: () => void;
 }) {
   const sheet = (style && sheetOf(style)) || sheetOf("zine") || sheetOf("painterly");
@@ -353,7 +392,7 @@ function OutfitTile({
         </button>
       )}
       {onDelete ? (
-        <button type="button" className={`${styles.textButton} ${styles.quiet}`} onClick={onDelete}>
+        <button id={deleteId} type="button" className={`${styles.textButton} ${styles.quiet}`} onClick={onDelete}>
           Delete<span className="visually-hidden"> {label}</span>
         </button>
       ) : null}

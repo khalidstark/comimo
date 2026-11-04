@@ -301,7 +301,7 @@ function stillFor(member: Character): { ref: ImageRef; fromSheet: boolean } | nu
 function CastCard({ member, tilt, status, onAnimate, confirming, onEdit, onAskRemove, onKeep, onRemove, onSheetDrawn, onChange, wardrobeOpen }: CastCardProps) {
   const cardRef = useRef<HTMLLIElement>(null);
   const bubbleRef = useRef<HTMLParagraphElement>(null);
-  const confirmRef = useRef<HTMLButtonElement>(null);
+  const keepRef = useRef<HTMLButtonElement>(null);
   const talking = useTalkWhenShown(bubbleRef, member.line ?? "");
   const sheet = spriteSheetFor(member);
   const still = sheet ? null : stillFor(member);
@@ -309,7 +309,7 @@ function CastCard({ member, tilt, status, onAnimate, confirming, onEdit, onAskRe
   const nameId = `name-${member.id}`;
 
   useEffect(() => {
-    if (confirming) confirmRef.current?.focus();
+    if (confirming) keepRef.current?.focus();
   }, [confirming]);
 
   return (
@@ -379,10 +379,11 @@ function CastCard({ member, tilt, status, onAnimate, confirming, onEdit, onAskRe
               Remove <bdi>{member.name}</bdi> from your cast? Comics you already made keep them.
             </p>
             <div className={styles.actions}>
-              <button ref={confirmRef} type="button" className="btn btn--ink" onClick={onRemove}>
+              <button type="button" className="btn btn--ink" onClick={onRemove}>
                 Remove
               </button>
-              <button type="button" className="btn btn--ghost" onClick={onKeep}>
+              {/* Focus lands on the safe choice. */}
+              <button ref={keepRef} type="button" className="btn btn--ghost" onClick={onKeep}>
                 Keep
               </button>
             </div>
