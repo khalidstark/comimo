@@ -429,11 +429,23 @@ export async function guard(request: Request, action: GuardAction, options: { re
   }
 }
 
+/**
+ * Why a call was blocked, for the browser: "signin", the hourly "limit", "paused", or a daily "cap".
+ * A store that can't be reached has no code: trying again soon is right.
+ */
+function blockedCode(result: Extract<GuardResult, { ok: false }>): string | undefined {
+  if (result.status === 401) return "signin";
+  if (result.status === 429) return "limit";
+  if (result === PAUSED) return "paused";
+  return result === DOWN ? undefined : "cap";
+}
+
 /** A blocked guard result as an API response. */
 export function guardResponse(result: Extract<GuardResult, { ok: false }>): Response {
   const headers: Record<string, string> = { "Cache-Control": "no-store" };
   if (result.status !== 401) headers["Retry-After"] = String(Math.max(1, result.retryAfterSec));
-  return Response.json(result.status === 401 ? { error: result.error, code: "signin" } : { error: result.error }, {
+  const code = blockedCode(result);
+  return Response.json(code ? { error: result.error, code } : { error: result.error }, {
     status: result.status,
     headers,
   });

@@ -24,9 +24,11 @@ export function jsonError(status: number, error: string): Response {
 export function modelErrorResponse(error: unknown): Response {
   if (error instanceof ModelInputError) return jsonError(400, error.message);
   if (error instanceof SpendCapError) {
-    const response = jsonError(503, error.message);
-    response.headers.set("Retry-After", String(error.retryAfterSec));
-    return response;
+    // "cap": trying again today can only hit the same cap.
+    return Response.json({ error: error.message, code: "cap" } satisfies ApiError, {
+      status: 503,
+      headers: { "Cache-Control": "no-store", "Retry-After": String(error.retryAfterSec) },
+    });
   }
   if (error instanceof MetaApiError) {
     // The message holds status, type and code from Meta; never the key or the user's content.

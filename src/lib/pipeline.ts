@@ -83,7 +83,8 @@ export type PipelineStatus = "idle" | "running" | "error" | "cancelled" | "done"
 export interface PipelineState {
   status: PipelineStatus;
   steps: Record<PipelineStep, StepStatus>;
-  error: { step: PipelineStep; message: string } | null;
+  /** What went wrong; `code` is the API's reason when it gave one ("cap", "paused", "limit", "signin", "audio"). */
+  error: { step: PipelineStep; message: string; code?: string } | null;
   transcript: Transcript | null;
   /** The script, its panels carrying the frame each is drawn for. */
   script: ComicScript | null;
@@ -153,6 +154,27 @@ class StepError extends Error {
     super(message);
     this.name = "StepError";
   }
+}
+
+/** Reasons a retry right now can only fail the same way, or that need the user first. Most pressing first. */
+const BLOCKING_CODES = ["signin", "paused", "cap", "limit"];
+
+/**
+ * Why the panels didn't draw, in one line: a blocking reason (sign in,
+ * paused, a daily cap, the hourly limit) or the reason they all share, else
+ * a plain "try them again".
+ */
+export function panelsFailed(failures: { message?: string; code?: string }[]): { message: string; code?: string } {
+  const many = failures.length !== 1;
+  const lead = many ? `${failures.length} panels didn't draw.` : "One panel didn't draw.";
+  for (const code of BLOCKING_CODES) {
+    const blocked = failures.find((failure) => failure.code === code && failure.message);
+    if (blocked) return { message: `${lead} ${blocked.message}`, code };
+  }
+  const reasons = new Set(failures.map((failure) => failure.message));
+  const [reason] = reasons;
+  if (reasons.size === 1 && reason) return { message: `${lead} ${reason}` };
+  return { message: many ? `${lead} Try them again.` : `${lead} Try it again.` };
 }
 
 function isAbort(error: unknown): boolean {
@@ -434,10 +456,11 @@ export class ComicPipeline {
       const failed = error instanceof StepError ? error.step : step;
       const message =
         error instanceof StepError ? error.message : "Something went wrong on this step. Try again.";
+      const code = error instanceof StepError ? error.code : undefined;
       if (!(error instanceof StepError)) console.error("Comimo: pipeline step failed", error);
       const steps = { ...this.state.steps, [failed]: "error" as const };
       if (failed === "draw" && steps.check === "active") steps.check = "waiting";
-      this.set({ status: "error", error: { step: failed, message }, steps });
+      this.set({ status: "error", error: { step: failed, message, ...(code ? { code } : {}) }, steps });
     } finally {
       if (this.controller === controller) this.controller = null;
     }
@@ -889,7 +912,7 @@ export class ComicPipeline {
     }
     this.set({ steps: { ...this.state.steps, draw: "active", check: "active" } });
 
-    let failed = 0;
+    const failures: { message?: string; code?: string }[] = [];
     const worker = async () => {
       for (let next = queue.shift(); next; next = queue.shift()) {
         if (signal.aborted) return;
@@ -899,7 +922,7 @@ export class ComicPipeline {
           await this.drawPanel(next, signal);
         } catch (error) {
           if (signal.aborted || isAbort(error)) throw error;
-          failed += 1;
+          failures.push(error instanceof StepError ? { message: error.message, code: error.code } : {});
           const message = error instanceof StepError ? error.message : "This panel didn't draw.";
           this.setPanel(next.index, { status: "error", error: message });
         } finally {
@@ -911,8 +934,9 @@ export class ComicPipeline {
     await Promise.all(Array.from({ length: PANEL_CONCURRENCY }, worker));
     if (signal.aborted) throw new DOMException("Cancelled", "AbortError");
 
-    if (failed > 0) {
-      throw new StepError("draw", failed === 1 ? "One panel didn't draw. Try it again." : `${failed} panels didn't draw. Try them again.`);
+    if (failures.length > 0) {
+      const { message, code } = panelsFailed(failures);
+      throw new StepError("draw", message, code);
     }
     this.set({ steps: { ...this.state.steps, draw: "done", check: "done" } });
   }

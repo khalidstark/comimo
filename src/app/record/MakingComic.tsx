@@ -132,6 +132,11 @@ function checkDetail(state: PipelineState, fixes: number, status: StepStatus): s
   return status === "done" ? "Done" : "Waiting for the first panel";
 }
 
+/** What an error offers: Try again, or nothing when trying again now can only fail the same way (a daily cap, a pause). */
+function errorAction(error: PipelineState["error"]): "retry" | "none" {
+  return error?.code === "cap" || error?.code === "paused" ? "none" : "retry";
+}
+
 function captionFor(state: PipelineState, fixing: PanelProgress | undefined): string {
   const crisis = state.script?.safety === "crisis";
   if (state.status === "error" && state.error) return state.error.message;
@@ -220,6 +225,7 @@ export function MakingComic({ audio, text, language, style, storyMode, photos, d
       (step !== "dress" || Boolean(photos?.length)),
   );
   const failedStep = state.error?.step;
+  const action = errorAction(state.error);
 
   // Coming back to /record after the comic opened: the run is over, so drop the screen.
   const leaveFinished = useEffectEvent(() => onClose());
@@ -330,7 +336,7 @@ export function MakingComic({ audio, text, language, style, storyMode, photos, d
           >
             {captionFor(state, fixing)}
           </p>
-          {status === "error" && failedStep ? (
+          {status === "error" && failedStep && action === "retry" ? (
             // Up here too, so a phone doesn't have to scroll past every panel to retry.
             <button type="button" className={`btn btn--ink ${styles.retryTop}`} onClick={retry}>
               Try again
@@ -431,7 +437,7 @@ export function MakingComic({ audio, text, language, style, storyMode, photos, d
                       <span className="visually-hidden">: {stepStatus === "active" ? "in progress" : stepStatus}</span>
                       {detail ? <span className={styles.stepDetail}>{detail}</span> : null}
                     </span>
-                    {stepStatus === "error" && failedStep === step ? (
+                    {stepStatus === "error" && failedStep === step && action === "retry" ? (
                       <button type="button" className={`btn btn--ink ${styles.retry}`} onClick={retry}>
                         Try again
                       </button>
