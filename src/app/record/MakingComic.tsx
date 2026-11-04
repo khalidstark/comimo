@@ -71,7 +71,8 @@ function excerpt(text: string, max = 150): string {
 }
 
 function stepDetail(step: PipelineStep, status: StepStatus, state: PipelineState): string {
-  if (status === "skipped") return "Skipped today";
+  // A skipped outfit step says why ("Couldn't read the photos this time").
+  if (status === "skipped") return (step === "dress" && state.dressed?.note) || "Skipped today";
   if (status === "error" || status === "waiting") return "";
   const total = state.panels.length;
   const drawn = state.panels.filter((panel) => panel.status === "done").length;
