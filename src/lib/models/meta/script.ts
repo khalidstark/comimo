@@ -9,7 +9,7 @@ import type { ModelCallContext, ScriptOptions } from "../index";
 import { MetaApiError, metaJson } from "./client";
 import { MODEL_IDS, chargeSpark } from "./pricing";
 import { SCRIPT_SYSTEM_PROMPT, YESTERDAY_BLOCK, castBlock, diaryBlock, scriptSchema, storyModeBlock, transcriptMessage } from "./prompts";
-// Cast by name (03-05): aliases in; new people (03-06) under placeholders until the user names them.
+// Cast by name: aliases in; new people under placeholders until the user names them.
 import { NEW_PERSON_IDS, isNewPersonId, remapPanel, resolveNewPeople } from "@/lib/newPeople";
 import { CAST_NAMES_PROMPT, castNamesBlock, withNewPeopleSchema } from "./prompts";
 
@@ -124,7 +124,7 @@ export function toComicScript(content: string, cast: CastBrief[], mode: StoryMod
   if (!mood) throw new ScriptShapeError("unknown mood");
   if (typeof raw.heavy !== "boolean") throw new ScriptShapeError("missing heavy flag");
 
-  // New people (03-06) are drawn under placeholders new1 to new4 until the user says who they are.
+  // New people are drawn under placeholders new1 to new4 until the user says who they are.
   const castIds = new Set<string>([...cast.map((member) => member.id), ...NEW_PERSON_IDS]);
   const rawPanels = asArray(raw.panels);
   const groups = pagesFromNumbers(rawPanels.map((panel) => (typeof asRecord(panel).page === "number" ? (asRecord(panel).page as number) : 1)));

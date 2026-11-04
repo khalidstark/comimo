@@ -30,7 +30,7 @@ export function parseReferences(value: unknown, max = MAX_REFERENCES): Character
     if (decoded && !isTrustedSheet(decoded.data, sheetToken)) return "untrusted";
     const fileId = fileToken === undefined ? null : verifyFileToken(fileToken);
     if (fileToken !== undefined && !fileId && !decoded) return "stale";
-    // A one-off (03-06) sends the earlier panel it first appeared in (signed by imageToken) and where it is in it.
+    // A one-off sends the earlier panel it first appeared in (signed by imageToken) and where it is in it.
     const at = oneOff === true && isRecord(box) ? (box as unknown as UnitBox) : undefined;
     references.push({
       characterId,

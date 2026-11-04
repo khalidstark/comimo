@@ -78,7 +78,7 @@ export const art = {
   },
   /**
    * The sample days' panels: one real Comimo run per sample transcript
-   * (03.2-06), drawn by Muse Image from the starter sheets below. Generated
+   *, drawn by Muse Image from the starter sheets below. Generated
    * with their fixture data by scripts/sample-comics.mjs.
    */
   samples: samplePanels,
@@ -115,7 +115,7 @@ export const art = {
   },
   month: {
     cover: drawn("site/month-cover.webp", "", 1000, 1250),
-    /** The sample issue's own cover, drawn by Muse Image from the starter sheets through the cover route (04-01). */
+    /** The sample issue's own cover, drawn by Muse Image from the starter sheets through the cover route. */
     sampleCover: drawn("site/cover-sample-2026-10.webp", "", 1000, 1500),
   },
   /**

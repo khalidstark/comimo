@@ -6,7 +6,7 @@ import type { CharacterRole, ComicScript, NewPerson, OneOff, ScriptPanel } from 
  * ("Omar") or not ("the cashier"). The script model lists them and draws them
  * under a placeholder id (new1 to new4); this file cleans that list (server),
  * and swaps the placeholders for a cast id or a one-off id once the user has
- * said who they are, before any panel is drawn (browser, 03-06).
+ * said who they are, before any panel is drawn (in the browser).
  */
 
 export const MAX_NEW_PEOPLE = 4;
@@ -131,7 +131,7 @@ export function peopleToOffer(people: NewPerson[] | undefined, cast: Named[], de
   );
 }
 
-/* ---------- Choosing before drawing (03-06) ---------- */
+/* ---------- Choosing before drawing ---------- */
 
 /**
  * What the user said about one new person before the panels were drawn:

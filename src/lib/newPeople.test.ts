@@ -39,7 +39,7 @@ describe("peopleToOffer", () => {
   });
 });
 
-describe("resolveNewPeople (03-06)", () => {
+describe("resolveNewPeople", () => {
   it("keeps placeholders for new people, maps a missed alias to the cast id, merges twins and drops junk", () => {
     const { people, ids } = resolveNewPeople(
       [
@@ -58,7 +58,7 @@ describe("resolveNewPeople (03-06)", () => {
   });
 });
 
-describe("applyFaceChoices (03-06)", () => {
+describe("applyFaceChoices", () => {
   const script: ComicScript = {
     title: "Rush hour",
     mood: "cloudy",

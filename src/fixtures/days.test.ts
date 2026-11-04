@@ -9,7 +9,7 @@ import { sampleCheckInQuestions, sampleDays, sampleWeek } from "./days";
 
 const publicFile = (src: string) => fileURLToPath(new URL(`../../public${src}`, import.meta.url));
 
-describe("sample days (real runs, 03.2-06)", () => {
+describe("sample days (real runs)", () => {
   it("are the five invented days, oldest first", () => {
     expect(sampleDays.map((day) => day.id)).toEqual(["sample-teta", "sample-deadline", "sample-rooftop", "sample-sunday", "sample"]);
     const dates = sampleDays.map((day) => day.date);

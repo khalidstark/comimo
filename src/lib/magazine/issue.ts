@@ -222,7 +222,7 @@ export function issueMonths(days: Day[]): MonthKey[] {
   return [...new Set(issueDays(days).map((day) => monthOf(day.date)))].sort();
 }
 
-/** Everyone in the cast drawn or speaking in a day's comic (one-offs belong to their one story, 03-06). */
+/** Everyone in the cast drawn or speaking in a day's comic (one-offs belong to their one story). */
 export function dayCastIds(day: Pick<Day, "panels">): string[] {
   const ids = new Set<string>();
   for (const panel of day.panels) {

@@ -96,14 +96,14 @@ export interface PipelineState {
   /** Set once the day is saved and read back from the store. */
   dayId: string | null;
   /**
-   * New faces (03-06): the people in the script who aren't in the cast, while
+   * New faces: the people in the script who aren't in the cast, while
    * the run waits for the user to say who they are (before any panel is drawn).
    */
   meeting: NewPerson[] | null;
   /** Once settled: who joined the cast and who is a one-off in this story. */
   faces: { joined: string[]; oneOffs: string[] } | null;
   /**
-   * Today's outfits (03.2-04), once the attached photos were read: who was
+   * Today's outfits, once the attached photos were read: who was
    * dressed from them (by name) and how many people were in the photos.
    */
   dressed: { names: string[]; people: number; note?: string } | null;
@@ -131,7 +131,7 @@ export interface PipelineInput {
    * day's photo album. Kept in memory only.
    */
   photos?: File[];
-  /** The diary the comic goes in (03.2-05); missing for the daily diary. */
+  /** The diary the comic goes in; missing for the daily diary. */
   diary?: { id: string; name: string };
   /** The day the comic is about (YYYY-MM-DD), so a missed day can be caught up; today when missing. */
   date?: string;
@@ -339,7 +339,7 @@ export class ComicPipeline {
   private readonly appearances = new Map<string, Appearance>();
   /** Settles when a one-off's first panel is done (or failed), so later panels can wait for it. */
   private readonly appeared = new Map<string, Promise<void>>();
-  /** What people wear today, from the attached photos (03.2-04); their panels use these sheets. */
+  /** What people wear today, from the attached photos; their panels use these sheets. */
   private dayOutfits: DayOutfit[] = [];
   /** Today's outfits being worked out, alongside listening (never fails the run). */
   private dressing: Promise<void> | null = null;
@@ -544,7 +544,7 @@ export class ComicPipeline {
   }
 
   /**
-   * Today's outfit (03.2-04): the attached photos (shrunk to 1024 px here)
+   * Today's outfit: the attached photos (shrunk to 1024 px here)
    * go to /api/outfit/today with the narrator's and a few cast members'
    * usual sheets; whoever it recognises gets a sheet in today's clothes,
    * kept with this day. Anything that goes wrong is skipped quietly: the
@@ -694,7 +694,7 @@ export class ComicPipeline {
   }
 
   /**
-   * New faces (03-06): when the script has people who aren't in the cast,
+   * New faces: when the script has people who aren't in the cast,
    * wait for the user to say who each one is (add to the cast, a one-off for
    * this story, or never ask), then swap their placeholders in the script.
    * Names the user said "never ask" to before are one-offs without asking.
@@ -803,7 +803,7 @@ export class ComicPipeline {
       }
       const character = this.cast?.find((member) => member.id === id);
       if (!character) continue;
-      // Their look and sheet in today's clothes (03.2-04), so the panel and the face check agree on them.
+      // Their look and sheet in today's clothes, so the panel and the face check agree on them.
       const base = { characterId: id, name: character.name, look: lookFor(character, this.dayOutfits), role: character.role };
       const token = inline ? undefined : wornFileTokenFor(character, this.input.style, this.dayOutfits);
       if (token) {
@@ -848,7 +848,7 @@ export class ComicPipeline {
   }
 
   /**
-   * Cast by name (03-05): a character in this comic without a sheet in its
+   * Cast by name: a character in this comic without a sheet in its
    * style gets one drawn once, before any panel, and kept (each sheet is a
    * guarded, metered call). Their animated sprite follows in the background.
    * A sheet that fails isn't fatal: the panels draw from the written look.
@@ -876,7 +876,7 @@ export class ComicPipeline {
   }
 
   /**
-   * Wardrobe (03.2-04): someone wearing an outfit that isn't drawn in this
+   * Wardrobe: someone wearing an outfit that isn't drawn in this
    * comic's style yet gets it drawn now, from their usual sheet in the style
    * (one image), and kept on the outfit. If it fails, they are drawn in their
    * usual clothes.
@@ -1066,14 +1066,14 @@ export class ComicPipeline {
       createdAt: this.createdAt,
     };
 
-    // Cast by name (03-05): keep each panel's names as they are today (ISS-007), and the new people to offer once.
-    // New faces (03-06): one-offs are kept with the day; only people skipped before drawing are offered afterwards.
+    // Cast by name: keep each panel's names as they are today (ISS-007), and the new people to offer once.
+    // New faces: one-offs are kept with the day; only people skipped before drawing are offered afterwards.
     const cast = this.cast ?? [];
     const oneOffs = crisis ? [] : (script.oneOffs ?? []);
     day.panels = day.panels.map((panel) => ({ ...panel, names: nameSnapshot(panel, cast, oneOffs) }));
     if (oneOffs.length > 0) day.oneOffs = oneOffs;
     if (!crisis && script.newPeople?.length) day.newPeople = script.newPeople;
-    // Today's clothes (03.2-04) and what the whole comic cost, retries and redraws included.
+    // Today's clothes and what the whole comic cost, retries and redraws included.
     if (!crisis && this.dayOutfits.length > 0) day.outfits = this.dayOutfits;
     day.cost = this.comicCost();
     if (this.input.diary) day.diaryId = this.input.diary.id;

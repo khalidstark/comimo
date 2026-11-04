@@ -8,7 +8,7 @@ import { MATCH_PROMPT, OUTFIT_PROMPT, OUTFIT_SCHEMA, matchSchema, outfitSheetPro
 import { outputText } from "./sam";
 
 /**
- * Outfits (03.2-04): the same character in other clothes.
+ * Outfits: the same character in other clothes.
  *
  * - writeOutfit: Muse Spark reads the character's description and the new
  *   clothes (a typed description, a photo crop, or both) and writes the

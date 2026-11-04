@@ -11,12 +11,12 @@ import { JUDGE_PROMPT, judgeSchema, redrawPrompt, type RedrawTarget } from "./pr
 import { cropFigure, locate, outputText, type Located } from "./sam";
 
 /**
- * The face check (03-03), three Meta models together:
+ * The face check, three Meta models together:
  * 1. SAM 3.1 finds every cast member in the drawn panel (a noun phrase from
  *    their look) and everyone else ("person"), see sam.ts;
  * 2. Muse Spark looks at each found character's cut-out next to their
  *    reference sheet and says whether it is the same character (json_schema);
- *    a one-off character (03-06) is compared with their first appearance in
+ *    a one-off character is compared with their first appearance in
  *    this comic instead, and isn't judged in that first panel;
  * 3. Muse Image redraws the panel when someone drifted: first an instruction
  *    edit of the panel itself ("fix only Karim"), then, if he still drifts, the
@@ -95,7 +95,7 @@ async function judge(
   for (const [i, ref] of refs.entries()) {
     const crop = await cropFigure(image, located.width, located.height, located.boxes.get(ref.characterId)!);
     void saveCrop(`${label}-${ref.name.replace(/\W+/g, "_")}`, crop);
-    // A one-off (03-06) has no sheet: their reference is how they looked in their first panel of this comic.
+    // A one-off has no sheet: their reference is how they looked in their first panel of this comic.
     const reference = ref.oneOff ? `How ${ref.name} looked in an earlier panel of this comic${ref.box ? " (find them among the people in it)" : ""}:` : "Reference sheet:";
     content.push({ type: "input_text", text: `Character ${i + 1}: ${ref.name}. ${reference}` });
     content.push(sheetPart(ref));

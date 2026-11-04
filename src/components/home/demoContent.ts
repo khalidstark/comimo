@@ -2,7 +2,7 @@ import { art, type ArtAsset } from "@/art/manifest";
 
 /**
  * The home page's demo: one real Comimo run on an invented day (lunch at
- * Teta Samia's), saved from the 03-02 pipeline test. Every panel was drawn by
+ * Teta Samia's), saved from an early pipeline test. Every panel was drawn by
  * Muse Image from the starter cast's reference sheets, once per art style.
  * Captions and bubbles are lettered here, the way the reader letters them.
  */

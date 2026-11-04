@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * What Comimo's comics cost, from the server's cost ledger (03.2-04).
+ * What Comimo's comics cost, from the server's cost ledger.
  *
  *   node scripts/costs-report.mjs                    local dev store (.data/kv.json, or COMIMO_DATA_DIR)
  *   node scripts/costs-report.mjs --url https://comimo.example   the deployed app's /api/maintenance/costs

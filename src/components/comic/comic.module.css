@@ -690,7 +690,7 @@
   background: var(--paper-deep);
 }
 
-/* A one-off has no portrait: a dashed "1x" ticket instead (03-06) */
+/* A one-off has no portrait: a dashed "1x" ticket instead */
 .oneOffMark {
   display: grid;
   flex: none;

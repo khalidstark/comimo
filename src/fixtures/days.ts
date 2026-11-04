@@ -6,7 +6,7 @@ import { sampleComics } from "./sampleComics";
  * and English in the same breath. None of this is a real diary.
  *
  * Each comic is what the real pipeline made of its transcript, run once per
- * day with the starter cast (03.2-06, scripts/sample-comics.mjs): Muse
+ * day with the starter cast (scripts/sample-comics.mjs): Muse
  * Spark's script, Muse Image's panels drawn from the starter sheets, SAM
  * 3.1's boxes and face check, and what it cost (sampleComics.ts). The pages
  * show these before anyone records, and the mock model layer answers from them.

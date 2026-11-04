@@ -4,7 +4,7 @@ import type { UnitBox } from "@/lib/types";
 import type { CharacterReference, ModelImage } from "./index";
 
 /**
- * One-off characters (03-06) have no reference sheet. Their first panel is
+ * One-off characters have no reference sheet. Their first panel is
  * drawn from the note's description; every later panel gets that first
  * appearance as their reference, cut down to the box SAM 3.1 found them in,
  * so Muse Image copies the person and not the whole earlier scene, and the

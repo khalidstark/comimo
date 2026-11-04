@@ -37,7 +37,7 @@ interface NewFacesStepProps {
 }
 
 /**
- * "New faces in this story" (03-06): the progress screen pauses before any
+ * "New faces in this story": the progress screen pauses before any
  * panel is drawn to ask who the people the note mentions are. Each can join
  * the cast (the quick form, typed or from a photo, then their sheet is drawn),
  * be a one-off drawn just for this story, or be a one-off whose name is never

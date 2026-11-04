@@ -17,7 +17,7 @@ import {
 import { blobToWire, wireToBlob } from "./wireImage";
 
 /**
- * The wardrobe (03.2-04): a character's other clothes, and what they wear in
+ * The wardrobe: a character's other clothes, and what they wear in
  * a comic. Precedence when drawing: the day's outfit from today's photos,
  * then the outfit they chose to wear from now on, then their usual clothes.
  *

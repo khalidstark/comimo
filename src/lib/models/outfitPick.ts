@@ -1,7 +1,7 @@
 import type { PersonMatch, PhotoPerson } from "./index";
 
 /**
- * The pure part of today's outfit (03.2-04): which people in the day's
+ * The pure part of today's outfit: which people in the day's
  * photos are worth a look, and which matches are sure enough to dress.
  */
 

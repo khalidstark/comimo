@@ -2,7 +2,7 @@ import { getMeta, setMeta } from "./store";
 import type { ApiError, Day, IsoDate, WeekRequest, WeekResponse, WeekSummary } from "./types";
 
 /**
- * The week's good things (03.2-05): the comics of this week (Saturday to
+ * The week's good things: the comics of this week (Saturday to
  * Friday, local time, as weeks run in Egypt and on the home page's week strip) go to /api/week, Muse Spark writes what went well and
  * what the user did, and the answer is kept as the synced setting
  * `week:<monday>`. Crisis days are never sent.

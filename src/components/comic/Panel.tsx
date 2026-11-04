@@ -67,7 +67,7 @@ function useFitLettering(ref: RefObject<HTMLDivElement | null>) {
 const FREE_SCALES = [1, 0.88, 0.78, 0.7];
 
 /**
- * Lettering for panels SAM measured (03-03): the caption and bubbles go into
+ * Lettering for panels SAM measured: the caption and bubbles go into
  * the panel's free space, off every head SAM found, off any inset laid over
  * the panel and off the face-fix stamp, near their speaker with the tail at
  * their head (placeLettering). The boxes are mapped through this page's crop.

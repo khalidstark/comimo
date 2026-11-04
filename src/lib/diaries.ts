@@ -2,7 +2,7 @@ import { getMeta, newId, setMeta } from "./store";
 import { DIARY_COLORS, DIARY_STICKERS, type Day, type Diary, type DiaryColor, type DiarySticker } from "./types";
 
 /**
- * Diaries (03.2-05): notebooks the user names themselves and writes in any
+ * Diaries: notebooks the user names themselves and writes in any
  * day. The list is the synced setting `diaries` (JSON); a comic belongs to
  * one through `Day.diaryId`. "Every day" is built in: every comic without a
  * diary (all comics made before diaries).

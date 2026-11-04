@@ -42,7 +42,7 @@ export interface PanelView {
   before: PanelArt | null;
   /** Names of the characters whose faces were fixed in this panel. */
   fixedNames: string[];
-  /** What checked the panel: SAM 3.1, practice mode, or nothing recorded (days before 03-03). */
+  /** What checked the panel: SAM 3.1, practice mode, or nothing recorded (days made by an earlier build). */
   checkedBy: "sam" | "mock" | null;
   /** People and animals SAM found, for placing the lettering; null on older days. */
   figures: PanelFigures | null;
@@ -130,9 +130,9 @@ export function fixedFaces(
 /**
  * What the "How it was made" note may truthfully say about a day's faces:
  * - "sam": SAM 3.1 really looked (counts are what it found on the final panels);
- * - "practice": made in practice mode (the fixes are pretend), or made before
- *   03-03 with fixes, which only practice mode could make;
- * - null: made before 03-03 with nothing to show, so the note is left out.
+ * - "practice": made in practice mode (the fixes are pretend), or made by an earlier
+ *   build with fixes, which only practice mode could make;
+ * - null: made by an earlier build with nothing to show, so the note is left out.
  */
 export type FacesSummary =
   | {
@@ -149,7 +149,7 @@ export type FacesSummary =
       /** Faces that drifted but no redraw got closer. */
       unfixed: number;
       fixed: FixedFace[];
-      /** One-off characters (03-06): drawn for this story only, checked against their first panel. */
+      /** One-off characters: drawn for this story only, checked against their first panel. */
       oneOffs: OneOffFace[];
     }
   | { kind: "practice"; fixed: FixedFace[]; oneOffs: OneOffFace[] };

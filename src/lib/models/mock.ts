@@ -55,7 +55,7 @@ async function transcribe(audio: AudioInput): Promise<Transcript> {
 
 /**
  * Mock stand-in for the script model's safety check, so the no-comic path can
- * be built. The real check is done by the model in Phase 3.
+ * be built. The real check is done by the models.
  */
 const CRISIS_HINTS = ["[mock:crisis]", "hurt myself", "kill myself", "end my life", "suicide", "انتحار", "أؤذي نفسي", "أموت نفسي", "مش عايز أعيش"];
 const HEAVY_HINTS = ["[mock:heavy]", "deadline", "overwhelmed", "stressed", "ديدلاين", "مش هلحق", "مضغوط", "مخنوق"];
@@ -133,7 +133,7 @@ function mockPage(day: Day, transcript: string, toCast: (id: string) => string, 
 }
 
 /**
- * Practice-mode new faces (03-06): a few invented people the mock "hears" in a
+ * Practice-mode new faces: a few invented people the mock "hears" in a
  * note, so the ask-before-drawing step can be tried without credits. Each one
  * is put in two panels, so a one-off has a first appearance and a later one.
  */

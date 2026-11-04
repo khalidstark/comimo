@@ -37,7 +37,7 @@ function byShippedOrder(a: Character, b: Character): number {
 }
 
 const SEEDED_KEY = "starterCastSeeded";
-/** Set once the invented extras were taken out of a cast seeded before 03.2-07. Follows the account. */
+/** Set once the invented extras were taken out of a cast seeded by an earlier build. Follows the account. */
 const EXTRAS_REMOVED_KEY = "starterExtrasRemoved";
 
 /**
@@ -157,7 +157,7 @@ export function withReferenceFile(character: Character, style: ArtStyleId, token
   return { ...character, referenceSheets: { ...character.referenceSheets, [style]: next } };
 }
 
-/* ---------- What they wear (03.2-04) ---------- */
+/* ---------- What they wear ---------- */
 
 /**
  * The sheet a comic in `style` draws them from: the day's outfit, else the

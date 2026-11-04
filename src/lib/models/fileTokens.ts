@@ -50,7 +50,7 @@ export function verifyFileToken(token: unknown): string | null {
 
 /**
  * SHA-256 of the starter sheets in public/art/cast, both styles (drawn by
- * Muse Image in 03-02 and resized). Update these when those files change.
+ * Muse Image and resized). Update these when those files change.
  */
 const STARTER_SHEETS = new Set([
   "6bd0220b7a06222bcca54c0c2c78302a6a3a6fa921a14d1145b5f0f987d7f0f3", // nour

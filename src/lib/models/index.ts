@@ -54,7 +54,7 @@ export interface CharacterReference {
   /** "pet" characters are found and judged as animals. Missing from older clients. */
   role?: CharacterRole;
   /**
-   * A one-off character (03-06): drawn for one story only, with no sheet. Their
+   * A one-off character: drawn for one story only, with no sheet. Their
    * `image`, when there is one, is a cut-out of the panel they first appeared in.
    */
   oneOff?: boolean;
@@ -114,13 +114,13 @@ export interface ModelCallContext {
 export interface ScriptOptions {
   /** Defaults to DEFAULT_STORY_MODE. */
   storyMode?: StoryMode;
-  /** The name of the diary the entry is for (03.2-05), when it isn't the daily one. */
+  /** The name of the diary the entry is for, when it isn't the daily one. */
   diary?: string;
   /** True when the note catches up yesterday, so the script doesn't call it today. */
   yesterday?: boolean;
 }
 
-/** A change of clothes in words (03.2-04). */
+/** A change of clothes in words. */
 export interface OutfitText {
   /** What they wear, e.g. "Long olive raincoat, cream sweater, yellow rain boots". */
   clothes: string;
@@ -183,7 +183,7 @@ export interface ComicModels {
   ): Promise<{ image: ModelImage; photoRefused: boolean }>;
   /** Which cast member each person cut from the day's photos is, and what they wear. */
   matchPeople(crops: ModelImage[], references: CharacterReference[], context?: ModelCallContext): Promise<PersonMatch[]>;
-  /** The good things of the week, from its comics (03.2-05). */
+  /** The good things of the week, from its comics. */
   writeWeek(week: WeekRequest, context?: ModelCallContext): Promise<{ headline: string; goodThings: GoodThing[]; line: string }>;
 }
 

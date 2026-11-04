@@ -106,7 +106,7 @@ export interface Character {
    */
   about?: AboutYou;
   /**
-   * Their wardrobe (03.2-04): the same character in other clothes, newest
+   * Their wardrobe: the same character in other clothes, newest
    * last, at most MAX_OUTFITS. Missing on records made before outfits.
    */
   outfits?: Outfit[];
@@ -166,7 +166,7 @@ export interface Outfit {
 }
 
 /**
- * What someone wore on one day (03.2-04): found in the photos attached
+ * What someone wore on one day: found in the photos attached
  * before the comic was made, drawn as a sheet for that day only.
  */
 export interface DayOutfit extends Omit<Outfit, "id" | "source" | "createdAt"> {
@@ -219,7 +219,7 @@ export interface PanelConsistency {
   beforeImage: ImageRef | null;
   /**
    * What actually checked the panel: "sam" when SAM 3.1 looked for the
-   * characters, "mock" in practice mode. Missing on days made before 03-03,
+   * characters, "mock" in practice mode. Missing on days made by an earlier build,
    * whose check was never real.
    */
   method?: "sam" | "mock";
@@ -336,7 +336,7 @@ export interface Panel {
   /** The drawn panel; null until drawn. */
   image: ImageRef | null;
   consistency: PanelConsistency;
-  /** People and animals SAM 3.1 found in the final image; missing on days made before 03-03 and in practice mode. */
+  /** People and animals SAM 3.1 found in the final image; missing on days made by an earlier build and in practice mode. */
   figures?: PanelFigures;
 }
 
@@ -406,17 +406,17 @@ export interface Day {
   pages?: ComicPage[];
   /**
    * People in the note who aren't in the cast and whom the user skipped before
-   * drawing (03-06), offered once after the comic. Days made in 03-05 list
+   * drawing, offered once after the comic. Days made by an earlier build list
    * everyone new here (they were drawn as background figures then).
    */
   newPeople?: NewPerson[];
-  /** Characters drawn just for this story (03-06), by their `oneoff:` id. */
+  /** Characters drawn just for this story, by their `oneoff:` id. */
   oneOffs?: OneOff[];
-  /** What people wore that day, from the photos attached before drawing (03.2-04); their panels use these sheets. */
+  /** What people wore that day, from the photos attached before drawing; their panels use these sheets. */
   outfits?: DayOutfit[];
-  /** What making the comic cost (03.2-04); missing on older days. */
+  /** What making the comic cost; missing on older days. */
   cost?: ComicCost;
-  /** The diary it was written in (03.2-05); missing means "Every day", the daily diary. */
+  /** The diary it was written in; missing means "Every day", the daily diary. */
   diaryId?: string;
   /** True for the invented sample days. */
   sample?: boolean;
@@ -426,7 +426,7 @@ export interface Day {
 }
 
 /* ------------------------------------------------------------------ */
-/* Diaries and the week (03.2-05)                                      */
+/* Diaries and the week                                      */
 /* ------------------------------------------------------------------ */
 
 export const DIARY_COLORS = ["pink", "sun", "teal", "ink", "lilac", "grass"] as const;
@@ -548,7 +548,7 @@ export interface ScriptRequest {
   cast?: CastBrief[];
   /** Defaults to DEFAULT_STORY_MODE. */
   storyMode?: StoryMode;
-  /** The diary the entry is for (03.2-05), by name; missing for the daily diary. */
+  /** The diary the entry is for, by name; missing for the daily diary. */
   diary?: string;
   /** "yesterday" when a missed day is being caught up; missing for today. */
   day?: "yesterday";
@@ -574,7 +574,7 @@ export interface WireReference {
   sheetToken?: string;
   fileToken?: string;
   /**
-   * A one-off character (03-06): no sheet. `image`, when sent, is the panel
+   * A one-off character: no sheet. `image`, when sent, is the panel
    * they first appeared in (with that panel's `imageToken` as `sheetToken`),
    * and `box` is where they are in it, so the server cuts them out.
    */
@@ -656,7 +656,7 @@ export interface ApiError {
 
 /** Someone in the note who isn't in the cast, as the script model heard them. */
 export interface NewPerson {
-  /** The placeholder the script's panels use for them (new1 to new4); missing on days made before 03-06. */
+  /** The placeholder the script's panels use for them (new1 to new4); missing on days made by an earlier build. */
   id?: string;
   /** How they are best called, e.g. "Omar", or "the cashier" when the note gives no name. */
   name: string;
@@ -670,7 +670,7 @@ export interface NewPerson {
 }
 
 /**
- * A character drawn for one story only (03-06): a new person the user chose
+ * A character drawn for one story only: a new person the user chose
  * not to add to the cast. Drawn freely from the note's description in their
  * first panel; later panels get that first appearance as their reference.
  */
@@ -736,7 +736,7 @@ export interface CoverResponse {
 }
 
 /* ------------------------------------------------------------------ */
-/* Outfits (03.2-04)                                                   */
+/* Outfits                                                   */
 /* ------------------------------------------------------------------ */
 
 /**

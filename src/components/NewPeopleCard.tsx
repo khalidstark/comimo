@@ -28,7 +28,7 @@ import styles from "./NewPeopleCard.module.css";
 
 /**
  * After a comic: "Meet Omar?" for each person in the note who isn't in the
- * cast and whom the user skipped before drawing (03-06; on days made in 03-05,
+ * cast and whom the user skipped before drawing (on days made by an earlier build,
  * everyone new). Adding them takes a quick, prefilled form (or a photo) and
  * draws their sheet once in the day's art style, then animates them. "Not now"
  * hides them on this day; "Never for this name" stops asking on this device.
@@ -228,7 +228,7 @@ const FIELDS: DraftField[] = ["name", "aliases", "role", "look"];
 
 /**
  * The prefilled quick form: name, other names, who they are, and how they
- * look (typed or from a photo). Shared with the new-faces step (03-06).
+ * look (typed or from a photo). Shared with the new-faces step.
  */
 export function NewPersonForm({
   person,

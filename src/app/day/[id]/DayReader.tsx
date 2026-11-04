@@ -101,7 +101,7 @@ export function DayReader({ id }: { id: string }) {
       if (cancelled) return;
 
       const panels = toPanelViews(day.panels, nameOf, (panel, which) => images.get(`${panel.index}:${which}`) ?? null);
-      // Sample days are real runs too (03.2-06), so their note comes from their stored SAM data like any other day.
+      // Sample days are real runs too, so their note comes from their stored SAM data like any other day.
       const faces = facesSummary(day.panels, fixedFaces(day.panels, nameOf, (characterId) => portraits.get(characterId) ?? null), oneOffFaces(day.panels, nameOf));
 
       // Days made before page layouts get one picked now, different from the day before.

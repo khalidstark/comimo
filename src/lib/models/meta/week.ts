@@ -5,7 +5,7 @@ import { MetaApiError, metaJson } from "./client";
 import { MODEL_IDS, chargeSpark } from "./pricing";
 
 /**
- * The week's good things (03.2-05): Muse Spark reads the week's comics (the
+ * The week's good things: Muse Spark reads the week's comics (the
  * user's own words) and picks out what went well, what the user did and the
  * kindness they got. One chat completion with a json_schema answer.
  */
