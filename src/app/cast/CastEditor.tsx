@@ -551,6 +551,8 @@ function CharacterForm({ character, others, onSave, onCancel }: CharacterFormPro
   const [busy, setBusy] = useState(false);
   /** The person cut from a photo, held in memory until the sheet is drawn; never stored. */
   const [crop, setCrop] = useState<WireImage | null>(null);
+  /** A photo is picked in "Start from a photo" but not described yet. */
+  const [photoWaiting, setPhotoWaiting] = useState(false);
   const headingRef = useRef<HTMLHeadingElement>(null);
   const fieldId = (field: DraftField) => `${id}-${field}`;
   /** The user's own card: always "You", drawn from their photo in About you. */
@@ -570,6 +572,8 @@ function CharacterForm({ character, others, onSave, onCancel }: CharacterFormPro
     event.preventDefault();
     if (busy) return;
     const found = validateDraft(draft, others);
+    // A photo was picked but never described: point at the button rather than ask for words.
+    if (found.look && photoWaiting && !draft.look.trim()) found.look = "Tap “Describe from photo” first, or write how they look.";
     setErrors(found);
     const first = FIELD_ORDER.find((field) => found[field]);
     if (first) {
@@ -702,6 +706,7 @@ function CharacterForm({ character, others, onSave, onCancel }: CharacterFormPro
               setCrop(cut);
             }}
             onCleared={() => setCrop(null)}
+            onWaiting={setPhotoWaiting}
           />
         )}
 
