@@ -10,7 +10,7 @@ export default function SignUpPage() {
       mode="signup"
       kicker="Issue #1"
       title="Start your comic book"
-      lede="A name, an email and a password. Then tell Comimo about today."
+      lede="A name, an email and a password. Then tell Comimo a little about you."
       art={art.how.book}
       bubble="Takes about twenty seconds!"
     />
