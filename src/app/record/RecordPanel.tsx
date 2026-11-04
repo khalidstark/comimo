@@ -288,9 +288,12 @@ export function RecordPanel() {
             placeholder="What happened today? Write it the way you'd tell a friend, in Arabic, English or both."
           />
           <p id={typedHintId} className={styles.uploadHint}>
-            {typedText.length < TYPED_MIN
+            {typedText.length === 0
               ? "A few sentences is enough. Comimo works out the language from what you write."
-              : `${typed.length.toLocaleString("en")} of ${TYPED_MAX.toLocaleString("en")} characters`}
+              : !typedReady
+                ? // Make my comic waits for TYPED_MIN: say how far off it is.
+                  `${TYPED_MIN - typedText.length} more ${TYPED_MIN - typedText.length === 1 ? "character" : "characters"} to go. A few sentences is enough.`
+                : `${typed.length.toLocaleString("en")} of ${TYPED_MAX.toLocaleString("en")} characters`}
           </p>
           {options}
           <div className={styles.reviewActions}>
