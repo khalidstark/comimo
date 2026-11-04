@@ -132,8 +132,13 @@ function checkDetail(state: PipelineState, fixes: number, status: StepStatus): s
   return status === "done" ? "Done" : "Waiting for the first panel";
 }
 
-/** What an error offers: Try again, or nothing when trying again now can only fail the same way (a daily cap, a pause). */
-function errorAction(error: PipelineState["error"]): "retry" | "none" {
+/**
+ * What an error offers: Try again; Record again when the voice note itself was the problem
+ * (sending it again would fail, and cost, the same way); or nothing when trying again now
+ * can only fail the same way (a daily cap, a pause).
+ */
+function errorAction(error: PipelineState["error"], canRecordAgain: boolean): "retry" | "record" | "none" {
+  if (error?.code === "audio" && canRecordAgain) return "record";
   return error?.code === "cap" || error?.code === "paused" ? "none" : "retry";
 }
 
@@ -185,6 +190,8 @@ interface MakingComicProps {
   onClose: () => void;
   /** Called when /record shows again after the comic opened: the run is over. */
   onFinished: () => void;
+  /** Closes the screen and throws the voice note away, for a note that can't be used. */
+  onRecordAgain?: () => void;
 }
 
 /**
@@ -192,7 +199,7 @@ interface MakingComicProps {
  * finishes. Panels are pencilled from the script, inked when drawn, and a
  * panel whose face was fixed flips from before to after.
  */
-export function MakingComic({ audio, text, language, style, storyMode, photos, diary, date, onClose, onFinished }: MakingComicProps) {
+export function MakingComic({ audio, text, language, style, storyMode, photos, diary, date, onClose, onFinished, onRecordAgain }: MakingComicProps) {
   const [pipeline] = useState(
     () =>
       new ComicPipeline({
@@ -230,7 +237,7 @@ export function MakingComic({ audio, text, language, style, storyMode, photos, d
       (step !== "dress" || Boolean(photos?.length)),
   );
   const failedStep = state.error?.step;
-  const action = errorAction(state.error);
+  const action = errorAction(state.error, Boolean(onRecordAgain));
 
   // Coming back to /record after the comic opened: the run is over, so drop the screen and start fresh.
   const leaveFinished = useEffectEvent(() => onFinished());
@@ -287,6 +294,20 @@ export function MakingComic({ audio, text, language, style, storyMode, photos, d
     headingRef.current?.focus();
     void pipeline.start();
   }, [pipeline]);
+
+  const recordAgain = useCallback(() => {
+    pipeline.cancel();
+    dialogRef.current?.close();
+    onRecordAgain?.();
+  }, [pipeline, onRecordAgain]);
+
+  /** The way forward from an error, up top and next to the failed step. */
+  const errorButton = (className: string) =>
+    action === "none" ? null : (
+      <button type="button" className={`btn btn--ink ${className}`} onClick={action === "record" ? recordAgain : retry}>
+        {action === "record" ? "Record again" : "Try again"}
+      </button>
+    );
 
   const markSettled = useCallback((index: number) => {
     setSettled((previous) => new Set(previous).add(index));
@@ -353,12 +374,8 @@ export function MakingComic({ audio, text, language, style, storyMode, photos, d
           >
             {captionFor(state, fixing)}
           </p>
-          {status === "error" && failedStep && action === "retry" ? (
-            // Up here too, so a phone doesn't have to scroll past every panel to retry.
-            <button type="button" className={`btn btn--ink ${styles.retryTop}`} onClick={retry}>
-              Try again
-            </button>
-          ) : null}
+          {/* Up here too, so a phone doesn't have to scroll past every panel to retry. */}
+          {status === "error" && failedStep ? errorButton(styles.retryTop) : null}
         </div>
 
         <div className={styles.stage}>
@@ -454,11 +471,7 @@ export function MakingComic({ audio, text, language, style, storyMode, photos, d
                       <span className="visually-hidden">: {stepStatus === "active" ? "in progress" : stepStatus}</span>
                       {detail ? <span className={styles.stepDetail}>{detail}</span> : null}
                     </span>
-                    {stepStatus === "error" && failedStep === step && action === "retry" ? (
-                      <button type="button" className={`btn btn--ink ${styles.retry}`} onClick={retry}>
-                        Try again
-                      </button>
-                    ) : null}
+                    {stepStatus === "error" && failedStep === step ? errorButton(styles.retry) : null}
                   </li>
                 );
               })}

@@ -506,7 +506,8 @@ export class ComicPipeline {
       this.wav = (await toWav(this.input.audio)).wav;
       return this.wav;
     } catch (error) {
-      if (error instanceof AudioConvertError) throw new StepError("listen", error.message);
+      // "audio": the note itself is the problem (silent, too long, unreadable), so only a new one can help.
+      if (error instanceof AudioConvertError) throw new StepError("listen", error.message, error.problem === "unsupported" ? undefined : "audio");
       throw error;
     }
   }

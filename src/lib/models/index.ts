@@ -187,7 +187,11 @@ export interface ComicModels {
 
 /** Thrown when a voice note or other input can't be sent to a model as it is. */
 export class ModelInputError extends Error {
-  constructor(message: string) {
+  constructor(
+    message: string,
+    /** The reason for the browser, e.g. "audio" when only a new recording can help. */
+    readonly code?: string,
+  ) {
     super(message);
     this.name = "ModelInputError";
   }

@@ -456,6 +456,10 @@ export function RecordPanel() {
           date={making.date}
           onClose={() => setMaking(null)}
           onFinished={startFresh}
+          onRecordAgain={() => {
+            setMaking(null);
+            recorder.discard();
+          }}
         />
       ) : null}
     </div>
