@@ -109,6 +109,8 @@ export function useRecorder(): Recorder {
   const timerRef = useRef<number | null>(null);
   const takeUrlRef = useRef<string | null>(null);
   const mountedRef = useRef(true);
+  /** True while the browser is asking for the mic, so a second tap doesn't open a second stream. */
+  const startingRef = useRef(false);
   /** Bumped for every picked file, so only the latest one's measurement counts. */
   const pickRef = useRef(0);
 
@@ -147,7 +149,7 @@ export function useRecorder(): Recorder {
   }, [stopTimer]);
 
   const start = useCallback(async () => {
-    if (recorderRef.current) return;
+    if (recorderRef.current || startingRef.current) return;
     // A file still being measured loses to a fresh recording.
     pickRef.current++;
     if (!canRecord()) {
@@ -155,6 +157,7 @@ export function useRecorder(): Recorder {
       return;
     }
 
+    startingRef.current = true;
     setProblem(null);
     setStatus("requesting");
 
@@ -167,6 +170,8 @@ export function useRecorder(): Recorder {
       setStatus("idle");
       if (mountedRef.current) setProblem(problemFromError(error));
       return;
+    } finally {
+      startingRef.current = false;
     }
     if (!mountedRef.current) {
       // The page was left while the browser asked: let the mic go and show Start again.
