@@ -1,6 +1,10 @@
-# `vercel deploy` from this folder ignores .gitignore: keep the local store
-# (accounts, sessions, images, album photos) and env files out of uploads.
-.data
-.env*
-!.env.example
-*.tsbuildinfo
+# `vercel deploy` uploads only what the build needs: never the local store
+# (.data: accounts, sessions, images, album photos), env files or local tools.
+/*
+!/src
+!/public
+!/package.json
+!/package-lock.json
+!/next.config.ts
+!/tsconfig.json
+!/eslint.config.mjs
