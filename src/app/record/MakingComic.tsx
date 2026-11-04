@@ -255,6 +255,18 @@ export function MakingComic({ audio, text, language, style, storyMode, photos, d
     return () => pipeline.dispose();
   }, [pipeline]);
 
+  // A refresh or a closed tab would throw away a run in progress, and what it has cost: ask first.
+  useEffect(() => {
+    if (status !== "running") return;
+    const warn = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      // Older Safari and Chrome only ask when returnValue is set.
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [status]);
+
   // Hold on the finished page for a beat, then turn to the day.
   useEffect(() => {
     if (!finished) return;
