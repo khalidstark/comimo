@@ -149,6 +149,8 @@ describe("without a trusted client IP", () => {
   it("caps sign-ups with global buckets, and per IP when the IP is trusted", async () => {
     expect(signupBuckets(null, {}).map((b) => b.key)).toEqual(["signup:global:hour", "signup:global:day"]);
     expect(signupBuckets("ip1", {}).map((b) => b.key)).toEqual(["signup:ip:ip1:hour", "signup:ip:ip1:day"]);
+    // Room for a team of judges behind one office router.
+    expect(signupBuckets("ip1", {})[0].limit).toBe(15);
     const [hour] = signupBuckets(null, { COMIMO_SIGNUPS_GLOBAL_HOUR: "3" });
     let allowed = 0;
     for (let i = 0; i < 6; i++) if ((await hit(kv, hour.key, hour.limit, hour.windowSec, T0)).ok) allowed++;
