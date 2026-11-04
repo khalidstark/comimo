@@ -107,6 +107,8 @@ export interface PipelineState {
    * dressed from them (by name) and how many people were in the photos.
    */
   dressed: { names: string[]; people: number; note?: string } | null;
+  /** Whose reference sheets are being drawn before the panels (someone new to this style, or a new outfit). */
+  sheets: string[];
   /** What the comic has cost so far (every model request, retries included). */
   cost: CostRecord;
   /** The day's photos once they are in its album (or why not). */
@@ -298,6 +300,7 @@ function initialState(): PipelineState {
     meeting: null,
     faces: null,
     dressed: null,
+    sheets: [],
     cost: emptyCost(),
     album: null,
   };
@@ -477,7 +480,7 @@ export class ComicPipeline {
     const panels = this.state.panels.map((panel) =>
       panel.status === "drawing" ? { ...panel, status: "waiting" as const } : panel,
     );
-    this.set({ status: "cancelled", steps, panels, meeting: null });
+    this.set({ status: "cancelled", steps, panels, meeting: null, sheets: [] });
   }
 
   /** Cancel and free the object URLs behind the panel previews. */
@@ -849,7 +852,8 @@ export class ComicPipeline {
     const missing = (this.cast ?? []).filter(
       (member) => ids.has(member.id) && !referenceSheetFor(member, this.input.style) && member.look.trim().length >= 12,
     );
-    await Promise.all(
+    await this.drawingSheets(
+      missing.map((member) => member.name),
       missing.map(async (member) => {
         try {
           const { character: drawn, cost } = await drawSheetForComic(member, this.input.style, this.dayId, signal);
@@ -878,7 +882,8 @@ export class ComicPipeline {
       const worn = wornSheetFor(member, style, this.dayOutfits);
       return worn.wearing.kind === "outfit" && worn.missing && worn.base ? [{ member, outfit: worn.wearing.outfit, base: worn.base }] : [];
     });
-    await Promise.all(
+    await this.drawingSheets(
+      needing.map(({ member }) => member.name),
       needing.map(async ({ member, outfit, base }) => {
         try {
           const { sheet, cost } = await drawOutfitInStyle(member, outfit, base, style, `${member.id}-outfit-${outfit.id}-${style}`, signal, this.dayId);
@@ -894,7 +899,20 @@ export class ComicPipeline {
     );
   }
 
+  /** Shows whose sheets are being drawn (the progress caption names them) until the drawing settles. */
+  private async drawingSheets(names: string[], drawing: Promise<void>[]) {
+    if (drawing.length === 0) return;
+    this.set({ sheets: names });
+    try {
+      await Promise.all(drawing);
+    } finally {
+      this.set({ sheets: [] });
+    }
+  }
+
   private async drawPanels(script: ComicScript, signal: AbortSignal) {
+    // Drawing starts with any missing sheets, so the step is underway before the first panel.
+    this.setStep("draw", "active");
     this.cast ??= await loadCast();
     await this.ensureSheets(script, signal);
     const queue = script.panels.filter((panel) => this.state.panels.find((p) => p.index === panel.index)?.status !== "done");

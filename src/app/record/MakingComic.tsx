@@ -147,6 +147,9 @@ function captionFor(state: PipelineState, fixing: PanelProgress | undefined): st
   const { steps } = state;
   if (steps.save === "active") return "Binding the pages…";
   if (steps.meet === "active") return state.meeting ? "One quick question first…" : "Getting the new faces ready…";
+  if (steps.draw === "active" && state.sheets.length > 0) {
+    return state.sheets.length === 1 ? `Drawing ${state.sheets[0]}'s sheet…` : "Drawing your cast's sheets…";
+  }
   if (steps.draw === "active") {
     const pages = state.pages?.length ?? 1;
     const drawingPanels = state.panels.filter((panel) => panel.status === "drawing");
