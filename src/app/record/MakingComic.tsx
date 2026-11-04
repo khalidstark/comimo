@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { useCallback, useEffect, useEffectEvent, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties } from "react";
+import { useCallback, useEffect, useEffectEvent, useId, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties } from "react";
 import { Art } from "@/art/Art";
 import { art } from "@/art/manifest";
 import { PAGE_TURN } from "@/components/PageTurn";
@@ -145,6 +145,11 @@ function errorAction(error: PipelineState["error"], canRecordAgain: boolean): "r
   return error?.code === "cap" || error?.code === "paused" ? "none" : "retry";
 }
 
+/** True when focus is in a field (the New faces form): Escape there belongs to the field, not the run. */
+function inField(element: Element | null): boolean {
+  return element instanceof HTMLElement && (element.isContentEditable || element.matches("input, textarea, select"));
+}
+
 function captionFor(state: PipelineState, fixing: PanelProgress | undefined, yesterday: boolean): string {
   const crisis = state.script?.safety === "crisis";
   if (state.status === "error" && state.error) return state.error.message;
@@ -220,6 +225,12 @@ export function MakingComic({ audio, text, language, style, storyMode, photos, d
   const [settled, setSettled] = useState<ReadonlySet<number>>(() => new Set());
   /** Sign in was opened in a new tab: once they're back, the run can keep going. */
   const [signInOpened, setSignInOpened] = useState(false);
+  /** "Stop and lose this comic?" is showing in place of Cancel. */
+  const [confirming, setConfirming] = useState(false);
+  const confirmId = useId();
+  const keepRef = useRef<HTMLButtonElement>(null);
+  const cancelRef = useRef<HTMLButtonElement>(null);
+  const askedRef = useRef(false);
   const dialogRef = useRef<HTMLDialogElement>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
   const router = useRouter();
@@ -299,6 +310,19 @@ export function MakingComic({ audio, text, language, style, storyMode, photos, d
     onClose();
   }, [pipeline, onClose]);
 
+  // Once the script is written the run has cost something: ask before throwing it away.
+  const askToClose = useCallback(() => {
+    if (pipeline.getSnapshot().steps.write === "done") setConfirming(true);
+    else close();
+  }, [pipeline, close]);
+
+  // The question takes focus on Keep going (the safe answer); keeping going hands it back to Cancel.
+  useEffect(() => {
+    if (confirming) keepRef.current?.focus();
+    else if (askedRef.current) cancelRef.current?.focus();
+    askedRef.current = confirming;
+  }, [confirming]);
+
   const retry = useCallback(() => {
     headingRef.current?.focus();
     void pipeline.start();
@@ -369,9 +393,12 @@ export function MakingComic({ audio, text, language, style, storyMode, photos, d
       className={styles.dialog}
       aria-labelledby="making-title"
       onCancel={(event) => {
-        // Escape cancels the run (and closes); once saving or finished there is nothing to cancel.
+        // Escape asks to cancel the run (and close); once saving or finished there is nothing to cancel.
+        // Escape in a field is the field's, and Escape on the question means keep going.
         event.preventDefault();
-        if (cancellable) close();
+        if (inField(document.activeElement)) return;
+        if (confirming) setConfirming(false);
+        else if (cancellable) askToClose();
       }}
     >
       <div className={styles.sheet}>
@@ -380,8 +407,20 @@ export function MakingComic({ audio, text, language, style, storyMode, photos, d
             <span className={styles.recDot} data-live={status === "running" || undefined} aria-hidden="true" />
             <time dateTime={state.date}>{formatDay(state.date)}</time>
           </p>
-          {cancellable ? (
-            <button type="button" className={`btn btn--ghost ${styles.cancel}`} onClick={close}>
+          {cancellable && confirming ? (
+            <div className={styles.confirm} role="group" aria-labelledby={confirmId}>
+              <p id={confirmId} className={styles.confirmText}>
+                Stop and lose this comic?
+              </p>
+              <button ref={keepRef} type="button" className={`btn btn--ink ${styles.cancel}`} onClick={() => setConfirming(false)}>
+                Keep going
+              </button>
+              <button type="button" className={`btn btn--ghost ${styles.cancel}`} onClick={close}>
+                Stop
+              </button>
+            </div>
+          ) : cancellable ? (
+            <button ref={cancelRef} type="button" className={`btn btn--ghost ${styles.cancel}`} onClick={askToClose}>
               {status === "running" ? "Cancel" : "Back to recording"}
             </button>
           ) : null}

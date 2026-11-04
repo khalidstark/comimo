@@ -120,6 +120,20 @@
   font-size: var(--step--1);
 }
 
+/* "Stop and lose this comic?" in place of Cancel, once the script is written */
+.confirm {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2xs);
+}
+
+.confirmText {
+  margin: 0;
+  font-weight: 700;
+}
+
 /* ---------- Heading and live caption ---------- */
 .head {
   display: grid;
