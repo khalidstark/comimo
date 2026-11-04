@@ -100,7 +100,7 @@ export function signupBuckets(
   return ipTag
     ? [
         { key: `signup:ip:${ipTag}:hour`, limit: n("COMIMO_SIGNUPS_PER_IP_HOUR", 15), windowSec: 3600 },
-        { key: `signup:ip:${ipTag}:day`, limit: n("COMIMO_SIGNUPS_PER_IP_DAY", 20), windowSec: 86_400 },
+        { key: `signup:ip:${ipTag}:day`, limit: n("COMIMO_SIGNUPS_PER_IP_DAY", 60), windowSec: 86_400 },
       ]
     : [
         { key: "signup:global:hour", limit: n("COMIMO_SIGNUPS_GLOBAL_HOUR", 30), windowSec: 3600 },

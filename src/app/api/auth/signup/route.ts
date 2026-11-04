@@ -11,7 +11,7 @@ import { createSession } from "@/lib/server/session";
  * JSON: { name, email, password }
  * Creates the account (no email verification, by the user's choice), signs it
  * in and answers { user: { name } }. Sign-ups are capped per trusted IP
- * (COMIMO_SIGNUPS_PER_IP_HOUR, default 15; COMIMO_SIGNUPS_PER_IP_DAY, default 20),
+ * (COMIMO_SIGNUPS_PER_IP_HOUR, default 15; COMIMO_SIGNUPS_PER_IP_DAY, default 60),
  * or globally when no trusted IP is known (COMIMO_SIGNUPS_GLOBAL_HOUR, default 30;
  * COMIMO_SIGNUPS_GLOBAL_DAY, default 150), so nobody can mint accounts to get
  * around the per-account limits.
