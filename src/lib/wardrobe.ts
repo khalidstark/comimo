@@ -4,6 +4,7 @@ import { addCosts, costFromResponse, type CostRecord } from "./costs";
 import { getImage, newId, putImage } from "./store";
 import {
   MAX_OUTFITS,
+  imageVersion,
   type ApiError,
   type Character,
   type DayOutfit,
@@ -186,7 +187,7 @@ async function keepSheet(imageId: string, result: OutfitResponse): Promise<Refer
   if (!(await putImage(imageId, wireToBlob(result.image)))) {
     throw new OutfitError("Couldn't keep the drawing on this device. Private windows can block storage.");
   }
-  const image: ImageRef = { kind: "blob", id: imageId };
+  const image: ImageRef = { kind: "blob", id: imageId, v: imageVersion() };
   const sheet: ReferenceSheet = { image };
   if (result.sheetToken) sheet.sheetToken = result.sheetToken;
   if (result.fileToken) sheet.file = { token: result.fileToken, sheet: `blob:${imageId}` };

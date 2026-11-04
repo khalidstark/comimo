@@ -5,6 +5,7 @@ import { ALIAS_LIMITS, namesOf, normalizeName, parseAliases } from "./names";
 import { ANIMATIONS } from "@/art/sprites";
 import { deleteCharacter, getCharacter, getImage, getMeta, isSynced, listCast, newId, putImage, saveCharacter, setMeta } from "./store";
 import type { ArtStyleId } from "./artStyles";
+import { imageVersion } from "./types";
 import type {
   ApiError,
   Character,
@@ -283,7 +284,8 @@ export async function drawSheet(
   if (!(await putImage(imageId, wireToBlob(result.image)))) {
     throw new SheetError("Couldn't keep the sheet on this device. Private windows can block storage.");
   }
-  const image: ImageRef = { kind: "blob", id: imageId };
+  // Same id as the sheet it replaces: a new version, so cards showing the old one fetch this one.
+  const image: ImageRef = { kind: "blob", id: imageId, v: imageVersion() };
   const sheet: ReferenceSheet = { image };
   if (result.sheetToken) sheet.sheetToken = result.sheetToken;
   if (result.fileToken) sheet.file = { token: result.fileToken, sheet: referenceKey(image) };
@@ -300,10 +302,24 @@ async function requestSheet(
   const { sheet, photoRefused, cost } = await drawSheet(character, style, photo, signal, dayId);
   // Outfit sheets in this style were edits of the old sheet: they are drawn again from the new one when needed.
   const drawn = await updateStoredCharacter(character, (current) =>
-    withCharacterCost(afterBaseRedraw({ ...current, referenceSheets: { ...current.referenceSheets, [style]: sheet } }, style), cost),
+    withCharacterCost(
+      afterBaseRedraw(withoutStaleSprite(current, style, { ...current, referenceSheets: { ...current.referenceSheets, [style]: sheet } }), style),
+      cost,
+    ),
   );
   if (!drawn) throw new SheetError("Couldn't save the sheet on this device. Private windows can block storage.");
   return { character: drawn, photoRefused, cost };
+}
+
+/**
+ * `after` (a new sheet in `style`) without the sprite and portrait made from
+ * the sheet it replaced: the card shows the new drawing and can be brought to
+ * life again from it. A sprite from the other style's sheet stays.
+ */
+function withoutStaleSprite(before: Character, style: ArtStyleId, after: Character): Character {
+  const source = animatableSheet(before);
+  if (!after.spriteSheet || !source || source !== before.referenceSheets?.[style]) return after;
+  return { ...after, spriteSheet: null, portrait: after.portrait.kind === "blob" ? { kind: "art", path: "empty.cast" } : after.portrait };
 }
 
 /**
@@ -455,8 +471,9 @@ export function animateCharacter(character: Character): Promise<Character | null
     const portraitId = `${character.id}-portrait`;
     const stored = (await putImage(spriteId, wireToBlob(result.image))) && (await putImage(portraitId, wireToBlob(result.portrait)));
     if (!stored) return null;
+    const v = imageVersion();
     const spriteSheet: SpriteSheet = {
-      image: { kind: "blob", id: spriteId },
+      image: { kind: "blob", id: spriteId, v },
       frameWidth: result.frameWidth,
       frameHeight: result.frameHeight,
       columns: result.columns,
@@ -466,7 +483,7 @@ export function animateCharacter(character: Character): Promise<Character | null
     // Redrawn while the poses were being made: this sprite shows the old drawing, so the new one gets its own.
     const now = await getCharacter(character.id);
     if (now && animatableSheet(now)?.sheetToken !== sheet.sheetToken) return null;
-    return updateStoredCharacter(character, (current) => withCharacterCost({ ...current, spriteSheet, portrait: { kind: "blob", id: portraitId } }, cost));
+    return updateStoredCharacter(character, (current) => withCharacterCost({ ...current, spriteSheet, portrait: { kind: "blob", id: portraitId, v } }, cost));
   })().finally(() => animating.delete(character.id));
   animating.set(character.id, run);
   return run;

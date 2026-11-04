@@ -180,6 +180,8 @@ export function AboutYouFlow() {
       ? (referenceSheetFor(loaded.self, style) ?? Object.values(loaded.self.referenceSheets ?? {})[0] ?? null)
       : null;
   const shownBlob = shownSheet?.image.kind === "blob" ? shownSheet.image.id : null;
+  // A new photo in the same style keeps the image id; its version changes.
+  const shownVersion = shownSheet?.image.kind === "blob" ? shownSheet.image.v : undefined;
   useEffect(() => {
     if (!shownBlob) return;
     let url: string | null = null;
@@ -193,7 +195,7 @@ export function AboutYouFlow() {
       cancelled = true;
       if (url) URL.revokeObjectURL(url);
     };
-  }, [shownBlob]);
+  }, [shownBlob, shownVersion]);
 
   useEffect(() => () => controller.current?.abort(), []);
 
@@ -274,8 +276,6 @@ export function AboutYouFlow() {
         const saved = you && cost ? ((await updateStoredCharacter(you, (current) => withCharacterCost(current, cost))) ?? you) : you;
         if (!saved) throw new SheetError("Couldn't keep your drawing on this device. Private windows can block storage.");
         setLoaded((current) => (current ? { ...current, self: saved } : current));
-        // Same image id as before when redrawn: show the new one.
-        setSheetUrl(null);
         setDrawing({ phase: "done", crop: null, refused: photoRefused });
       } catch (problem) {
         if (signal.aborted) return;

@@ -39,9 +39,18 @@ export type IsoDate = string;
 /** Month key, YYYY-MM. */
 export type MonthKey = string;
 
+/** A fresh `v` for an ImageRef whose picture was just drawn again. */
+export function imageVersion(): string {
+  return Date.now().toString(36);
+}
+
 export type ImageRef =
-  /** A Blob in the store's `images` object store. */
-  | { kind: "blob"; id: string }
+  /**
+   * A Blob in the store's `images` object store. `v` changes each time a
+   * picture is drawn again under the same id (a redrawn sheet, a new sprite),
+   * so screens showing it fetch the new one.
+   */
+  | { kind: "blob"; id: string; v?: string }
   /** A slot in src/art/manifest.ts (fixtures and placeholders). */
   | { kind: "art"; path: ArtPath };
 
