@@ -82,7 +82,7 @@ function OneOffLine({ face, sam }: { face: OneOffFace; sam: boolean }) {
 }
 
 /**
- * "How Comimo kept faces the same": what SAM 3.1 found in this comic's panels
+ * "How it was made": what SAM 3.1 found in this comic's panels
  * and which faces were redrawn, with links to those panels. Practice-mode
  * comics say so and never mention SAM; days made before the real check have
  * no note (see facesSummary).
@@ -137,7 +137,7 @@ export function FacesNote({ summary, made }: { summary: FacesSummary; made?: Mad
   return (
     <section className={styles.faces} aria-labelledby="faces-title">
       <h2 id="faces-title" className={styles.facesTitle}>
-        How Comimo kept faces the same
+        How it was made
       </h2>
       {summary.kind === "sam" ? (
         <>

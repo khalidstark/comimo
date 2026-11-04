@@ -643,7 +643,7 @@
   font-weight: 800;
 }
 
-/* ---------- How Comimo kept faces the same ---------- */
+/* ---------- How it was made (faces, outfits, cost) ---------- */
 .faces {
   display: grid;
   gap: var(--space-s);
