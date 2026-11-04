@@ -36,7 +36,7 @@ export function AccountCosts() {
       ) : (
         <>
           {costs.comics === 0 ? (
-            <p className={styles.costLine}>No comics drawn by the real models yet, so nothing spent.</p>
+            <p className={styles.costLine}>No comics yet{costs.totalUsd > 0 ? "." : ", so nothing spent."}</p>
           ) : (
             <p className={styles.costLine}>
               Your comics so far:{" "}
