@@ -3,7 +3,7 @@ import { starterCast, starterCastById } from "@/fixtures/cast";
 import { PERSONALITY_MAX, applyAboutYou, findSelf, type AboutAnswers } from "./aboutYou";
 import { ALIAS_LIMITS, namesOf, normalizeName, parseAliases } from "./names";
 import { ANIMATIONS } from "@/art/sprites";
-import { deleteCharacter, getCharacter, getImage, getMeta, listCast, newId, putImage, saveCharacter, setMeta } from "./store";
+import { deleteCharacter, getCharacter, getImage, getMeta, isSynced, listCast, newId, putImage, saveCharacter, setMeta } from "./store";
 import type { ArtStyleId } from "./artStyles";
 import type {
   ApiError,
@@ -40,13 +40,18 @@ const SEEDED_KEY = "starterCastSeeded";
 /** Set once the invented extras were taken out of a cast seeded before 03.2-07. Follows the account. */
 const EXTRAS_REMOVED_KEY = "starterExtrasRemoved";
 
+/** The seed's stamp: older than anything, so the account's own copy of the narrator always wins a sync. */
+const SEED_STAMP = "1970-01-01T00:00:00.000Z";
+
 /**
  * What a new account starts with: only its narrator, in the stand-in look
  * until About you draws their own face. Karim, Teta and Mishmish are examples
  * for visitors who haven't signed in; an account's cast is the people in
  * the user's own life.
  */
-const accountSeed: Character[] = starterCast.filter((character) => character.role === "self");
+const accountSeed: Character[] = starterCast
+  .filter((character) => character.role === "self")
+  .map((character) => ({ ...character, updatedAt: SEED_STAMP }));
 
 /** An invented extra the user never made their own (renamed, redrawn or dressed). */
 function isUntouchedExtra(character: Character): boolean {
@@ -63,16 +68,17 @@ function isUntouchedExtra(character: Character): boolean {
 /**
  * The narrator is the user. One still called by the stand-in's name (About
  * you skipped) takes the account's first name; the stand-in look stays until
- * they add a photo.
+ * they add a photo. Saved with the stamp it had, so it never wins over a
+ * copy the user changed (`save` false: only in memory).
  */
-async function withAccountName(cast: Character[]): Promise<Character[]> {
+async function withAccountName(cast: Character[], save = true): Promise<Character[]> {
   const at = cast.findIndex((member) => member.role === "self" && member.starter && member.name === starterCastById[member.id]?.name);
   if (at === -1) return cast;
   const me = await whoAmI().catch(() => null);
   const first = me ? castName(me.name).split(" ")[0] : "";
   if (!first) return cast;
   const renamed: Character = { ...cast[at], name: first, aliases: [] };
-  await saveCharacter(renamed);
+  if (save) await saveCharacter(renamed, { keepStamp: true });
   return cast.map((member, i) => (i === at ? renamed : member));
 }
 
@@ -98,7 +104,8 @@ function withStarterAliases(character: Character): Character {
 /**
  * The user's cast from the store. The narrator is written once, on the first
  * run; after that the store is the truth, so a cast the user emptied stays
- * empty.
+ * empty. On a new device it waits for the first sync: until the account's
+ * cast has arrived, the narrator is shown but not written.
  */
 export async function loadCast(): Promise<Character[]> {
   const [stored, seeded, extrasRemoved] = await Promise.all([listCast(), getMeta(SEEDED_KEY), getMeta(EXTRAS_REMOVED_KEY)]);
@@ -108,7 +115,8 @@ export async function loadCast(): Promise<Character[]> {
     const cast = await withAccountName(extrasRemoved ? stored : await removeStarterExtras(stored));
     return cast.map(withStarterAliases).sort(byShippedOrder);
   }
-  const saved = await Promise.all(accountSeed.map((character) => saveCharacter(character)));
+  if (!(await isSynced())) return withAccountName(accountSeed, false);
+  const saved = await Promise.all(accountSeed.map((character) => saveCharacter(character, { keepStamp: true })));
   if (saved.every(Boolean)) await Promise.all([setMeta(SEEDED_KEY, true), setMeta(EXTRAS_REMOVED_KEY, true)]);
   return withAccountName(accountSeed);
 }

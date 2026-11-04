@@ -3,13 +3,20 @@ import { starterCastById } from "@/fixtures/cast";
 import type { Character } from "./types";
 
 /** An in-memory store standing in for IndexedDB and the account. */
-const db = vi.hoisted(() => ({ cast: new Map<string, unknown>(), meta: new Map<string, unknown>() }));
+const db = vi.hoisted(() => ({ cast: new Map<string, unknown>(), meta: new Map<string, unknown>(), synced: true }));
+
+const NOW = "2026-11-04T12:00:00.000Z";
 
 vi.mock("./store", () => ({
   listCast: async () => [...db.cast.values()],
   getMeta: async (key: string) => db.meta.get(key),
   setMeta: async (key: string, value: unknown) => (db.meta.set(key, value), true),
-  saveCharacter: async (character: Character) => (db.cast.set(character.id, character), true),
+  isSynced: async () => db.synced,
+  // Like the real store: stamped now, unless the stamp is kept.
+  saveCharacter: async (character: Character, options: { keepStamp?: boolean } = {}) => (
+    db.cast.set(character.id, { ...character, updatedAt: options.keepStamp ? (character.updatedAt ?? character.createdAt) : NOW }),
+    true
+  ),
   deleteCharacter: async (id: string) => (db.cast.delete(id), true),
   getCharacter: async (id: string) => db.cast.get(id),
   getImage: async () => undefined,
@@ -24,6 +31,7 @@ const { castName, draftFrom, loadCast, validateDraft } = await import("./cast");
 beforeEach(() => {
   db.cast.clear();
   db.meta.clear();
+  db.synced = true;
 });
 
 describe("an account's cast", () => {
@@ -33,6 +41,19 @@ describe("an account's cast", () => {
     expect([...db.cast.keys()]).toEqual(["nour"]);
     expect((db.cast.get("nour") as Character).name).toBe("Salma");
     expect(db.meta.get("starterExtrasRemoved")).toBe(true);
+  });
+
+  it("seeds the narrator older than anything, so the account's own copy wins the next sync", async () => {
+    await loadCast();
+    expect((db.cast.get("nour") as Character).updatedAt).toBe("1970-01-01T00:00:00.000Z");
+  });
+
+  it("writes nothing while a new device hasn't heard from the account yet", async () => {
+    db.synced = false;
+    const cast = await loadCast();
+    expect(cast.map((member) => [member.role, member.name])).toEqual([["self", "Salma"]]);
+    expect(db.cast.size).toBe(0);
+    expect(db.meta.get("starterCastSeeded")).toBeUndefined();
   });
 
   it("takes the untouched invented extras out of a cast seeded with them, and keeps what the user made their own", async () => {
