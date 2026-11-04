@@ -722,8 +722,8 @@ function PhotoStep({ id, style, onStyle, consent, onConsent, drawing, hasFace, s
   return (
     <div className={styles.stepBody}>
       <p id={`${id}-privacy`} className={styles.privacy}>
-        <strong>Your photo isn&apos;t kept.</strong> It&apos;s shrunk on this device, used once to draw you, then thrown away. Only the
-        drawing is saved.
+        <strong>Your photo isn&apos;t kept.</strong> It&apos;s shrunk on this device and sent to Meta&apos;s models to find, describe and
+        draw you, then thrown away. Only the drawing is saved.
       </p>
 
       <fieldset className={styles.group}>

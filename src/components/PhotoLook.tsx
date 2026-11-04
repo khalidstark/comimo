@@ -83,8 +83,8 @@ export function PhotoLook({ name, onDescribed, onCleared, crop }: PhotoLookProps
         Start from a photo <span className={styles.optional}>(optional)</span>
       </legend>
       <p id={`${id}-privacy`} className={styles.hint}>
-        Comimo finds the person, writes how they look and draws them from it once. The photo stays on this device: it is
-        shrunk here, sent once to Meta&apos;s models and never saved.
+        Comimo finds the person, writes how they look and draws them from it. The photo is shrunk on this device and sent to
+        Meta&apos;s models (SAM 3.1 and Muse Spark find and describe them, Muse Image draws them). It is never saved.
       </p>
 
       {preview ? (

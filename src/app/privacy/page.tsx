@@ -17,7 +17,7 @@ const KEPT = [
 
 const GONE = [
   { what: "The audio", detail: "Your voice note is turned into a small sound file in your browser, sent once to Muse Voice Transcribe, and never stored." },
-  { what: "Photos for drawing faces and clothes", detail: "A selfie in About you, a photo for an outfit, today's photos for your outfit: each is shrunk on your device, used for that one drawing, then dropped. Only the drawing is kept. (Today's photos also go into that day's album, under the album's rules above.)" },
+  { what: "Photos for drawing faces and clothes", detail: "A selfie in About you, a photo for an outfit, today's photos for your outfit: each is shrunk on your device, sent to Meta's models (SAM 3.1, Muse Spark and Muse Image) to find, describe and draw the person, and never saved. Only the drawing is kept. (Today's photos also go into that day's album, under the album's rules above.)" },
 ];
 
 const NEVER = [
