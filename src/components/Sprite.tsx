@@ -56,6 +56,8 @@ function useSheetUrl(sheet: SpriteSheet): string | null {
   const ref = sheet.image;
   const artUrl = ref.kind === "art" ? artAt(ref.path).src : null;
   const blobId = ref.kind === "blob" ? ref.id : null;
+  // A new sprite under the same id (brought to life again after a redraw) has a new version.
+  const version = ref.kind === "blob" ? ref.v : undefined;
   const [blobUrl, setBlobUrl] = useState<{ id: string; url: string } | null>(null);
 
   useEffect(() => {
@@ -71,7 +73,7 @@ function useSheetUrl(sheet: SpriteSheet): string | null {
       cancelled = true;
       if (url) URL.revokeObjectURL(url);
     };
-  }, [blobId]);
+  }, [blobId, version]);
 
   return artUrl ?? (blobUrl && blobUrl.id === blobId ? blobUrl.url : null);
 }

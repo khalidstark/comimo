@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { Art } from "@/art/Art";
 import { art } from "@/art/manifest";
+import { ErrorText } from "@/components/account/ErrorText";
 import { safeNext, useAccount } from "@/components/account/useAccount";
 import {
   INTERESTS,
@@ -17,7 +18,19 @@ import {
   type DrawnFace,
 } from "@/lib/aboutYou";
 import { ART_STYLE_IDS, ART_STYLES, DEFAULT_ART_STYLE, artStyleOf, type ArtStyleId } from "@/lib/artStyles";
-import { ABOUT_ASKED_KEY, SheetError, animateCharacter, draftFrom, drawSheet, loadSelf, referenceSheetFor, saveSelf, updateStoredCharacter, validateDraft } from "@/lib/cast";
+import {
+  ABOUT_ASKED_KEY,
+  SheetError,
+  animateCharacter,
+  castName,
+  draftFrom,
+  drawSheet,
+  loadSelf,
+  referenceSheetFor,
+  saveSelf,
+  updateStoredCharacter,
+  validateDraft,
+} from "@/lib/cast";
 import { withCharacterCost } from "@/lib/wardrobe";
 import { namesOf, normalizeName, parseAliases } from "@/lib/names";
 import { PhotoError, describePhoto, preparePhoto } from "@/lib/photo";
@@ -124,8 +137,8 @@ export function AboutYouFlow() {
   const [finishing, setFinishing] = useState<string | null>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
   const firstRender = useRef(true);
-  /** The sheet being drawn, so Finish can wait for it. */
-  const pending = useRef<Promise<unknown> | null>(null);
+  /** The sheet being drawn, so leaving can wait for it: the saved character, or null when it didn't draw. */
+  const pending = useRef<Promise<Character | null> | null>(null);
   const controller = useRef<AbortController | null>(null);
   const prefilledName = useRef(false);
 
@@ -154,11 +167,11 @@ export function AboutYouFlow() {
     };
   }, []);
 
-  // New accounts: the name they signed up with.
+  // New accounts: the name they signed up with, in the letters a cast name takes ("Sara_99" is "Sara 99").
   useEffect(() => {
     if (prefilledName.current || !loaded || account.status !== "signed-in") return;
     prefilledName.current = true;
-    setName(account.name);
+    setName(castName(account.name));
   }, [account, loaded]);
 
   // Their drawn sheet (now or from before), as an object URL.
@@ -167,6 +180,8 @@ export function AboutYouFlow() {
       ? (referenceSheetFor(loaded.self, style) ?? Object.values(loaded.self.referenceSheets ?? {})[0] ?? null)
       : null;
   const shownBlob = shownSheet?.image.kind === "blob" ? shownSheet.image.id : null;
+  // A new photo in the same style keeps the image id; its version changes.
+  const shownVersion = shownSheet?.image.kind === "blob" ? shownSheet.image.v : undefined;
   useEffect(() => {
     if (!shownBlob) return;
     let url: string | null = null;
@@ -180,7 +195,7 @@ export function AboutYouFlow() {
       cancelled = true;
       if (url) URL.revokeObjectURL(url);
     };
-  }, [shownBlob]);
+  }, [shownBlob, shownVersion]);
 
   useEffect(() => () => controller.current?.abort(), []);
 
@@ -199,6 +214,8 @@ export function AboutYouFlow() {
 
   function go(to: Step) {
     setStepError(null);
+    // An error on the photo step was read there; one on a later step is a drawing that failed in the background.
+    if (step === "photo" && drawing.phase === "error") setDrawing({ phase: "idle" });
     setStep(to);
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
@@ -241,7 +258,7 @@ export function AboutYouFlow() {
     controller.current = new AbortController();
     const signal = controller.current.signal;
     setDrawing({ phase: "finding" });
-    const work = (async () => {
+    const work = (async (): Promise<Character | null> => {
       try {
         const photo = await preparePhoto(file);
         const { look, crop } = await describePhoto(photo, signal);
@@ -261,14 +278,14 @@ export function AboutYouFlow() {
         const saved = you && cost ? ((await updateStoredCharacter(you, (current) => withCharacterCost(current, cost))) ?? you) : you;
         if (!saved) throw new SheetError("Couldn't keep your drawing on this device. Private windows can block storage.");
         setLoaded((current) => (current ? { ...current, self: saved } : current));
-        // Same image id as before when redrawn: show the new one.
-        setSheetUrl(null);
         setDrawing({ phase: "done", crop: null, refused: photoRefused });
+        return saved;
       } catch (problem) {
-        if (signal.aborted) return;
+        if (signal.aborted) return null;
         const message =
           problem instanceof PhotoError || problem instanceof SheetError ? problem.message : "That photo didn't work. Try another one.";
         setDrawing({ phase: "error", message });
+        return null;
       } finally {
         controller.current = null;
       }
@@ -339,7 +356,11 @@ export function AboutYouFlow() {
     }
     if (pending.current) {
       setFinishing("Finishing your drawing…");
-      await pending.current;
+      if (!(await pending.current)) {
+        // It didn't draw: say so here (with the way back to the photo) instead of leaving without it.
+        setFinishing(null);
+        return;
+      }
     }
     setFinishing("Saving…");
     const saved = await saveSelf({
@@ -364,8 +385,15 @@ export function AboutYouFlow() {
   }
 
   async function later() {
+    if (finishing) return;
+    // A drawing on its way is already paid for: let it land before leaving (leaving would cancel it).
+    let self = loaded?.self ?? null;
+    if (pending.current) {
+      setFinishing("Finishing your drawing…");
+      self = (await pending.current) ?? self;
+    }
     await setMeta(ABOUT_ASKED_KEY, true);
-    if (loaded?.self) void animateCharacter(loaded.self);
+    if (self) void animateCharacter(self);
     router.replace(next);
   }
 
@@ -612,8 +640,8 @@ export function AboutYouFlow() {
       <section className={`panel ${styles.card}`} aria-labelledby={`${id}-title`}>
         <div className={styles.top}>
           <p className={`caption ${styles.kicker}`}>About you</p>
-          <button type="button" className={styles.textButton} onClick={() => void later()}>
-            Do this later
+          <button type="button" className={styles.textButton} onClick={() => void later()} aria-disabled={finishing ? true : undefined}>
+            {finishing ?? "Do this later"}
           </button>
         </div>
         <ol className={styles.dots} aria-label={`Step ${index + 1} of ${STEPS.length}`}>
@@ -632,6 +660,17 @@ export function AboutYouFlow() {
           <p className={styles.background} role="status">
             Still drawing you in the background. Keep going.
           </p>
+        ) : null}
+
+        {drawing.phase === "error" && step !== "photo" ? (
+          <div role="alert">
+            <p className={styles.error}>
+              Your drawing didn&apos;t finish. <ErrorText message={drawing.message} />
+            </p>
+            <button type="button" className="link" onClick={() => go("photo")}>
+              Back to the photo
+            </button>
+          </div>
         ) : null}
 
         {stepError ? (
@@ -722,8 +761,8 @@ function PhotoStep({ id, style, onStyle, consent, onConsent, drawing, hasFace, s
   return (
     <div className={styles.stepBody}>
       <p id={`${id}-privacy`} className={styles.privacy}>
-        <strong>Your photo isn&apos;t kept.</strong> It&apos;s shrunk on this device, used once to draw you, then thrown away. Only the
-        drawing is saved.
+        <strong>Your photo isn&apos;t kept.</strong> It&apos;s shrunk on this device and sent to Meta&apos;s models to find, describe and
+        draw you, then thrown away. Only the drawing is saved.
       </p>
 
       <fieldset className={styles.group}>
@@ -782,7 +821,7 @@ function PhotoStep({ id, style, onStyle, consent, onConsent, drawing, hasFace, s
       </div>
       {drawing.phase === "error" ? (
         <p className={styles.error} role="alert">
-          {drawing.message}
+          <ErrorText message={drawing.message} />
         </p>
       ) : null}
       {(drawing.phase === "done" || (drawing.phase === "idle" && hasFace)) && selfId ? (

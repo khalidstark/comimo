@@ -3,8 +3,9 @@ import { starterCast, starterCastById } from "@/fixtures/cast";
 import { PERSONALITY_MAX, applyAboutYou, findSelf, type AboutAnswers } from "./aboutYou";
 import { ALIAS_LIMITS, namesOf, normalizeName, parseAliases } from "./names";
 import { ANIMATIONS } from "@/art/sprites";
-import { deleteCharacter, getCharacter, getImage, getMeta, listCast, newId, putImage, saveCharacter, setMeta } from "./store";
+import { deleteCharacter, getCharacter, getImage, getMeta, isSynced, listCast, newId, putImage, saveCharacter, setMeta } from "./store";
 import type { ArtStyleId } from "./artStyles";
+import { imageVersion } from "./types";
 import type {
   ApiError,
   Character,
@@ -40,13 +41,18 @@ const SEEDED_KEY = "starterCastSeeded";
 /** Set once the invented extras were taken out of a cast seeded by an earlier build. Follows the account. */
 const EXTRAS_REMOVED_KEY = "starterExtrasRemoved";
 
+/** The seed's stamp: older than anything, so the account's own copy of the narrator always wins a sync. */
+const SEED_STAMP = "1970-01-01T00:00:00.000Z";
+
 /**
  * What a new account starts with: only its narrator, in the stand-in look
  * until About you draws their own face. Karim, Teta and Mishmish are examples
  * for visitors who haven't signed in; an account's cast is the people in
  * the user's own life.
  */
-const accountSeed: Character[] = starterCast.filter((character) => character.role === "self");
+const accountSeed: Character[] = starterCast
+  .filter((character) => character.role === "self")
+  .map((character) => ({ ...character, updatedAt: SEED_STAMP }));
 
 /** An invented extra the user never made their own (renamed, redrawn or dressed). */
 function isUntouchedExtra(character: Character): boolean {
@@ -63,16 +69,17 @@ function isUntouchedExtra(character: Character): boolean {
 /**
  * The narrator is the user. One still called by the stand-in's name (About
  * you skipped) takes the account's first name; the stand-in look stays until
- * they add a photo.
+ * they add a photo. Saved with the stamp it had, so it never wins over a
+ * copy the user changed (`save` false: only in memory).
  */
-async function withAccountName(cast: Character[]): Promise<Character[]> {
+async function withAccountName(cast: Character[], save = true): Promise<Character[]> {
   const at = cast.findIndex((member) => member.role === "self" && member.starter && member.name === starterCastById[member.id]?.name);
   if (at === -1) return cast;
   const me = await whoAmI().catch(() => null);
-  const first = me?.name.trim().split(/\s+/)[0]?.slice(0, 40);
+  const first = me ? castName(me.name).split(" ")[0] : "";
   if (!first) return cast;
   const renamed: Character = { ...cast[at], name: first, aliases: [] };
-  await saveCharacter(renamed);
+  if (save) await saveCharacter(renamed, { keepStamp: true });
   return cast.map((member, i) => (i === at ? renamed : member));
 }
 
@@ -98,7 +105,8 @@ function withStarterAliases(character: Character): Character {
 /**
  * The user's cast from the store. The narrator is written once, on the first
  * run; after that the store is the truth, so a cast the user emptied stays
- * empty.
+ * empty. On a new device it waits for the first sync: until the account's
+ * cast has arrived, the narrator is shown but not written.
  */
 export async function loadCast(): Promise<Character[]> {
   const [stored, seeded, extrasRemoved] = await Promise.all([listCast(), getMeta(SEEDED_KEY), getMeta(EXTRAS_REMOVED_KEY)]);
@@ -108,7 +116,8 @@ export async function loadCast(): Promise<Character[]> {
     const cast = await withAccountName(extrasRemoved ? stored : await removeStarterExtras(stored));
     return cast.map(withStarterAliases).sort(byShippedOrder);
   }
-  const saved = await Promise.all(accountSeed.map((character) => saveCharacter(character)));
+  if (!(await isSynced())) return withAccountName(accountSeed, false);
+  const saved = await Promise.all(accountSeed.map((character) => saveCharacter(character, { keepStamp: true })));
   if (saved.every(Boolean)) await Promise.all([setMeta(SEEDED_KEY, true), setMeta(EXTRAS_REMOVED_KEY, true)]);
   return withAccountName(accountSeed);
 }
@@ -275,7 +284,8 @@ export async function drawSheet(
   if (!(await putImage(imageId, wireToBlob(result.image)))) {
     throw new SheetError("Couldn't keep the sheet on this device. Private windows can block storage.");
   }
-  const image: ImageRef = { kind: "blob", id: imageId };
+  // Same id as the sheet it replaces: a new version, so cards showing the old one fetch this one.
+  const image: ImageRef = { kind: "blob", id: imageId, v: imageVersion() };
   const sheet: ReferenceSheet = { image };
   if (result.sheetToken) sheet.sheetToken = result.sheetToken;
   if (result.fileToken) sheet.file = { token: result.fileToken, sheet: referenceKey(image) };
@@ -292,10 +302,24 @@ async function requestSheet(
   const { sheet, photoRefused, cost } = await drawSheet(character, style, photo, signal, dayId);
   // Outfit sheets in this style were edits of the old sheet: they are drawn again from the new one when needed.
   const drawn = await updateStoredCharacter(character, (current) =>
-    withCharacterCost(afterBaseRedraw({ ...current, referenceSheets: { ...current.referenceSheets, [style]: sheet } }, style), cost),
+    withCharacterCost(
+      afterBaseRedraw(withoutStaleSprite(current, style, { ...current, referenceSheets: { ...current.referenceSheets, [style]: sheet } }), style),
+      cost,
+    ),
   );
   if (!drawn) throw new SheetError("Couldn't save the sheet on this device. Private windows can block storage.");
   return { character: drawn, photoRefused, cost };
+}
+
+/**
+ * `after` (a new sheet in `style`) without the sprite and portrait made from
+ * the sheet it replaced: the card shows the new drawing and can be brought to
+ * life again from it. A sprite from the other style's sheet stays.
+ */
+function withoutStaleSprite(before: Character, style: ArtStyleId, after: Character): Character {
+  const source = animatableSheet(before);
+  if (!after.spriteSheet || !source || source !== before.referenceSheets?.[style]) return after;
+  return { ...after, spriteSheet: null, portrait: after.portrait.kind === "blob" ? { kind: "art", path: "empty.cast" } : after.portrait };
 }
 
 /**
@@ -410,6 +434,20 @@ export function canAnimateNow(character: Character): boolean {
   return !spritesUnavailable && canAnimate(character);
 }
 
+/** When bringing a character to life last failed on this device (a time in ms; 0 or missing when it didn't). */
+const spriteFailedKey = (id: string) => `spriteFailed:${id}`;
+const SPRITE_RETRY_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * True when bringing this character to life failed on this device in the
+ * last day. A sprite is five paid drawings, so the cast page doesn't try
+ * again on its own; the Animate button still does.
+ */
+export async function spriteFailedLately(character: Character, now = Date.now()): Promise<boolean> {
+  const at = await getMeta(spriteFailedKey(character.id));
+  return typeof at === "number" && at > 0 && now - at < SPRITE_RETRY_MS;
+}
+
 /**
  * Give a character their animated sprite once: five Muse Image poses from
  * their reference sheet, assembled on the server. Resolves to the updated
@@ -441,14 +479,16 @@ export function animateCharacter(character: Character): Promise<Character | null
     const result = (await response.json().catch(() => null)) as SpriteResponse | ApiError | null;
     if (!response.ok || !result || !("image" in result)) {
       if ((result as ApiError | null)?.code === "unavailable") spritesUnavailable = true;
+      else await setMeta(spriteFailedKey(character.id), Date.now());
       return null;
     }
     const spriteId = `${character.id}-sprite`;
     const portraitId = `${character.id}-portrait`;
     const stored = (await putImage(spriteId, wireToBlob(result.image))) && (await putImage(portraitId, wireToBlob(result.portrait)));
     if (!stored) return null;
+    const v = imageVersion();
     const spriteSheet: SpriteSheet = {
-      image: { kind: "blob", id: spriteId },
+      image: { kind: "blob", id: spriteId, v },
       frameWidth: result.frameWidth,
       frameHeight: result.frameHeight,
       columns: result.columns,
@@ -458,7 +498,7 @@ export function animateCharacter(character: Character): Promise<Character | null
     // Redrawn while the poses were being made: this sprite shows the old drawing, so the new one gets its own.
     const now = await getCharacter(character.id);
     if (now && animatableSheet(now)?.sheetToken !== sheet.sheetToken) return null;
-    return updateStoredCharacter(character, (current) => withCharacterCost({ ...current, spriteSheet, portrait: { kind: "blob", id: portraitId } }, cost));
+    return updateStoredCharacter(character, (current) => withCharacterCost({ ...current, spriteSheet, portrait: { kind: "blob", id: portraitId, v } }, cost));
   })().finally(() => animating.delete(character.id));
   animating.set(character.id, run);
   return run;
@@ -474,6 +514,9 @@ export const ROLE_OPTIONS: { value: CharacterRole; label: string }[] = [
   { value: "pet", label: "Pet" },
   { value: "other", label: "Someone else" },
 ];
+
+/** The roles anyone else can have: "You" is only ever the user's own card, and stays fixed there. */
+export const OTHER_ROLE_OPTIONS = ROLE_OPTIONS.filter((option) => option.value !== "self");
 
 export function defaultRoleLabel(role: CharacterRole): string {
   return ROLE_OPTIONS.find((option) => option.value === role)?.label ?? "Someone else";
@@ -503,6 +546,21 @@ const NAME_CHARS = /^[\p{L}\p{M}\p{N} '’.-]+$/u;
 const HAS_LETTER = /\p{L}/u;
 
 const tidy = (text: string) => text.replace(/\s+/g, " ").trim();
+
+/**
+ * A sign-up name as a cast name. Sign-up takes any 40 characters ("Sara_99");
+ * a cast name is letters, numbers and a little punctuation, at most 32, so
+ * other characters become spaces and a long name is cut at a word. Empty when
+ * nothing usable is left.
+ */
+export function castName(raw: string): string {
+  const cleaned = tidy(raw.normalize("NFC").replace(/[^\p{L}\p{M}\p{N} '’.-]+/gu, " "));
+  if (!HAS_LETTER.test(cleaned)) return "";
+  if (cleaned.length <= LIMITS.name) return cleaned;
+  const cut = cleaned.slice(0, LIMITS.name + 1);
+  const space = cut.lastIndexOf(" ");
+  return (space > 0 ? cut.slice(0, space) : cleaned.slice(0, LIMITS.name)).trim();
+}
 
 export function draftFrom(character?: Character): CharacterDraft {
   return {

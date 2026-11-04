@@ -9,6 +9,8 @@ import type { ImageRef } from "@/lib/types";
 export function useImageUrl(ref: ImageRef | null): string | null {
   const [blobUrl, setBlobUrl] = useState<{ id: string; url: string } | null>(null);
   const blobId = ref?.kind === "blob" ? ref.id : null;
+  // A picture drawn again under the same id has a new version: fetch it again.
+  const version = ref?.kind === "blob" ? ref.v : undefined;
 
   useEffect(() => {
     if (!blobId) return;
@@ -23,7 +25,7 @@ export function useImageUrl(ref: ImageRef | null): string | null {
       cancelled = true;
       if (url) URL.revokeObjectURL(url);
     };
-  }, [blobId]);
+  }, [blobId, version]);
 
   if (!ref) return null;
   if (ref.kind === "art") return artAt(ref.path).src;

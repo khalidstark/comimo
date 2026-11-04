@@ -2,6 +2,7 @@
 
 import { useEffect, useId, useRef, useState } from "react";
 import { PhotoError, describePhoto, preparePhoto } from "@/lib/photo";
+import { ErrorText } from "@/components/account/ErrorText";
 import type { WireImage } from "@/lib/types";
 import { FilePick } from "./FilePick";
 import styles from "./PhotoLook.module.css";
@@ -13,6 +14,8 @@ interface PhotoLookProps {
   onDescribed: (look: string, crop: WireImage) => void;
   /** The user removed the photo. */
   onCleared: () => void;
+  /** A photo is picked but not described yet (true), or not any more (false). */
+  onWaiting?: (waiting: boolean) => void;
   /** The cut-out the parent is holding, to preview; null when none. */
   crop: WireImage | null;
 }
@@ -28,7 +31,7 @@ function cropUrl(crop: WireImage | null): string | null {
  * memory so their sheet can be drawn from it once (Muse Image). The photo is
  * shrunk on this device first and never stored.
  */
-export function PhotoLook({ name, onDescribed, onCleared, crop }: PhotoLookProps) {
+export function PhotoLook({ name, onDescribed, onCleared, onWaiting, crop }: PhotoLookProps) {
   const id = useId();
   const fileRef = useRef<HTMLInputElement>(null);
   const [consent, setConsent] = useState(false);
@@ -61,6 +64,7 @@ export function PhotoLook({ name, onDescribed, onCleared, crop }: PhotoLookProps
       const result = await describePhoto(photo, controller.current.signal);
       // The picked file isn't needed any more; only the cut-out is kept, in memory.
       setFile(null);
+      onWaiting?.(false);
       onDescribed(result.look, result.crop);
     } catch (problem) {
       if (controller.current?.signal.aborted) return;
@@ -73,6 +77,7 @@ export function PhotoLook({ name, onDescribed, onCleared, crop }: PhotoLookProps
 
   function clear() {
     setFile(null);
+    onWaiting?.(false);
     setError(null);
     onCleared();
   }
@@ -83,8 +88,8 @@ export function PhotoLook({ name, onDescribed, onCleared, crop }: PhotoLookProps
         Start from a photo <span className={styles.optional}>(optional)</span>
       </legend>
       <p id={`${id}-privacy`} className={styles.hint}>
-        Comimo finds the person, writes how they look and draws them from it once. The photo stays on this device: it is
-        shrunk here, sent once to Meta&apos;s models and never saved.
+        Comimo finds the person, writes how they look and draws them from it. The photo is shrunk on this device and sent to
+        Meta&apos;s models (SAM 3.1 and Muse Spark find and describe them, Muse Image draws them). It is never saved.
       </p>
 
       {preview ? (
@@ -110,6 +115,7 @@ export function PhotoLook({ name, onDescribed, onCleared, crop }: PhotoLookProps
             file={file}
             onChange={(picked) => {
               setFile(picked);
+              onWaiting?.(picked !== null);
               setError(null);
             }}
             disabled={busy}
@@ -132,7 +138,7 @@ export function PhotoLook({ name, onDescribed, onCleared, crop }: PhotoLookProps
         </>
       )}
       <p id={`${id}-status`} className={error ? styles.error : styles.status} role={error ? "alert" : "status"}>
-        {error ?? (busy ? "Finding the person and writing how they look. This takes about half a minute." : "")}
+        {error ? <ErrorText message={error} /> : busy ? "Finding the person and writing how they look. This takes about half a minute." : ""}
       </p>
     </fieldset>
   );

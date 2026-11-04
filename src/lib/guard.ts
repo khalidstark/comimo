@@ -7,6 +7,7 @@ import { getKV, type KV } from "@/lib/server/kv";
 import { hit, minutesText, windowOf } from "@/lib/server/rateLimit";
 import { hashTag } from "@/lib/server/request";
 import { sessionAccount, type SessionAccount } from "@/lib/server/session";
+import { SIGN_IN_ERROR } from "@/lib/signIn";
 
 /**
  * Spending guard for the real model calls.
@@ -25,8 +26,8 @@ import { sessionAccount, type SessionAccount } from "@/lib/server/session";
  * Mock calls cost nothing, so they are never limited.
  *
  * Env (all optional):
- *   COMIMO_COMICS_PER_HOUR   comics per account per hour (default 5; reference sheets get twice that,
- *                            sprites the same, photo descriptions half)
+ *   COMIMO_COMICS_PER_HOUR   comics per account per hour (default 5; reference sheets and photo
+ *                            descriptions get twice that, sprites the same)
  *   COMIMO_DAILY_COMIC_CAP   comics per day for everyone (default 200)
  *   COMIMO_DAILY_IMAGE_CAP   image and SAM calls per day for everyone (default 600), counted per call
  *   COMIMO_DAILY_UPLOAD_CAP  reference-sheet uploads per day for everyone (default 300); per account 4x comics an hour
@@ -111,6 +112,12 @@ export type GuardResult =
       meter: UsageMeter;
       /** Give back the account's slot, but only if nothing billable was sent. */
       refundIfUnbilled: () => void;
+      /**
+       * Give back the account's hourly slot even though calls were sent (they
+       * still count against the daily caps and the ledger): for a result the
+       * user couldn't have helped, like no clear person in a photo.
+       */
+      refundSlot: () => void;
     }
   | { ok: false; status: 401 | 429 | 503; error: string; retryAfterSec: number };
 
@@ -135,8 +142,8 @@ function limits() {
       character: comics * 2,
       // Animating a character is five images: about one new character per comic.
       sprite: comics,
-      // Describing a person from a photo: a few new people an hour.
-      photo: Math.max(1, Math.ceil(comics / 2)),
+      // Describing a person from a photo: About you, each new person and a retry or two, shared.
+      photo: comics * 2,
       // A month's cover is drawn once; a couple more for a redraw or a second device.
       cover: Math.max(1, Math.ceil(comics / 2)),
       // Caption suggestions: a few albums an hour.
@@ -375,13 +382,13 @@ export async function guard(request: Request, action: GuardAction, options: { re
   } catch {
     return DOWN;
   }
-  if (!account) return { ok: false, status: 401, error: "Sign in to keep going. It takes a few seconds.", retryAfterSec: 0 };
+  if (!account) return { ok: false, status: 401, error: SIGN_IN_ERROR, retryAfterSec: 0 };
 
   const visitorId = accountTag(account);
   // A sheet drawn while a comic is being made (a cast member's first appearance) is that comic's cost.
   const forComic = isLedgerDayId(request.headers.get(DAY_HEADER));
   const tally = createTally((action === "character" || action === "wardrobe") && forComic ? "sheets" : COST_STEP[action]);
-  if (!options.real) return { ok: true, visitorId, meter: freeMeter(tally), refundIfUnbilled: () => {} };
+  if (!options.real) return { ok: true, visitorId, meter: freeMeter(tally), refundIfUnbilled: () => {}, refundSlot: () => {} };
 
   if (process.env.COMIMO_PAUSE_GENERATION === "1") return PAUSED;
 
@@ -414,16 +421,20 @@ export async function guard(request: Request, action: GuardAction, options: { re
     const meter = createMeter(kv, account, { images, uploads, accountUploads }, tally);
     fileCostAfterResponse(request, account, action, tally);
     let refunded = false;
+    const refund = () => {
+      if (refunded) return;
+      refunded = true;
+      const undo = Promise.all([slot.undo(), comicSlot?.ok ? comicSlot.undo() : null]).catch(() => {});
+      flushAfterResponse([undo]);
+    };
     return {
       ok: true,
       visitorId,
       meter,
       refundIfUnbilled: () => {
-        if (refunded || meter.billed) return;
-        refunded = true;
-        const undo = Promise.all([slot.undo(), comicSlot?.ok ? comicSlot.undo() : null]).catch(() => {});
-        flushAfterResponse([undo]);
+        if (!meter.billed) refund();
       },
+      refundSlot: refund,
     };
   } catch (error) {
     console.error(`Comimo: limit check failed (${error instanceof Error ? error.name : "unknown"})`);

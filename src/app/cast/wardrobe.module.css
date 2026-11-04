@@ -126,6 +126,17 @@
   justify-self: start;
 }
 
+/* "Delete this outfit?": asked under the rail, like removing someone from the cast */
+.confirm {
+  display: grid;
+  gap: var(--space-2xs);
+  padding: var(--space-xs);
+  border: var(--panel-border-thin) dashed var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  font-size: var(--step--1);
+}
+
 /* The change-clothes panel: an uncut panel inside the card */
 .panel {
   display: grid;

@@ -1,11 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useEffectEvent, useId, useRef, useState, type CSSProperties, type FormEvent } from "react";
+import { useEffect, useEffectEvent, useId, useRef, useState, useSyncExternalStore, type CSSProperties, type FormEvent } from "react";
 import { Art } from "@/art/Art";
 import { Icon } from "@/art/Icon";
 import { art, artAt } from "@/art/manifest";
 import { BidiText } from "@/components/comic/BidiText";
+import { ErrorText } from "@/components/account/ErrorText";
+import { useAccount } from "@/components/account/useAccount";
 import { Sprite } from "@/components/Sprite";
 import { useTalkWhenShown } from "@/components/useTalkWhenShown";
 import { PhotoLook } from "@/components/PhotoLook";
@@ -14,7 +16,7 @@ import { ART_STYLE_IDS, ART_STYLES, DEFAULT_ART_STYLE, type ArtStyleId } from "@
 import { firstStrongDir } from "@/lib/bidi";
 import {
   LIMITS,
-  ROLE_OPTIONS,
+  OTHER_ROLE_OPTIONS,
   SheetError,
   animateCharacter,
   canAnimate,
@@ -26,6 +28,7 @@ import {
   draftFrom,
   loadCast,
   referenceSheetFor,
+  spriteFailedLately,
   spriteSheetFor,
   validateDraft,
   type CharacterDraft,
@@ -41,6 +44,9 @@ import { Wardrobe } from "./Wardrobe";
 
 const TILTS = ["-3deg", "2deg", "-1.5deg", "3deg"];
 
+const noSubscribe = () => () => {};
+const readWardrobe = () => new URLSearchParams(window.location.search).get("wardrobe");
+
 type Editing = { kind: "new" } | { kind: "edit"; id: string } | null;
 
 /**
@@ -55,10 +61,16 @@ export function CastEditor() {
   const [notice, setNotice] = useState("");
   /** Work in progress or news per character (drawing from a photo, animating). */
   const [statuses, setStatuses] = useState<Record<string, CardStatus>>({});
-  /** The card whose wardrobe opens first (?wardrobe=<id>, from About you). */
-  const [wardrobeFor] = useState(() => (typeof window === "undefined" ? null : new URLSearchParams(window.location.search).get("wardrobe")));
+  /**
+   * The card whose wardrobe opens first (?wardrobe=<id>, from About you). Read
+   * at render, not once at first: after a client navigation the address only
+   * changes once the new page is on screen, and the cards wait for the cast.
+   */
+  const wardrobeFor = useSyncExternalStore(noSubscribe, readWardrobe, () => null);
   /** Where focus goes after the list re-renders (a card's edit button, or the add button). */
   const focusAfter = useRef<string | null>(null);
+  /** The cast is the account's: nothing loads (or seeds, or animates) until the session is known to be good. */
+  const signedIn = useAccount().status === "signed-in";
 
   function replace(character: Character) {
     setCast((current) => (current ?? []).map((m) => (m.id === character.id ? character : m)));
@@ -87,12 +99,16 @@ export function CastEditor() {
     }
   }
 
-  /** Anyone drawn but still standing still (About you closed early, a sprite that failed) comes to life one at a time. */
+  /**
+   * Anyone drawn but still standing still (About you closed early) comes to life one at a time. A sprite that
+   * failed in the last day waits for the Animate button: each try is five paid drawings.
+   */
   const animateTheStill = useEffectEvent(async (loaded: Character[]) => {
-    for (const member of loaded) if (canAnimateNow(member)) await animate(member);
+    for (const member of loaded) if (canAnimateNow(member) && !(await spriteFailedLately(member))) await animate(member);
   });
 
   useEffect(() => {
+    if (!signedIn) return;
     let cancelled = false;
     void loadCast().then((loaded) => {
       if (cancelled) return;
@@ -102,7 +118,7 @@ export function CastEditor() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [signedIn]);
 
   useEffect(() => {
     if (!focusAfter.current) return;
@@ -301,7 +317,7 @@ function stillFor(member: Character): { ref: ImageRef; fromSheet: boolean } | nu
 function CastCard({ member, tilt, status, onAnimate, confirming, onEdit, onAskRemove, onKeep, onRemove, onSheetDrawn, onChange, wardrobeOpen }: CastCardProps) {
   const cardRef = useRef<HTMLLIElement>(null);
   const bubbleRef = useRef<HTMLParagraphElement>(null);
-  const confirmRef = useRef<HTMLButtonElement>(null);
+  const keepRef = useRef<HTMLButtonElement>(null);
   const talking = useTalkWhenShown(bubbleRef, member.line ?? "");
   const sheet = spriteSheetFor(member);
   const still = sheet ? null : stillFor(member);
@@ -309,7 +325,7 @@ function CastCard({ member, tilt, status, onAnimate, confirming, onEdit, onAskRe
   const nameId = `name-${member.id}`;
 
   useEffect(() => {
-    if (confirming) confirmRef.current?.focus();
+    if (confirming) keepRef.current?.focus();
   }, [confirming]);
 
   return (
@@ -365,7 +381,7 @@ function CastCard({ member, tilt, status, onAnimate, confirming, onEdit, onAskRe
           role={status?.error ? "alert" : "status"}
           aria-busy={status?.busy || undefined}
         >
-          {status?.text ?? ""}
+          {status?.error ? <ErrorText message={status.text} /> : (status?.text ?? "")}
         </p>
         {!status?.busy && canAnimate(member) ? (
           <button type="button" className={styles.textButton} onClick={onAnimate}>
@@ -379,10 +395,11 @@ function CastCard({ member, tilt, status, onAnimate, confirming, onEdit, onAskRe
               Remove <bdi>{member.name}</bdi> from your cast? Comics you already made keep them.
             </p>
             <div className={styles.actions}>
-              <button ref={confirmRef} type="button" className="btn btn--ink" onClick={onRemove}>
+              <button type="button" className="btn btn--ink" onClick={onRemove}>
                 Remove
               </button>
-              <button type="button" className="btn btn--ghost" onClick={onKeep}>
+              {/* Focus lands on the safe choice. */}
+              <button ref={keepRef} type="button" className="btn btn--ghost" onClick={onKeep}>
                 Keep
               </button>
             </div>
@@ -392,9 +409,12 @@ function CastCard({ member, tilt, status, onAnimate, confirming, onEdit, onAskRe
             <button id={`edit-${member.id}`} type="button" className={styles.textButton} onClick={onEdit}>
               Edit<span className="visually-hidden"> {member.name}</span>
             </button>
-            <button id={`remove-${member.id}`} type="button" className={styles.textButton} onClick={onAskRemove}>
-              Remove<span className="visually-hidden"> {member.name}</span>
-            </button>
+            {/* Your own card stays: comics are told by you. */}
+            {member.role === "self" ? null : (
+              <button id={`remove-${member.id}`} type="button" className={styles.textButton} onClick={onAskRemove}>
+                Remove<span className="visually-hidden"> {member.name}</span>
+              </button>
+            )}
           </div>
         )}
       </div>
@@ -428,7 +448,7 @@ function AboutYouNote({ member }: { member: Character }) {
         </p>
       ) : null}
       <Link href="/welcome?next=/cast" className={standIn ? "btn btn--accent" : styles.aboutLink}>
-        {standIn ? "Add my photo" : about ? "Edit about you" : "Tell Comimo about you"}
+        {standIn ? "Add my photo" : "Update About you"}
       </Link>
     </div>
   );
@@ -468,6 +488,8 @@ function ReferenceSheet({
   const controller = useRef<AbortController | null>(null);
   const statusId = `sheet-status-${member.id}-${style}`;
   const label = ART_STYLES[style].label;
+  // Your own sheet comes from your photo: a redraw from words would quietly replace it (a new photo goes through About you).
+  const canDraw = !(member.role === "self" && sheet);
 
   useEffect(() => () => controller.current?.abort(), []);
 
@@ -501,18 +523,20 @@ function ReferenceSheet({
       ) : (
         <span className={styles.sheetEmpty}>Not drawn yet</span>
       )}
-      <button
-        type="button"
-        className={styles.textButton}
-        onClick={() => void draw()}
-        aria-disabled={busy || undefined}
-        aria-describedby={statusId}
-        aria-label={`${busy ? "Drawing" : sheet ? "Redraw" : "Draw"} ${member.name}'s ${label.toLowerCase()} sheet`}
-      >
-        {busy ? "Drawing…" : sheet ? "Redraw" : "Draw sheet"}
-      </button>
+      {canDraw ? (
+        <button
+          type="button"
+          className={styles.textButton}
+          onClick={() => void draw()}
+          aria-disabled={busy || undefined}
+          aria-describedby={statusId}
+          aria-label={`${busy ? "Drawing" : sheet ? "Redraw" : "Draw"} ${member.name}'s ${label.toLowerCase()} sheet`}
+        >
+          {busy ? "Drawing…" : sheet ? "Redraw" : "Draw sheet"}
+        </button>
+      ) : null}
       <p id={statusId} className={error ? styles.error : styles.sheetStatus} role={error ? "alert" : "status"}>
-        {error ?? (busy ? `Drawing ${member.name}. This takes about a minute.` : "")}
+        {error ? <ErrorText message={error} /> : busy ? `Drawing ${member.name}. This takes about a minute.` : ""}
       </p>
     </div>
   );
@@ -538,8 +562,12 @@ function CharacterForm({ character, others, onSave, onCancel }: CharacterFormPro
   const [busy, setBusy] = useState(false);
   /** The person cut from a photo, held in memory until the sheet is drawn; never stored. */
   const [crop, setCrop] = useState<WireImage | null>(null);
+  /** A photo is picked in "Start from a photo" but not described yet. */
+  const [photoWaiting, setPhotoWaiting] = useState(false);
   const headingRef = useRef<HTMLHeadingElement>(null);
   const fieldId = (field: DraftField) => `${id}-${field}`;
+  /** The user's own card: always "You", drawn from their photo in About you. */
+  const isSelf = character?.role === "self";
 
   useEffect(() => {
     headingRef.current?.focus();
@@ -555,6 +583,8 @@ function CharacterForm({ character, others, onSave, onCancel }: CharacterFormPro
     event.preventDefault();
     if (busy) return;
     const found = validateDraft(draft, others);
+    // A photo was picked but never described: point at the button rather than ask for words.
+    if (found.look && photoWaiting && !draft.look.trim()) found.look = "Tap “Describe from photo” first, or write how they look.";
     setErrors(found);
     const first = FIELD_ORDER.find((field) => found[field]);
     if (first) {
@@ -624,23 +654,32 @@ function CharacterForm({ character, others, onSave, onCancel }: CharacterFormPro
         </label>
 
         <div className={styles.fieldRow}>
-          <label className={styles.field} htmlFor={fieldId("role")}>
-            <span className={styles.label}>Who they are to you</span>
-            <select
-              id={fieldId("role")}
-              value={draft.role}
-              onChange={(event) => set("role", event.target.value as CharacterRole)}
-              aria-invalid={errors.role ? true : undefined}
-              aria-describedby={describedBy("role")}
-            >
-              {ROLE_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-            {error("role")}
-          </label>
+          {isSelf ? (
+            <div className={styles.field}>
+              <span className={styles.label}>Who they are to you</span>
+              <p id={fieldId("role")} className={styles.hint}>
+                You. This is your own card.
+              </p>
+            </div>
+          ) : (
+            <label className={styles.field} htmlFor={fieldId("role")}>
+              <span className={styles.label}>Who they are to you</span>
+              <select
+                id={fieldId("role")}
+                value={draft.role}
+                onChange={(event) => set("role", event.target.value as CharacterRole)}
+                aria-invalid={errors.role ? true : undefined}
+                aria-describedby={describedBy("role")}
+              >
+                {OTHER_ROLE_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+              {error("role")}
+            </label>
+          )}
 
           <label className={styles.field} htmlFor={fieldId("roleLabel")}>
             <span className={styles.label}>
@@ -661,15 +700,26 @@ function CharacterForm({ character, others, onSave, onCancel }: CharacterFormPro
           </label>
         </div>
 
-        <PhotoLook
-          name={draft.name}
-          crop={crop}
-          onDescribed={(look, cut) => {
-            set("look", look);
-            setCrop(cut);
-          }}
-          onCleared={() => setCrop(null)}
-        />
+        {isSelf ? (
+          <p className={styles.hint}>
+            You&apos;re drawn from your photo.{" "}
+            <Link href="/welcome?next=/cast" className="link">
+              Use a new photo
+            </Link>{" "}
+            in About you to redraw yourself.
+          </p>
+        ) : (
+          <PhotoLook
+            name={draft.name}
+            crop={crop}
+            onDescribed={(look, cut) => {
+              set("look", look);
+              setCrop(cut);
+            }}
+            onCleared={() => setCrop(null)}
+            onWaiting={setPhotoWaiting}
+          />
+        )}
 
         <label className={styles.field} htmlFor={fieldId("look")}>
           <span className={styles.label}>How they look</span>
@@ -728,9 +778,11 @@ function CharacterForm({ character, others, onSave, onCancel }: CharacterFormPro
           <p>
             {crop
               ? "Comimo draws their zine sheet from the photo as soon as they're saved, then animates them. The other style is drawn the first time a comic needs it."
-              : character && ART_STYLE_IDS.some((style) => referenceSheetFor(character, style))
-                ? "Drawn. Comimo uses their sheets to keep their face the same. Changed how they look? Redraw the sheets from their card."
-                : "Comimo draws a sheet in each art style the first time a comic needs one, or draw them now from their card. The sheets keep their face the same in every panel."}
+              : isSelf
+                ? "Your sheet keeps your face the same in every panel. A new photo in About you redraws it."
+                : character && ART_STYLE_IDS.some((style) => referenceSheetFor(character, style))
+                  ? "Drawn. Comimo uses their sheets to keep their face the same. Changed how they look? Redraw the sheets from their card."
+                  : "Comimo draws a sheet in each art style the first time a comic needs one, or draw them now from their card. The sheets keep their face the same in every panel."}
           </p>
         </div>
       </div>

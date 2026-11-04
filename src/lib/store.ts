@@ -251,9 +251,15 @@ export function deleteDay(id: string): Promise<boolean> {
 
 /* ---------- Cast ---------- */
 
-export function saveCharacter(character: Character): Promise<boolean> {
+/**
+ * Save a character, stamped now so this copy wins the next sync. With
+ * `keepStamp` it keeps the stamp it has: for changes the user didn't make
+ * (the starter narrator, the account's name on it), which must never win
+ * over the account's own copy.
+ */
+export function saveCharacter(character: Character, options: { keepStamp?: boolean } = {}): Promise<boolean> {
   return withDb(false, async (db, signedIn) => {
-    const stamped: Character = { ...character, updatedAt: now() };
+    const stamped: Character = { ...character, updatedAt: options.keepStamp ? stampOf(character) : now() };
     await db.put("cast", stamped);
     if (signedIn) {
       await db.delete("meta", tombKey("cast", character.id));
@@ -378,6 +384,17 @@ function runSync(db: Db): Promise<void> {
     syncing = null;
   });
   return syncing;
+}
+
+/**
+ * True once this page load's first sync with the account worked (and always
+ * when signed out): until then the cache may simply not have the account's
+ * cast yet, so nothing should be seeded into it.
+ */
+export async function isSynced(): Promise<boolean> {
+  const opened = await ready();
+  if (!opened || opened.scope.kind !== "account") return true;
+  return lastSyncOk;
 }
 
 /** Sync now (e.g. before signing out); resolves when done. False when not signed in or offline. */
