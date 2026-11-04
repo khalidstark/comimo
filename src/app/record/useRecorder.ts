@@ -109,6 +109,8 @@ export function useRecorder(): Recorder {
   const timerRef = useRef<number | null>(null);
   const takeUrlRef = useRef<string | null>(null);
   const mountedRef = useRef(true);
+  /** True while the browser is asking for the mic, so a second tap doesn't open a second stream. */
+  const startingRef = useRef(false);
   /** Bumped for every picked file, so only the latest one's measurement counts. */
   const pickRef = useRef(0);
 
@@ -138,11 +140,16 @@ export function useRecorder(): Recorder {
   const stop = useCallback(() => {
     const recorder = recorderRef.current;
     if (recorder && recorder.state !== "inactive") recorder.stop();
+    else if (!recorder) {
+      // Nothing is recording any more: Stop goes back to Start instead of doing nothing.
+      setStatus((current) => (current === "recording" ? "idle" : current));
+      setAnalyser(null);
+    }
     stopTimer();
   }, [stopTimer]);
 
   const start = useCallback(async () => {
-    if (recorderRef.current) return;
+    if (recorderRef.current || startingRef.current) return;
     // A file still being measured loses to a fresh recording.
     pickRef.current++;
     if (!canRecord()) {
@@ -150,6 +157,7 @@ export function useRecorder(): Recorder {
       return;
     }
 
+    startingRef.current = true;
     setProblem(null);
     setStatus("requesting");
 
@@ -159,13 +167,16 @@ export function useRecorder(): Recorder {
         audio: { echoCancellation: true, noiseSuppression: true, channelCount: 1 },
       });
     } catch (error) {
-      if (!mountedRef.current) return;
-      setProblem(problemFromError(error));
       setStatus("idle");
+      if (mountedRef.current) setProblem(problemFromError(error));
       return;
+    } finally {
+      startingRef.current = false;
     }
     if (!mountedRef.current) {
+      // The page was left while the browser asked: let the mic go and show Start again.
       stream.getTracks().forEach((track) => track.stop());
+      setStatus("idle");
       return;
     }
     streamRef.current = stream;
@@ -293,6 +304,8 @@ export function useRecorder(): Recorder {
   );
 
   // Stop the mic and free the playback URL when the recorder goes away.
+  // Next keeps /record mounted but hidden after navigating away, so a
+  // recording cut short here must also land back on Start, not a dead Stop.
   useEffect(() => {
     mountedRef.current = true;
     return () => {
@@ -303,6 +316,11 @@ export function useRecorder(): Recorder {
         recorder.stop();
       }
       release();
+      if (recorder) {
+        setStatus("idle");
+        setElapsedMs(0);
+        setAnalyser(null);
+      }
       if (takeUrlRef.current) URL.revokeObjectURL(takeUrlRef.current);
       takeUrlRef.current = null;
     };

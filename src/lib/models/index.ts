@@ -116,6 +116,8 @@ export interface ScriptOptions {
   storyMode?: StoryMode;
   /** The name of the diary the entry is for (03.2-05), when it isn't the daily one. */
   diary?: string;
+  /** True when the note catches up yesterday, so the script doesn't call it today. */
+  yesterday?: boolean;
 }
 
 /** A change of clothes in words (03.2-04). */
@@ -187,7 +189,11 @@ export interface ComicModels {
 
 /** Thrown when a voice note or other input can't be sent to a model as it is. */
 export class ModelInputError extends Error {
-  constructor(message: string) {
+  constructor(
+    message: string,
+    /** The reason for the browser, e.g. "audio" when only a new recording can help. */
+    readonly code?: string,
+  ) {
     super(message);
     this.name = "ModelInputError";
   }

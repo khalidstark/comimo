@@ -550,6 +550,8 @@ export interface ScriptRequest {
   storyMode?: StoryMode;
   /** The diary the entry is for (03.2-05), by name; missing for the daily diary. */
   diary?: string;
+  /** "yesterday" when a missed day is being caught up; missing for today. */
+  day?: "yesterday";
 }
 export interface ScriptResponse {
   mode: ModelMode;

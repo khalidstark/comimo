@@ -28,24 +28,47 @@ async function signedInRequest(email: string): Promise<() => Request> {
 
 describe("guard", () => {
   it("caps real comics per account per hour, and never limits mock calls", async () => {
-    const { guard } = await import("./guard");
+    const { guard, guardResponse } = await import("./guard");
     const request = await signedInRequest("cap@example.com");
     expect((await guard(request(), "script", { real: true })).ok).toBe(true);
     expect((await guard(request(), "script", { real: true })).ok).toBe(true);
     const third = await guard(request(), "script", { real: true });
     expect(third.ok).toBe(false);
-    if (!third.ok) expect(third.status).toBe(429);
+    if (!third.ok) {
+      expect(third.status).toBe(429);
+      expect(await guardResponse(third).json()).toMatchObject({ code: "limit" });
+    }
     expect((await guard(request(), "script", { real: false })).ok).toBe(true);
   });
 
+  it("names what the hourly limit was hit for", async () => {
+    const { guard } = await import("./guard");
+    const request = await signedInRequest("limits@example.com");
+    for (const [action, words] of [
+      ["week", "looks back at your week"],
+      ["cover", "covers"],
+    ] as const) {
+      let blocked = await guard(request(), action, { real: true });
+      for (let i = 0; i < 20 && blocked.ok; i++) blocked = await guard(request(), action, { real: true });
+      expect(blocked.ok).toBe(false);
+      if (blocked.ok) continue;
+      expect(blocked.status).toBe(429);
+      expect(blocked.error).toContain(`That's a lot of ${words} for one hour.`);
+    }
+  });
+
   it("pauses every real call from the store key at once, and resumes when it is cleared", async () => {
-    const { guard, PAUSE_KEY } = await import("./guard");
+    const { guard, guardResponse, PAUSE_KEY } = await import("./guard");
     const { getKV } = await import("@/lib/server/kv");
     const request = await signedInRequest("pause@example.com");
     await getKV().set(PAUSE_KEY, "1");
     const paused = await guard(request(), "panel", { real: true });
     expect(paused.ok).toBe(false);
-    if (!paused.ok) expect(paused.status).toBe(503);
+    if (!paused.ok) {
+      expect(paused.status).toBe(503);
+      // "paused": the progress screen doesn't offer a Try again that can only fail.
+      expect(await guardResponse(paused).json()).toMatchObject({ code: "paused" });
+    }
     expect((await guard(request(), "panel", { real: false })).ok).toBe(true);
     await getKV().del(PAUSE_KEY);
     expect((await guard(request(), "panel", { real: true })).ok).toBe(true);

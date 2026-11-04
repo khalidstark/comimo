@@ -83,7 +83,8 @@ export type PipelineStatus = "idle" | "running" | "error" | "cancelled" | "done"
 export interface PipelineState {
   status: PipelineStatus;
   steps: Record<PipelineStep, StepStatus>;
-  error: { step: PipelineStep; message: string } | null;
+  /** What went wrong; `code` is the API's reason when it gave one ("cap", "paused", "limit", "signin", "audio"). */
+  error: { step: PipelineStep; message: string; code?: string } | null;
   transcript: Transcript | null;
   /** The script, its panels carrying the frame each is drawn for. */
   script: ComicScript | null;
@@ -106,6 +107,8 @@ export interface PipelineState {
    * dressed from them (by name) and how many people were in the photos.
    */
   dressed: { names: string[]; people: number; note?: string } | null;
+  /** Whose reference sheets are being drawn before the panels (someone new to this style, or a new outfit). */
+  sheets: string[];
   /** What the comic has cost so far (every model request, retries included). */
   cost: CostRecord;
   /** The day's photos once they are in its album (or why not). */
@@ -153,6 +156,27 @@ class StepError extends Error {
     super(message);
     this.name = "StepError";
   }
+}
+
+/** Reasons a retry right now can only fail the same way, or that need the user first. Most pressing first. */
+const BLOCKING_CODES = ["signin", "paused", "cap", "limit"];
+
+/**
+ * Why the panels didn't draw, in one line: a blocking reason (sign in,
+ * paused, a daily cap, the hourly limit) or the reason they all share, else
+ * a plain "try them again".
+ */
+export function panelsFailed(failures: { message?: string; code?: string }[]): { message: string; code?: string } {
+  const many = failures.length !== 1;
+  const lead = many ? `${failures.length} panels didn't draw.` : "One panel didn't draw.";
+  for (const code of BLOCKING_CODES) {
+    const blocked = failures.find((failure) => failure.code === code && failure.message);
+    if (blocked) return { message: `${lead} ${blocked.message}`, code };
+  }
+  const reasons = new Set(failures.map((failure) => failure.message));
+  const [reason] = reasons;
+  if (reasons.size === 1 && reason) return { message: `${lead} ${reason}` };
+  return { message: many ? `${lead} Try them again.` : `${lead} Try it again.` };
 }
 
 function isAbort(error: unknown): boolean {
@@ -276,6 +300,7 @@ function initialState(): PipelineState {
     meeting: null,
     faces: null,
     dressed: null,
+    sheets: [],
     cost: emptyCost(),
     album: null,
   };
@@ -434,18 +459,22 @@ export class ComicPipeline {
       const failed = error instanceof StepError ? error.step : step;
       const message =
         error instanceof StepError ? error.message : "Something went wrong on this step. Try again.";
+      const code = error instanceof StepError ? error.code : undefined;
       if (!(error instanceof StepError)) console.error("Comimo: pipeline step failed", error);
       const steps = { ...this.state.steps, [failed]: "error" as const };
       if (failed === "draw" && steps.check === "active") steps.check = "waiting";
-      this.set({ status: "error", error: { step: failed, message }, steps });
+      this.set({ status: "error", error: { step: failed, message, ...(code ? { code } : {}) }, steps });
     } finally {
       if (this.controller === controller) this.controller = null;
     }
   }
 
-  /** Stop any request in flight. Finished work is kept, so `start()` picks up from here. */
+  /**
+   * Stop any request in flight. Finished work is kept, so `start()` picks up from here.
+   * Once saving has started the day is being kept, so there is nothing left to cancel.
+   */
   cancel() {
-    if (!this.controller) return;
+    if (!this.controller || this.state.steps.save === "active") return;
     this.controller.abort();
     this.controller = null;
     this.answerFaces = null;
@@ -454,7 +483,7 @@ export class ComicPipeline {
     const panels = this.state.panels.map((panel) =>
       panel.status === "drawing" ? { ...panel, status: "waiting" as const } : panel,
     );
-    this.set({ status: "cancelled", steps, panels, meeting: null });
+    this.set({ status: "cancelled", steps, panels, meeting: null, sheets: [] });
   }
 
   /** Cancel and free the object URLs behind the panel previews. */
@@ -480,7 +509,8 @@ export class ComicPipeline {
       this.wav = (await toWav(this.input.audio)).wav;
       return this.wav;
     } catch (error) {
-      if (error instanceof AudioConvertError) throw new StepError("listen", error.message);
+      // "audio": the note itself is the problem (silent, too long, unreadable), so only a new one can help.
+      if (error instanceof AudioConvertError) throw new StepError("listen", error.message, error.problem === "unsupported" ? undefined : "audio");
       throw error;
     }
   }
@@ -627,6 +657,8 @@ export class ComicPipeline {
       cast,
       storyMode: this.input.storyMode,
       ...(this.input.diary ? { diary: this.input.diary.name } : {}),
+      // Only yesterday can be caught up, so an earlier date is yesterday.
+      ...(this.input.date && this.input.date < localIsoDate(new Date(this.createdAt)) ? { day: "yesterday" as const } : {}),
     };
     const { script } = await this.call<ScriptResponse>("write", "/api/script", {
       method: "POST",
@@ -826,7 +858,8 @@ export class ComicPipeline {
     const missing = (this.cast ?? []).filter(
       (member) => ids.has(member.id) && !referenceSheetFor(member, this.input.style) && member.look.trim().length >= 12,
     );
-    await Promise.all(
+    await this.drawingSheets(
+      missing.map((member) => member.name),
       missing.map(async (member) => {
         try {
           const { character: drawn, cost } = await drawSheetForComic(member, this.input.style, this.dayId, signal);
@@ -855,7 +888,8 @@ export class ComicPipeline {
       const worn = wornSheetFor(member, style, this.dayOutfits);
       return worn.wearing.kind === "outfit" && worn.missing && worn.base ? [{ member, outfit: worn.wearing.outfit, base: worn.base }] : [];
     });
-    await Promise.all(
+    await this.drawingSheets(
+      needing.map(({ member }) => member.name),
       needing.map(async ({ member, outfit, base }) => {
         try {
           const { sheet, cost } = await drawOutfitInStyle(member, outfit, base, style, `${member.id}-outfit-${outfit.id}-${style}`, signal, this.dayId);
@@ -871,7 +905,20 @@ export class ComicPipeline {
     );
   }
 
+  /** Shows whose sheets are being drawn (the progress caption names them) until the drawing settles. */
+  private async drawingSheets(names: string[], drawing: Promise<void>[]) {
+    if (drawing.length === 0) return;
+    this.set({ sheets: names });
+    try {
+      await Promise.all(drawing);
+    } finally {
+      this.set({ sheets: [] });
+    }
+  }
+
   private async drawPanels(script: ComicScript, signal: AbortSignal) {
+    // Drawing starts with any missing sheets, so the step is underway before the first panel.
+    this.setStep("draw", "active");
     this.cast ??= await loadCast();
     await this.ensureSheets(script, signal);
     const queue = script.panels.filter((panel) => this.state.panels.find((p) => p.index === panel.index)?.status !== "done");
@@ -889,7 +936,7 @@ export class ComicPipeline {
     }
     this.set({ steps: { ...this.state.steps, draw: "active", check: "active" } });
 
-    let failed = 0;
+    const failures: { message?: string; code?: string }[] = [];
     const worker = async () => {
       for (let next = queue.shift(); next; next = queue.shift()) {
         if (signal.aborted) return;
@@ -899,7 +946,7 @@ export class ComicPipeline {
           await this.drawPanel(next, signal);
         } catch (error) {
           if (signal.aborted || isAbort(error)) throw error;
-          failed += 1;
+          failures.push(error instanceof StepError ? { message: error.message, code: error.code } : {});
           const message = error instanceof StepError ? error.message : "This panel didn't draw.";
           this.setPanel(next.index, { status: "error", error: message });
         } finally {
@@ -911,8 +958,9 @@ export class ComicPipeline {
     await Promise.all(Array.from({ length: PANEL_CONCURRENCY }, worker));
     if (signal.aborted) throw new DOMException("Cancelled", "AbortError");
 
-    if (failed > 0) {
-      throw new StepError("draw", failed === 1 ? "One panel didn't draw. Try it again." : `${failed} panels didn't draw. Try them again.`);
+    if (failures.length > 0) {
+      const { message, code } = panelsFailed(failures);
+      throw new StepError("draw", message, code);
     }
     this.set({ steps: { ...this.state.steps, draw: "done", check: "done" } });
   }

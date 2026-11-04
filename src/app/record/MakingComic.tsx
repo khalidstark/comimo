@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { useCallback, useEffect, useEffectEvent, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties } from "react";
+import { useCallback, useEffect, useEffectEvent, useId, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties } from "react";
 import { Art } from "@/art/Art";
 import { art } from "@/art/manifest";
 import { PAGE_TURN } from "@/components/PageTurn";
@@ -16,6 +16,7 @@ import { splitPages } from "@/lib/layout/comicPages";
 import {
   ComicPipeline,
   PIPELINE_STEPS,
+  localIsoDate,
   type PanelProgress,
   type PipelineState,
   type PipelineStep,
@@ -71,7 +72,8 @@ function excerpt(text: string, max = 150): string {
 }
 
 function stepDetail(step: PipelineStep, status: StepStatus, state: PipelineState): string {
-  if (status === "skipped") return "Skipped today";
+  // A skipped outfit step says why ("Couldn't read the photos this time").
+  if (status === "skipped") return (step === "dress" && state.dressed?.note) || "Skipped today";
   if (status === "error" || status === "waiting") return "";
   const total = state.panels.length;
   const drawn = state.panels.filter((panel) => panel.status === "done").length;
@@ -132,16 +134,35 @@ function checkDetail(state: PipelineState, fixes: number, status: StepStatus): s
   return status === "done" ? "Done" : "Waiting for the first panel";
 }
 
-function captionFor(state: PipelineState, fixing: PanelProgress | undefined): string {
+/**
+ * What an error offers: Try again; Record again when the voice note itself was the problem
+ * (sending it again would fail, and cost, the same way); Sign in when the session ran out;
+ * or nothing when trying again now can only fail the same way (a daily cap, a pause).
+ */
+function errorAction(error: PipelineState["error"], canRecordAgain: boolean): "retry" | "record" | "signin" | "none" {
+  if (error?.code === "signin") return "signin";
+  if (error?.code === "audio" && canRecordAgain) return "record";
+  return error?.code === "cap" || error?.code === "paused" ? "none" : "retry";
+}
+
+/** True when focus is in a field (the New faces form): Escape there belongs to the field, not the run. */
+function inField(element: Element | null): boolean {
+  return element instanceof HTMLElement && (element.isContentEditable || element.matches("input, textarea, select"));
+}
+
+function captionFor(state: PipelineState, fixing: PanelProgress | undefined, yesterday: boolean, typed: boolean): string {
   const crisis = state.script?.safety === "crisis";
   if (state.status === "error" && state.error) return state.error.message;
-  if (state.status === "cancelled") return "Stopped. Your voice note is still here.";
+  if (state.status === "cancelled") return typed ? "Stopped. What you wrote is still here." : "Stopped. Your voice note is still here.";
   if (fixing) return `Fixing ${facesOf(fixing.fixedNames)}…`;
   if (state.status === "done")
     return crisis ? "Comimo didn't turn this note into a comic." : "Your comic is ready. Opening it…";
   const { steps } = state;
   if (steps.save === "active") return "Binding the pages…";
   if (steps.meet === "active") return state.meeting ? "One quick question first…" : "Getting the new faces ready…";
+  if (steps.draw === "active" && state.sheets.length > 0) {
+    return state.sheets.length === 1 ? `Drawing ${state.sheets[0]}'s sheet…` : "Drawing your cast's sheets…";
+  }
   if (steps.draw === "active") {
     const pages = state.pages?.length ?? 1;
     const drawingPanels = state.panels.filter((panel) => panel.status === "drawing");
@@ -155,7 +176,7 @@ function captionFor(state: PipelineState, fixing: PanelProgress | undefined): st
     return `${what.charAt(0).toUpperCase()}${what.slice(1)} of ${onPage.length}…`;
   }
   if (steps.write === "active") return "Writing the script…";
-  if (steps.dress === "active" && steps.listen === "done") return "Finding your outfit in today's photos…";
+  if (steps.dress === "active" && steps.listen === "done") return `Finding your outfit in ${yesterday ? "yesterday's" : "today's"} photos…`;
   return "Listening to your day…";
 }
 
@@ -175,6 +196,10 @@ interface MakingComicProps {
   date?: string;
   /** Called after the screen is cancelled and closed. */
   onClose: () => void;
+  /** Called when /record shows again after the comic opened: the run is over. */
+  onFinished: () => void;
+  /** Closes the screen and throws the voice note away, for a note that can't be used. */
+  onRecordAgain?: () => void;
 }
 
 /**
@@ -182,7 +207,7 @@ interface MakingComicProps {
  * finishes. Panels are pencilled from the script, inked when drawn, and a
  * panel whose face was fixed flips from before to after.
  */
-export function MakingComic({ audio, text, language, style, storyMode, photos, diary, date, onClose }: MakingComicProps) {
+export function MakingComic({ audio, text, language, style, storyMode, photos, diary, date, onClose, onFinished, onRecordAgain }: MakingComicProps) {
   const [pipeline] = useState(
     () =>
       new ComicPipeline({
@@ -198,6 +223,14 @@ export function MakingComic({ audio, text, language, style, storyMode, photos, d
   );
   const state = useSyncExternalStore(pipeline.subscribe, pipeline.getSnapshot, pipeline.getSnapshot);
   const [settled, setSettled] = useState<ReadonlySet<number>>(() => new Set());
+  /** Sign in was opened in a new tab: once they're back, the run can keep going. */
+  const [signInOpened, setSignInOpened] = useState(false);
+  /** "Stop and lose this comic?" is showing in place of Cancel. */
+  const [confirming, setConfirming] = useState(false);
+  const confirmId = useId();
+  const keepRef = useRef<HTMLButtonElement>(null);
+  const cancelRef = useRef<HTMLButtonElement>(null);
+  const askedRef = useRef(false);
   const dialogRef = useRef<HTMLDialogElement>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
   const router = useRouter();
@@ -220,9 +253,16 @@ export function MakingComic({ audio, text, language, style, storyMode, photos, d
       (step !== "dress" || Boolean(photos?.length)),
   );
   const failedStep = state.error?.step;
+  // Catching up a missed day: only yesterday is offered, and today's comic carries no date.
+  const yesterday = date !== undefined && date < localIsoDate();
+  /** The day was typed, not recorded. */
+  const typed = audio === null;
+  // Saving can't be undone halfway (the day is kept before its photos are filed), so Cancel goes away.
+  const cancellable = status !== "done" && state.steps.save !== "active";
+  const action = errorAction(state.error, Boolean(onRecordAgain));
 
-  // Coming back to /record after the comic opened: the run is over, so drop the screen.
-  const leaveFinished = useEffectEvent(() => onClose());
+  // Coming back to /record after the comic opened: the run is over, so drop the screen and start fresh.
+  const leaveFinished = useEffectEvent(() => onFinished());
 
   // Open as a modal (the page behind goes inert) and announce the heading.
   // Next keeps this page mounted but hidden (Activity) after routing to the
@@ -244,6 +284,18 @@ export function MakingComic({ audio, text, language, style, storyMode, photos, d
     return () => pipeline.dispose();
   }, [pipeline]);
 
+  // A refresh or a closed tab would throw away a run in progress, and what it has cost: ask first.
+  useEffect(() => {
+    if (status !== "running") return;
+    const warn = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      // Older Safari and Chrome only ask when returnValue is set.
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [status]);
+
   // Hold on the finished page for a beat, then turn to the day.
   useEffect(() => {
     if (!finished) return;
@@ -260,10 +312,54 @@ export function MakingComic({ audio, text, language, style, storyMode, photos, d
     onClose();
   }, [pipeline, onClose]);
 
+  // Once the script is written the run has cost something: ask before throwing it away.
+  const askToClose = useCallback(() => {
+    if (pipeline.getSnapshot().steps.write === "done") setConfirming(true);
+    else close();
+  }, [pipeline, close]);
+
+  // The question takes focus on Keep going (the safe answer); keeping going hands it back to Cancel.
+  useEffect(() => {
+    if (confirming) keepRef.current?.focus();
+    else if (askedRef.current) cancelRef.current?.focus();
+    askedRef.current = confirming;
+  }, [confirming]);
+
   const retry = useCallback(() => {
     headingRef.current?.focus();
     void pipeline.start();
   }, [pipeline]);
+
+  const recordAgain = useCallback(() => {
+    pipeline.cancel();
+    dialogRef.current?.close();
+    onRecordAgain?.();
+  }, [pipeline, onRecordAgain]);
+
+  /** The way forward from an error, up top and next to the failed step. */
+  const errorButton = (className: string) => {
+    if (action === "none") return null;
+    if (action === "signin") {
+      // In a new tab, so this note and everything made so far are still here after signing in.
+      return (
+        <span className={styles.errorActions}>
+          <Link href="/signin?next=/record" target="_blank" rel="noopener" className={`btn btn--ink ${className}`} onClick={() => setSignInOpened(true)}>
+            Sign in<span className="visually-hidden"> (opens a new tab)</span>
+          </Link>
+          {signInOpened ? (
+            <button type="button" className={`btn btn--ghost ${className}`} onClick={retry}>
+              Keep going
+            </button>
+          ) : null}
+        </span>
+      );
+    }
+    return (
+      <button type="button" className={`btn btn--ink ${className}`} onClick={action === "record" ? recordAgain : retry}>
+        {action === "record" ? "Record again" : "Try again"}
+      </button>
+    );
+  };
 
   const markSettled = useCallback((index: number) => {
     setSettled((previous) => new Set(previous).add(index));
@@ -299,9 +395,12 @@ export function MakingComic({ audio, text, language, style, storyMode, photos, d
       className={styles.dialog}
       aria-labelledby="making-title"
       onCancel={(event) => {
-        // Escape cancels the run (and closes); once finished there is nothing to cancel.
+        // Escape asks to cancel the run (and close); once saving or finished there is nothing to cancel.
+        // Escape in a field is the field's, and Escape on the question means keep going.
         event.preventDefault();
-        if (status !== "done") close();
+        if (inField(document.activeElement)) return;
+        if (confirming) setConfirming(false);
+        else if (cancellable) askToClose();
       }}
     >
       <div className={styles.sheet}>
@@ -310,9 +409,21 @@ export function MakingComic({ audio, text, language, style, storyMode, photos, d
             <span className={styles.recDot} data-live={status === "running" || undefined} aria-hidden="true" />
             <time dateTime={state.date}>{formatDay(state.date)}</time>
           </p>
-          {status !== "done" ? (
-            <button type="button" className={`btn btn--ghost ${styles.cancel}`} onClick={close}>
-              {status === "running" ? "Cancel" : "Back to recording"}
+          {cancellable && confirming ? (
+            <div className={styles.confirm} role="group" aria-labelledby={confirmId}>
+              <p id={confirmId} className={styles.confirmText}>
+                Stop and lose this comic?
+              </p>
+              <button ref={keepRef} type="button" className={`btn btn--ink ${styles.cancel}`} onClick={() => setConfirming(false)}>
+                Keep going
+              </button>
+              <button type="button" className={`btn btn--ghost ${styles.cancel}`} onClick={close}>
+                Stop
+              </button>
+            </div>
+          ) : cancellable ? (
+            <button ref={cancelRef} type="button" className={`btn btn--ghost ${styles.cancel}`} onClick={askToClose}>
+              {status === "running" ? "Cancel" : typed ? "Back" : "Back to recording"}
             </button>
           ) : null}
         </header>
@@ -328,14 +439,10 @@ export function MakingComic({ audio, text, language, style, storyMode, photos, d
             aria-live="polite"
             dir="auto"
           >
-            {captionFor(state, fixing)}
+            {captionFor(state, fixing, yesterday, typed)}
           </p>
-          {status === "error" && failedStep ? (
-            // Up here too, so a phone doesn't have to scroll past every panel to retry.
-            <button type="button" className={`btn btn--ink ${styles.retryTop}`} onClick={retry}>
-              Try again
-            </button>
-          ) : null}
+          {/* Up here too, so a phone doesn't have to scroll past every panel to retry. */}
+          {status === "error" && failedStep ? errorButton(styles.retryTop) : null}
         </div>
 
         <div className={styles.stage}>
@@ -431,11 +538,7 @@ export function MakingComic({ audio, text, language, style, storyMode, photos, d
                       <span className="visually-hidden">: {stepStatus === "active" ? "in progress" : stepStatus}</span>
                       {detail ? <span className={styles.stepDetail}>{detail}</span> : null}
                     </span>
-                    {stepStatus === "error" && failedStep === step ? (
-                      <button type="button" className={`btn btn--ink ${styles.retry}`} onClick={retry}>
-                        Try again
-                      </button>
-                    ) : null}
+                    {stepStatus === "error" && failedStep === step ? errorButton(styles.retry) : null}
                   </li>
                 );
               })}

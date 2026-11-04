@@ -128,7 +128,7 @@ export function fixedFaces(
 }
 
 /**
- * What the "How Comimo kept faces the same" note may truthfully say about a day:
+ * What the "How it was made" note may truthfully say about a day's faces:
  * - "sam": SAM 3.1 really looked (counts are what it found on the final panels);
  * - "practice": made in practice mode (the fixes are pretend), or made before
  *   03-03 with fixes, which only practice mode could make;

@@ -81,8 +81,8 @@ function tidy(text: string): string {
 export async function transcribe(audio: AudioInput, context: ModelCallContext = {}): Promise<Transcript> {
   const wav = readWav(audio.data);
   if (!wav) throw new ModelInputError("Send the voice note as 16 kHz mono 16-bit WAV.");
-  if (wav.seconds > MAX_SECONDS) throw new ModelInputError("That voice note is too long.");
-  if (wav.seconds < MIN_SECONDS) throw new ModelInputError("That voice note is too short. Tell me a bit more.");
+  if (wav.seconds > MAX_SECONDS) throw new ModelInputError("That voice note is too long.", "audio");
+  if (wav.seconds < MIN_SECONDS) throw new ModelInputError("That voice note is too short. Tell me a bit more.", "audio");
 
   const request = {
     model: MODEL,
@@ -111,7 +111,7 @@ export async function transcribe(audio: AudioInput, context: ModelCallContext = 
 
   const text = tidy(body.transcript);
   if (!text) {
-    throw new ModelInputError("Comimo couldn't hear any words in that voice note. Try again a little closer to the mic.");
+    throw new ModelInputError("Comimo couldn't hear any words in that voice note. Try again a little closer to the mic.", "audio");
   }
   return { text, languages: detectLanguages(text, audio.languageHint) };
 }

@@ -16,17 +16,19 @@ export function json<T>(body: T, mode: ModelMode, status = 200): Response {
   });
 }
 
-export function jsonError(status: number, error: string): Response {
-  return Response.json({ error } satisfies ApiError, { status, headers: { "Cache-Control": "no-store" } });
+export function jsonError(status: number, error: string, code?: string): Response {
+  return Response.json((code ? { error, code } : { error }) satisfies ApiError, { status, headers: { "Cache-Control": "no-store" } });
 }
 
 /** Turn a model failure into a response without leaking details to the client. */
 export function modelErrorResponse(error: unknown): Response {
-  if (error instanceof ModelInputError) return jsonError(400, error.message);
+  if (error instanceof ModelInputError) return jsonError(400, error.message, error.code);
   if (error instanceof SpendCapError) {
-    const response = jsonError(503, error.message);
-    response.headers.set("Retry-After", String(error.retryAfterSec));
-    return response;
+    // "cap": trying again today can only hit the same cap.
+    return Response.json({ error: error.message, code: "cap" } satisfies ApiError, {
+      status: 503,
+      headers: { "Cache-Control": "no-store", "Retry-After": String(error.retryAfterSec) },
+    });
   }
   if (error instanceof MetaApiError) {
     // The message holds status, type and code from Meta; never the key or the user's content.

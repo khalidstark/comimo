@@ -181,6 +181,17 @@ export function RecordPanel() {
     if (file) void recorder.acceptFile(file);
   }
 
+  /** After a comic is made, /record starts fresh: no old note, words, photos, day or diary. */
+  function startFresh() {
+    setMaking(null);
+    recorder.discard();
+    setTyped("");
+    setTyping(false);
+    setPhotos([]);
+    setDay("today");
+    setDiary(null);
+  }
+
   const typedText = typed.trim();
   const typedReady = typedText.length >= TYPED_MIN;
 
@@ -252,7 +263,7 @@ export function RecordPanel() {
         </div>
       </fieldset>
       <DiaryPick value={diary} onChange={setDiary} />
-      <DayPhotos photos={photos} onChange={setPhotos} />
+      <DayPhotos photos={photos} onChange={setPhotos} day={day} />
     </>
   );
 
@@ -277,9 +288,12 @@ export function RecordPanel() {
             placeholder="What happened today? Write it the way you'd tell a friend, in Arabic, English or both."
           />
           <p id={typedHintId} className={styles.uploadHint}>
-            {typedText.length < TYPED_MIN
+            {typedText.length === 0
               ? "A few sentences is enough. Comimo works out the language from what you write."
-              : `${typed.length.toLocaleString("en")} of ${TYPED_MAX.toLocaleString("en")} characters`}
+              : !typedReady
+                ? // Make my comic waits for TYPED_MIN: say how far off it is.
+                  `${TYPED_MIN - typedText.length} more ${TYPED_MIN - typedText.length === 1 ? "character" : "characters"} to go. A few sentences is enough.`
+                : `${typed.length.toLocaleString("en")} of ${TYPED_MAX.toLocaleString("en")} characters`}
           </p>
           {options}
           <div className={styles.reviewActions}>
@@ -307,6 +321,7 @@ export function RecordPanel() {
             diary={making.diary}
             date={making.date}
             onClose={() => setMaking(null)}
+            onFinished={startFresh}
           />
         ) : null}
       </div>
@@ -443,6 +458,11 @@ export function RecordPanel() {
           diary={making.diary}
           date={making.date}
           onClose={() => setMaking(null)}
+          onFinished={startFresh}
+          onRecordAgain={() => {
+            setMaking(null);
+            recorder.discard();
+          }}
         />
       ) : null}
     </div>

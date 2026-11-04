@@ -8,6 +8,17 @@ import styles from "./comic.module.css";
  * comic (from what is stored with each panel), names the cast it matched,
  * and marks heads, then takes the reader up to the first panel.
  */
+/**
+ * Up to the first panel. On a later page it isn't on screen, so go by
+ * "#panel-1", which the comic book follows by turning back to page 1.
+ */
+function toFirstPanel() {
+  const first = document.getElementById("panel-1");
+  if (first) first.scrollIntoView({ behavior: "smooth", block: "center" });
+  else if (window.location.hash === "#panel-1") window.dispatchEvent(new HashChangeEvent("hashchange"));
+  else window.location.hash = "#panel-1";
+}
+
 export function SamSwitch() {
   const [on, setOn] = useState(false);
   useEffect(() => {
@@ -25,7 +36,7 @@ export function SamSwitch() {
       aria-pressed={on}
       onClick={() => {
         setOn((value) => !value);
-        if (!on) document.getElementById("panel-1")?.scrollIntoView({ behavior: "smooth", block: "center" });
+        if (!on) toFirstPanel();
       }}
     >
       <span className={styles.samSwitchKnob} aria-hidden="true" />
