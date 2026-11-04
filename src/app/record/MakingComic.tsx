@@ -150,10 +150,10 @@ function inField(element: Element | null): boolean {
   return element instanceof HTMLElement && (element.isContentEditable || element.matches("input, textarea, select"));
 }
 
-function captionFor(state: PipelineState, fixing: PanelProgress | undefined, yesterday: boolean): string {
+function captionFor(state: PipelineState, fixing: PanelProgress | undefined, yesterday: boolean, typed: boolean): string {
   const crisis = state.script?.safety === "crisis";
   if (state.status === "error" && state.error) return state.error.message;
-  if (state.status === "cancelled") return "Stopped. Your voice note is still here.";
+  if (state.status === "cancelled") return typed ? "Stopped. What you wrote is still here." : "Stopped. Your voice note is still here.";
   if (fixing) return `Fixing ${facesOf(fixing.fixedNames)}…`;
   if (state.status === "done")
     return crisis ? "Comimo didn't turn this note into a comic." : "Your comic is ready. Opening it…";
@@ -255,6 +255,8 @@ export function MakingComic({ audio, text, language, style, storyMode, photos, d
   const failedStep = state.error?.step;
   // Catching up a missed day: only yesterday is offered, and today's comic carries no date.
   const yesterday = date !== undefined && date < localIsoDate();
+  /** The day was typed, not recorded. */
+  const typed = audio === null;
   // Saving can't be undone halfway (the day is kept before its photos are filed), so Cancel goes away.
   const cancellable = status !== "done" && state.steps.save !== "active";
   const action = errorAction(state.error, Boolean(onRecordAgain));
@@ -421,7 +423,7 @@ export function MakingComic({ audio, text, language, style, storyMode, photos, d
             </div>
           ) : cancellable ? (
             <button ref={cancelRef} type="button" className={`btn btn--ghost ${styles.cancel}`} onClick={askToClose}>
-              {status === "running" ? "Cancel" : "Back to recording"}
+              {status === "running" ? "Cancel" : typed ? "Back" : "Back to recording"}
             </button>
           ) : null}
         </header>
@@ -437,7 +439,7 @@ export function MakingComic({ audio, text, language, style, storyMode, photos, d
             aria-live="polite"
             dir="auto"
           >
-            {captionFor(state, fixing, yesterday)}
+            {captionFor(state, fixing, yesterday, typed)}
           </p>
           {/* Up here too, so a phone doesn't have to scroll past every panel to retry. */}
           {status === "error" && failedStep ? errorButton(styles.retryTop) : null}
