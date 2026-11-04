@@ -41,6 +41,22 @@ describe("guard", () => {
     expect((await guard(request(), "script", { real: false })).ok).toBe(true);
   });
 
+  it("names what the hourly limit was hit for", async () => {
+    const { guard } = await import("./guard");
+    const request = await signedInRequest("limits@example.com");
+    for (const [action, words] of [
+      ["week", "looks back at your week"],
+      ["cover", "covers"],
+    ] as const) {
+      let blocked = await guard(request(), action, { real: true });
+      for (let i = 0; i < 20 && blocked.ok; i++) blocked = await guard(request(), action, { real: true });
+      expect(blocked.ok).toBe(false);
+      if (blocked.ok) continue;
+      expect(blocked.status).toBe(429);
+      expect(blocked.error).toContain(`That's a lot of ${words} for one hour.`);
+    }
+  });
+
   it("pauses every real call from the store key at once, and resumes when it is cleared", async () => {
     const { guard, guardResponse, PAUSE_KEY } = await import("./guard");
     const { getKV } = await import("@/lib/server/kv");

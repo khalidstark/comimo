@@ -355,6 +355,8 @@ function limitMessage(action: GuardAction, retryAfterSec: number): string {
   if (action === "photo") return `That's a lot of photos for one hour. Try again in ${wait}.`;
   if (action === "caption") return `That's a lot of captions for one hour. Try again in ${wait}.`;
   if (action === "wardrobe" || action === "outfit") return `That's a lot of outfits for one hour. Try again in ${wait}.`;
+  if (action === "week") return `That's a lot of looks back at your week for one hour. Try again in ${wait}.`;
+  if (action === "cover") return `That's a lot of covers for one hour. Try again in ${wait}.`;
   return `That's a lot of comics for one hour. Try again in ${wait}.`;
 }
 
