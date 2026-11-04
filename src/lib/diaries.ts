@@ -68,11 +68,14 @@ export function parseDiaries(raw: unknown): Diary[] {
   return diaries;
 }
 
-/** The comics in a diary (EVERY_DAY: those without one, or whose diary was deleted), newest first. */
+/**
+ * The comics in a diary (EVERY_DAY: those without one, or whose diary was deleted), newest first.
+ * A note Comimo didn't draw (a crisis note) is not a comic: it never shows on a shelf or in a count.
+ */
 export function daysIn(diaryId: string, days: Day[], diaries: Diary[]): Day[] {
   const known = new Set(diaries.map((d) => d.id));
   return days
-    .filter((day) => !day.sample)
+    .filter((day) => !day.sample && day.safety !== "crisis" && day.panels.length > 0)
     .filter((day) => (diaryId === EVERY_DAY ? !day.diaryId || !known.has(day.diaryId) : day.diaryId === diaryId))
     .sort((a, b) => b.date.localeCompare(a.date) || b.createdAt.localeCompare(a.createdAt));
 }
