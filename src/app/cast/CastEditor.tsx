@@ -16,7 +16,7 @@ import { ART_STYLE_IDS, ART_STYLES, DEFAULT_ART_STYLE, type ArtStyleId } from "@
 import { firstStrongDir } from "@/lib/bidi";
 import {
   LIMITS,
-  ROLE_OPTIONS,
+  OTHER_ROLE_OPTIONS,
   SheetError,
   animateCharacter,
   canAnimate,
@@ -398,9 +398,12 @@ function CastCard({ member, tilt, status, onAnimate, confirming, onEdit, onAskRe
             <button id={`edit-${member.id}`} type="button" className={styles.textButton} onClick={onEdit}>
               Edit<span className="visually-hidden"> {member.name}</span>
             </button>
-            <button id={`remove-${member.id}`} type="button" className={styles.textButton} onClick={onAskRemove}>
-              Remove<span className="visually-hidden"> {member.name}</span>
-            </button>
+            {/* Your own card stays: comics are told by you. */}
+            {member.role === "self" ? null : (
+              <button id={`remove-${member.id}`} type="button" className={styles.textButton} onClick={onAskRemove}>
+                Remove<span className="visually-hidden"> {member.name}</span>
+              </button>
+            )}
           </div>
         )}
       </div>
@@ -546,6 +549,8 @@ function CharacterForm({ character, others, onSave, onCancel }: CharacterFormPro
   const [crop, setCrop] = useState<WireImage | null>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
   const fieldId = (field: DraftField) => `${id}-${field}`;
+  /** The user's own card: always "You", drawn from their photo in About you. */
+  const isSelf = character?.role === "self";
 
   useEffect(() => {
     headingRef.current?.focus();
@@ -630,23 +635,32 @@ function CharacterForm({ character, others, onSave, onCancel }: CharacterFormPro
         </label>
 
         <div className={styles.fieldRow}>
-          <label className={styles.field} htmlFor={fieldId("role")}>
-            <span className={styles.label}>Who they are to you</span>
-            <select
-              id={fieldId("role")}
-              value={draft.role}
-              onChange={(event) => set("role", event.target.value as CharacterRole)}
-              aria-invalid={errors.role ? true : undefined}
-              aria-describedby={describedBy("role")}
-            >
-              {ROLE_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-            {error("role")}
-          </label>
+          {isSelf ? (
+            <div className={styles.field}>
+              <span className={styles.label}>Who they are to you</span>
+              <p id={fieldId("role")} className={styles.hint}>
+                You. This is your own card.
+              </p>
+            </div>
+          ) : (
+            <label className={styles.field} htmlFor={fieldId("role")}>
+              <span className={styles.label}>Who they are to you</span>
+              <select
+                id={fieldId("role")}
+                value={draft.role}
+                onChange={(event) => set("role", event.target.value as CharacterRole)}
+                aria-invalid={errors.role ? true : undefined}
+                aria-describedby={describedBy("role")}
+              >
+                {OTHER_ROLE_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+              {error("role")}
+            </label>
+          )}
 
           <label className={styles.field} htmlFor={fieldId("roleLabel")}>
             <span className={styles.label}>

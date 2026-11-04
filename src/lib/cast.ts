@@ -475,6 +475,9 @@ export const ROLE_OPTIONS: { value: CharacterRole; label: string }[] = [
   { value: "other", label: "Someone else" },
 ];
 
+/** The roles anyone else can have: "You" is only ever the user's own card, and stays fixed there. */
+export const OTHER_ROLE_OPTIONS = ROLE_OPTIONS.filter((option) => option.value !== "self");
+
 export function defaultRoleLabel(role: CharacterRole): string {
   return ROLE_OPTIONS.find((option) => option.value === role)?.label ?? "Someone else";
 }
