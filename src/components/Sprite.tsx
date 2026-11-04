@@ -93,6 +93,9 @@ export function Sprite({ sheet: given, label, talking = false, greet = false, ho
   const reduced = useSyncExternalStore(subscribeReduced, reducedSnapshot, reducedServerSnapshot);
   const hidden = useSyncExternalStore(subscribeHidden, hiddenSnapshot, hiddenServerSnapshot);
   const [onScreen, setOnScreen] = useState(false);
+  // The sheet is fetched only once the sprite comes near the screen, so a long page
+  // doesn't download every cast member's sheet up front.
+  const [near, setNear] = useState(false);
   const [oneShot, setOneShot] = useState<{ name: OneShot; take: number } | null>(null);
   const greeted = useRef(false);
 
@@ -104,6 +107,26 @@ export function Sprite({ sheet: given, label, talking = false, greet = false, ho
     const el = ownRef.current;
     if (!el || typeof IntersectionObserver === "undefined") return;
     const observer = new IntersectionObserver(([entry]) => setOnScreen(entry.isIntersecting), { threshold: 0.15 });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  // Near the screen (latched): time to fetch the sheet.
+  useEffect(() => {
+    const el = ownRef.current;
+    if (!el) return;
+    if (typeof IntersectionObserver === "undefined") {
+      queueMicrotask(() => setNear(true));
+      return;
+    }
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry.isIntersecting) return;
+        setNear(true);
+        observer.disconnect();
+      },
+      { rootMargin: "600px 0px" },
+    );
     observer.observe(el);
     return () => observer.disconnect();
   }, []);
@@ -163,7 +186,7 @@ export function Sprite({ sheet: given, label, talking = false, greet = false, ho
   const moving = !reduced && frames > 1 && columns > 1;
 
   const frameStyle = {
-    backgroundImage: url ? `url("${url}")` : undefined,
+    backgroundImage: url && near ? `url("${url}")` : undefined,
     backgroundSize: `${columns * 100}% ${rows * 100}%`,
     "--sprite-row": rows > 1 ? `${(animation.row / (rows - 1)) * 100}%` : "0%",
     "--sprite-end": columns > 1 ? `${(frames / (columns - 1)) * 100}%` : "0%",
