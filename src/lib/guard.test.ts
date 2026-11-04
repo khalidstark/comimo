@@ -51,6 +51,26 @@ describe("guard", () => {
     expect((await guard(request(), "panel", { real: true })).ok).toBe(true);
   });
 
+  it("gives photos twice the comics an hour, and a photo with nobody clear in it gives its slot back", async () => {
+    const { guard } = await import("./guard");
+    const request = await signedInRequest("photo@example.com");
+    const settle = () => new Promise((resolve) => setTimeout(resolve, 100));
+    // COMIMO_COMICS_PER_HOUR is 2 here: About you, new people and retries share 4 an hour.
+    for (let i = 0; i < 3; i++) expect((await guard(request(), "photo", { real: true })).ok).toBe(true);
+    const nobody = await guard(request(), "photo", { real: true });
+    expect(nobody.ok).toBe(true);
+    if (!nobody.ok) return;
+    nobody.meter.beforeCall("sam");
+    // Billed, so refundIfUnbilled keeps the slot; refundSlot gives it back anyway.
+    nobody.refundIfUnbilled();
+    await settle();
+    expect((await guard(request(), "photo", { real: true })).ok).toBe(false);
+    nobody.refundSlot();
+    await settle();
+    expect((await guard(request(), "photo", { real: true })).ok).toBe(true);
+    expect((await guard(request(), "photo", { real: true })).ok).toBe(false);
+  });
+
   it("answers an expired session with the sign-in message the screens turn into a link", async () => {
     const { guard, guardResponse } = await import("./guard");
     const { needsSignIn } = await import("./signIn");

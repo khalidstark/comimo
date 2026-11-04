@@ -69,7 +69,11 @@ export async function POST(request: Request) {
     // One SAM call (daily image cap) and one Spark call, both metered as they are sent.
     const context = { visitorId: check.visitorId, signal: request.signal, meter: check.meter };
     const person = pickPerson(await findPeople(photo, context), photo.width, photo.height);
-    if (!person) return withCost(jsonError(422, "Comimo couldn't find one clear person in that photo. Try a photo where they stand out."), check.meter);
+    if (!person) {
+      // Not the user's fault, and About you and new people share these slots: this try doesn't count.
+      check.refundSlot();
+      return withCost(jsonError(422, "Comimo couldn't find one clear person in that photo. Try a photo where they stand out."), check.meter);
+    }
     const crop = await cropPerson(photo, photo.width, photo.height, person);
     const look = await describePerson(crop, context);
     if (!look) return withCost(jsonError(422, "Comimo couldn't describe a person from that photo. Try another one, or write how they look."), check.meter);
