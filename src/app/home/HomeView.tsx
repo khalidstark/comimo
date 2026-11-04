@@ -146,14 +146,14 @@ export function HomeView() {
           ) : null}
 
           {/* ---------- The week's good things ---------- */}
-          <section className={`page section ${styles.goodThings}`} aria-label="This week's good things" data-reveal>
+          <div className={`page section ${styles.goodThings}`} data-reveal>
             <WeekGoodThings
               monday={loaded.monday}
               days={weekDays(loaded.days, loaded.monday)}
               summary={loaded.week}
               onWritten={(week) => setLoaded((current) => (current ? { ...current, week } : current))}
             />
-          </section>
+          </div>
 
           {/* ---------- The diary shelf ---------- */}
           <section className={`page section ${shelf.book}`} aria-labelledby="shelf-title" data-reveal>
@@ -223,7 +223,7 @@ export function HomeView() {
                 </h2>
                 {loaded.comics.length > LATEST ? (
                   <Link href="/diaries" className="link" transitionTypes={PAGE_TURN}>
-                    All {loaded.comics.length} comics
+                    All {loaded.comics.length} in your diaries
                   </Link>
                 ) : null}
               </div>
@@ -378,7 +378,13 @@ function ThisMonth({ today, comics }: { today: string; comics: Day[] }) {
 
   return (
     <section className={`page section ${styles.month}`} aria-labelledby="month-title" data-reveal>
-      <Link href="/month" className={styles.issue} transitionTypes={PAGE_TURN} aria-label={`Open the ${label} issue`} data-parallax="6">
+      <Link
+        href={inMonth.length > 0 ? `/month?issue=${month}` : "/record"}
+        className={styles.issue}
+        transitionTypes={PAGE_TURN}
+        aria-label={inMonth.length > 0 ? `Open the ${label} issue` : `Make the first comic of ${label}`}
+        data-parallax="6"
+      >
         <span className={styles.issueArt} aria-hidden="true">
           {url ? (
             // eslint-disable-next-line @next/next/no-img-element
