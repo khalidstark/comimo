@@ -135,10 +135,11 @@ function checkDetail(state: PipelineState, fixes: number, status: StepStatus): s
 
 /**
  * What an error offers: Try again; Record again when the voice note itself was the problem
- * (sending it again would fail, and cost, the same way); or nothing when trying again now
- * can only fail the same way (a daily cap, a pause).
+ * (sending it again would fail, and cost, the same way); Sign in when the session ran out;
+ * or nothing when trying again now can only fail the same way (a daily cap, a pause).
  */
-function errorAction(error: PipelineState["error"], canRecordAgain: boolean): "retry" | "record" | "none" {
+function errorAction(error: PipelineState["error"], canRecordAgain: boolean): "retry" | "record" | "signin" | "none" {
+  if (error?.code === "signin") return "signin";
   if (error?.code === "audio" && canRecordAgain) return "record";
   return error?.code === "cap" || error?.code === "paused" ? "none" : "retry";
 }
@@ -216,6 +217,8 @@ export function MakingComic({ audio, text, language, style, storyMode, photos, d
   );
   const state = useSyncExternalStore(pipeline.subscribe, pipeline.getSnapshot, pipeline.getSnapshot);
   const [settled, setSettled] = useState<ReadonlySet<number>>(() => new Set());
+  /** Sign in was opened in a new tab: once they're back, the run can keep going. */
+  const [signInOpened, setSignInOpened] = useState(false);
   const dialogRef = useRef<HTMLDialogElement>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
   const router = useRouter();
@@ -305,12 +308,29 @@ export function MakingComic({ audio, text, language, style, storyMode, photos, d
   }, [pipeline, onRecordAgain]);
 
   /** The way forward from an error, up top and next to the failed step. */
-  const errorButton = (className: string) =>
-    action === "none" ? null : (
+  const errorButton = (className: string) => {
+    if (action === "none") return null;
+    if (action === "signin") {
+      // In a new tab, so this note and everything made so far are still here after signing in.
+      return (
+        <span className={styles.errorActions}>
+          <Link href="/signin?next=/record" target="_blank" rel="noopener" className={`btn btn--ink ${className}`} onClick={() => setSignInOpened(true)}>
+            Sign in<span className="visually-hidden"> (opens a new tab)</span>
+          </Link>
+          {signInOpened ? (
+            <button type="button" className={`btn btn--ghost ${className}`} onClick={retry}>
+              Keep going
+            </button>
+          ) : null}
+        </span>
+      );
+    }
+    return (
       <button type="button" className={`btn btn--ink ${className}`} onClick={action === "record" ? recordAgain : retry}>
         {action === "record" ? "Record again" : "Try again"}
       </button>
     );
+  };
 
   const markSettled = useCallback((index: number) => {
     setSettled((previous) => new Set(previous).add(index));
