@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { Art } from "@/art/Art";
 import { art } from "@/art/manifest";
+import { ErrorText } from "@/components/account/ErrorText";
 import { safeNext, useAccount } from "@/components/account/useAccount";
 import {
   INTERESTS,
@@ -782,7 +783,7 @@ function PhotoStep({ id, style, onStyle, consent, onConsent, drawing, hasFace, s
       </div>
       {drawing.phase === "error" ? (
         <p className={styles.error} role="alert">
-          {drawing.message}
+          <ErrorText message={drawing.message} />
         </p>
       ) : null}
       {(drawing.phase === "done" || (drawing.phase === "idle" && hasFace)) && selfId ? (

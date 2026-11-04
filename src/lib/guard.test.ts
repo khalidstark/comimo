@@ -51,6 +51,18 @@ describe("guard", () => {
     expect((await guard(request(), "panel", { real: true })).ok).toBe(true);
   });
 
+  it("answers an expired session with the sign-in message the screens turn into a link", async () => {
+    const { guard, guardResponse } = await import("./guard");
+    const { needsSignIn } = await import("./signIn");
+    const blocked = await guard(new Request("http://localhost/api/character", { method: "POST" }), "character", { real: true });
+    expect(blocked.ok).toBe(false);
+    if (blocked.ok) return;
+    expect(blocked.status).toBe(401);
+    const body = (await guardResponse(blocked).json()) as { error: string; code: string };
+    expect(body.code).toBe("signin");
+    expect(needsSignIn(body.error)).toBe(true);
+  });
+
   it("pauses from the environment too", async () => {
     const { guard } = await import("./guard");
     const request = await signedInRequest("env@example.com");

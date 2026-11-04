@@ -19,6 +19,7 @@ import {
   wornOutfit,
 } from "@/lib/wardrobe";
 import { useImageUrl as useSheetUrl } from "@/lib/useImageUrl";
+import { ErrorText } from "@/components/account/ErrorText";
 import { FilePick } from "@/components/FilePick";
 import styles from "./wardrobe.module.css";
 
@@ -286,7 +287,7 @@ export function Wardrobe({ member, onChange, open: openAtFirst = false }: { memb
               </div>
               <p className={work.phase === "error" ? styles.error : styles.status} role={work.phase === "error" ? "alert" : "status"}>
                 {work.phase === "error"
-                  ? work.message
+                  ? <ErrorText message={work.message} />
                   : busy
                     ? `Drawing ${self ? "you" : member.name} in the new clothes, ${ART_STYLES[style].label.toLowerCase()} style. This takes about a minute.`
                     : ""}

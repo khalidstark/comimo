@@ -7,6 +7,7 @@ import { getKV, type KV } from "@/lib/server/kv";
 import { hit, minutesText, windowOf } from "@/lib/server/rateLimit";
 import { hashTag } from "@/lib/server/request";
 import { sessionAccount, type SessionAccount } from "@/lib/server/session";
+import { SIGN_IN_ERROR } from "@/lib/signIn";
 
 /**
  * Spending guard for the real model calls.
@@ -373,7 +374,7 @@ export async function guard(request: Request, action: GuardAction, options: { re
   } catch {
     return DOWN;
   }
-  if (!account) return { ok: false, status: 401, error: "Sign in to keep going. It takes a few seconds.", retryAfterSec: 0 };
+  if (!account) return { ok: false, status: 401, error: SIGN_IN_ERROR, retryAfterSec: 0 };
 
   const visitorId = accountTag(account);
   // A sheet drawn while a comic is being made (a cast member's first appearance) is that comic's cost.

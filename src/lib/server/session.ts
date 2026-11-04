@@ -3,6 +3,7 @@ import { createHash, randomBytes } from "node:crypto";
 import { sessionCookieName } from "./cookieName";
 import { getKV, type KV } from "./kv";
 import { isSameOrigin } from "./request";
+import { SIGN_IN_ERROR } from "@/lib/signIn";
 
 /**
  * Sessions: a random 32-byte id in an httpOnly cookie, and a record in the KV
@@ -182,6 +183,6 @@ export async function requireSession(request: Request, kv?: KV): Promise<Session
     console.error(`Comimo: session lookup failed (${error instanceof Error ? error.name : "unknown"})`);
     return { ok: false, response: refuse(503, "Comimo can't check your sign-in right now. Try again in a minute.", "store-down") };
   }
-  if (!account) return { ok: false, response: refuse(401, "Sign in to keep going. It takes a few seconds.", "signin") };
+  if (!account) return { ok: false, response: refuse(401, SIGN_IN_ERROR, "signin") };
   return { ok: true, account };
 }

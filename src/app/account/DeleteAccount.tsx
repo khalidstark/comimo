@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { ErrorText } from "@/components/account/ErrorText";
 import { dropAccountCache } from "@/lib/store";
 import { rememberCacheKey } from "@/lib/whoami";
 import authStyles from "@/app/(auth)/auth.module.css";
@@ -91,7 +92,7 @@ export function DeleteAccount() {
           </div>
           {error ? (
             <p id="delete-error" className={authStyles.error} role="alert">
-              {error}
+              <ErrorText message={error} />
             </p>
           ) : null}
           <div className={styles.actions}>

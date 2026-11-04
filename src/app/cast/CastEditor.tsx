@@ -6,6 +6,7 @@ import { Art } from "@/art/Art";
 import { Icon } from "@/art/Icon";
 import { art, artAt } from "@/art/manifest";
 import { BidiText } from "@/components/comic/BidiText";
+import { ErrorText } from "@/components/account/ErrorText";
 import { useAccount } from "@/components/account/useAccount";
 import { Sprite } from "@/components/Sprite";
 import { useTalkWhenShown } from "@/components/useTalkWhenShown";
@@ -369,7 +370,7 @@ function CastCard({ member, tilt, status, onAnimate, confirming, onEdit, onAskRe
           role={status?.error ? "alert" : "status"}
           aria-busy={status?.busy || undefined}
         >
-          {status?.text ?? ""}
+          {status?.error ? <ErrorText message={status.text} /> : (status?.text ?? "")}
         </p>
         {!status?.busy && canAnimate(member) ? (
           <button type="button" className={styles.textButton} onClick={onAnimate}>
@@ -517,7 +518,7 @@ function ReferenceSheet({
         {busy ? "Drawing…" : sheet ? "Redraw" : "Draw sheet"}
       </button>
       <p id={statusId} className={error ? styles.error : styles.sheetStatus} role={error ? "alert" : "status"}>
-        {error ?? (busy ? `Drawing ${member.name}. This takes about a minute.` : "")}
+        {error ? <ErrorText message={error} /> : busy ? `Drawing ${member.name}. This takes about a minute.` : ""}
       </p>
     </div>
   );

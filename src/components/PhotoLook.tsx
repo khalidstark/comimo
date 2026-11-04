@@ -2,6 +2,7 @@
 
 import { useEffect, useId, useRef, useState } from "react";
 import { PhotoError, describePhoto, preparePhoto } from "@/lib/photo";
+import { ErrorText } from "@/components/account/ErrorText";
 import type { WireImage } from "@/lib/types";
 import { FilePick } from "./FilePick";
 import styles from "./PhotoLook.module.css";
@@ -132,7 +133,7 @@ export function PhotoLook({ name, onDescribed, onCleared, crop }: PhotoLookProps
         </>
       )}
       <p id={`${id}-status`} className={error ? styles.error : styles.status} role={error ? "alert" : "status"}>
-        {error ?? (busy ? "Finding the person and writing how they look. This takes about half a minute." : "")}
+        {error ? <ErrorText message={error} /> : busy ? "Finding the person and writing how they look. This takes about half a minute." : ""}
       </p>
     </fieldset>
   );
