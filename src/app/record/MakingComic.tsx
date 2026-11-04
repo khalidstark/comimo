@@ -237,6 +237,8 @@ export function MakingComic({ audio, text, language, style, storyMode, photos, d
       (step !== "dress" || Boolean(photos?.length)),
   );
   const failedStep = state.error?.step;
+  // Saving can't be undone halfway (the day is kept before its photos are filed), so Cancel goes away.
+  const cancellable = status !== "done" && state.steps.save !== "active";
   const action = errorAction(state.error, Boolean(onRecordAgain));
 
   // Coming back to /record after the comic opened: the run is over, so drop the screen and start fresh.
@@ -343,9 +345,9 @@ export function MakingComic({ audio, text, language, style, storyMode, photos, d
       className={styles.dialog}
       aria-labelledby="making-title"
       onCancel={(event) => {
-        // Escape cancels the run (and closes); once finished there is nothing to cancel.
+        // Escape cancels the run (and closes); once saving or finished there is nothing to cancel.
         event.preventDefault();
-        if (status !== "done") close();
+        if (cancellable) close();
       }}
     >
       <div className={styles.sheet}>
@@ -354,7 +356,7 @@ export function MakingComic({ audio, text, language, style, storyMode, photos, d
             <span className={styles.recDot} data-live={status === "running" || undefined} aria-hidden="true" />
             <time dateTime={state.date}>{formatDay(state.date)}</time>
           </p>
-          {status !== "done" ? (
+          {cancellable ? (
             <button type="button" className={`btn btn--ghost ${styles.cancel}`} onClick={close}>
               {status === "running" ? "Cancel" : "Back to recording"}
             </button>

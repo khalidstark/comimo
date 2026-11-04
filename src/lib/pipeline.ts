@@ -469,9 +469,12 @@ export class ComicPipeline {
     }
   }
 
-  /** Stop any request in flight. Finished work is kept, so `start()` picks up from here. */
+  /**
+   * Stop any request in flight. Finished work is kept, so `start()` picks up from here.
+   * Once saving has started the day is being kept, so there is nothing left to cancel.
+   */
   cancel() {
-    if (!this.controller) return;
+    if (!this.controller || this.state.steps.save === "active") return;
     this.controller.abort();
     this.controller = null;
     this.answerFaces = null;
