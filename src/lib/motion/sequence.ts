@@ -48,12 +48,17 @@ export function loadOrder(count: number, start = 0): number[] {
 
 /**
  * Decodes the frames with img.decode(), nearest to `start` first, a few side by side.
+ * With `initial`, only that many frames load until the first focus() asks for the rest,
+ * so a page can show its first frame without downloading the whole film.
  * Call stop() when the component unmounts.
  */
-export function loadSequence(urls: string[], { start = 0, parallel = 4 } = {}): Sequence {
+export function loadSequence(
+  urls: string[],
+  { start = 0, parallel = 4, initial = Infinity }: { start?: number; parallel?: number; initial?: number } = {},
+): Sequence {
   const images: HTMLImageElement[] = [];
   const done = urls.map(() => false);
-  let queue = loadOrder(urls.length, start);
+  let queue = loadOrder(urls.length, start).slice(0, Math.max(1, initial));
   let running = 0;
   let stopped = false;
 

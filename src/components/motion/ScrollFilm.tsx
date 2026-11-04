@@ -103,6 +103,17 @@ export function ScrollFilm({
     });
 
     let seq: Sequence | null = null;
+    // The film loads its first frames only. The rest come on the first scroll, or after a quiet
+    // moment unless the visitor asked to save data, so a judge's phone isn't handed 4 MB up front.
+    let warm = false;
+    let warmTimer = 0;
+    const warmUp = () => {
+      if (warm) return;
+      warm = true;
+      window.clearTimeout(warmTimer);
+      window.removeEventListener("scroll", warmUp);
+      seq?.focus(frameAt(progress(), urls.length));
+    };
     let raf = 0;
     let onScreen = true;
     let stickTop = 0;
@@ -147,13 +158,13 @@ export function ScrollFilm({
       const h = Math.round(canvas.clientHeight * dpr);
       if (!w || !h) return;
       if (!seq) {
-        seq = loadSequence(urls, { start: frameAt(p, urls.length) });
+        seq = loadSequence(urls, { start: frameAt(p, urls.length), initial: warm ? Infinity : 2 });
       }
       let ready = 0;
       for (let i = 0; i < urls.length; i++) if (seq.ready(i)) ready++;
       const moved = Math.abs(p - last.p) > 0.0002;
       if (!moved && w === last.w && h === last.h && ready === last.ready) return;
-      if (moved) seq.focus(frameAt(p, urls.length));
+      if (moved && warm) seq.focus(frameAt(p, urls.length));
       placeChapters(p);
       stage.style.setProperty("--p", p.toFixed(4));
 
@@ -196,6 +207,9 @@ export function ScrollFilm({
     const scheme = window.matchMedia("(prefers-color-scheme: dark)");
     scheme.addEventListener("change", measure);
     window.addEventListener("resize", measure);
+    window.addEventListener("scroll", warmUp, { passive: true });
+    const saveData = (navigator as Navigator & { connection?: { saveData?: boolean } }).connection?.saveData;
+    if (!saveData) warmTimer = window.setTimeout(warmUp, 3000);
     raf = requestAnimationFrame(draw);
 
     return () => {
@@ -204,6 +218,8 @@ export function ScrollFilm({
       theme.disconnect();
       scheme.removeEventListener("change", measure);
       window.removeEventListener("resize", measure);
+      window.removeEventListener("scroll", warmUp);
+      window.clearTimeout(warmTimer);
       chapterBox.removeEventListener("focusin", onFocus);
       seq?.stop();
       delete stage.dataset.drawn;
