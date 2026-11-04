@@ -10,6 +10,7 @@ Built from scratch for the **Meta Global AI Developer Hackathon** (October 27 to
 
 | | |
 |---|---|
+| **Live app** | **https://comimo.vercel.app** (sign up with any email; real Meta models) |
 | **Models** | Muse Voice Transcribe, Muse Spark (`muse-spark-1.3`), Muse Image (`muse-image-1.0`), SAM 3.1 |
 | **Stack** | Next.js 16, React 19, TypeScript, Upstash Redis, Vercel Blob |
 | **Try it offline** | `npm install && cp .env.example .env.local && npm run dev` (practice mode, no key needed) |
