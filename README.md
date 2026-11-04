@@ -2,7 +2,9 @@
 
 **Talk about your day for a minute. Get it back as a comic, starring the people in your life.**
 
-![Comimo: the landing page](.github/readme/hero.jpg)
+### ▶ Try it live: [comimo.vercel.app](https://comimo.vercel.app)
+
+[![Comimo: the landing page](.github/readme/hero.jpg)](https://comimo.vercel.app)
 
 Comimo is a comic diary for people who would never keep one. You record a voice note, or type a few lines, in Arabic, English or both in one sentence. Comimo picks the moments worth drawing, writes the panels and the dialogue, and draws them with your own cast: you, your friends, your family, even the cat, each one looking like themselves in every panel. Your comics fill diaries, the good moments of your week are gathered for you, and every month is bound into a magazine.
 
@@ -10,7 +12,7 @@ Built from scratch for the **Meta Global AI Developer Hackathon** (October 27 to
 
 | | |
 |---|---|
-| **Live app** | **https://comimo.vercel.app** (sign up with any email; real Meta models) |
+| **Live app** | **[comimo.vercel.app](https://comimo.vercel.app)** (sign up with any email; real Meta models) |
 | **Models** | Muse Voice Transcribe, Muse Spark (`muse-spark-1.3`), Muse Image (`muse-image-1.0`), SAM 3.1 |
 | **Stack** | Next.js 16, React 19, TypeScript, Upstash Redis, Vercel Blob |
 | **Try it offline** | `npm install && cp .env.example .env.local && npm run dev` (practice mode, no key needed) |
