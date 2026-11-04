@@ -437,7 +437,7 @@ function AboutYouNote({ member }: { member: Character }) {
         </p>
       ) : null}
       <Link href="/welcome?next=/cast" className={standIn ? "btn btn--accent" : styles.aboutLink}>
-        {standIn ? "Add my photo" : about ? "Edit about you" : "Tell Comimo about you"}
+        {standIn ? "Add my photo" : "Update About you"}
       </Link>
     </div>
   );
@@ -477,6 +477,8 @@ function ReferenceSheet({
   const controller = useRef<AbortController | null>(null);
   const statusId = `sheet-status-${member.id}-${style}`;
   const label = ART_STYLES[style].label;
+  // Your own sheet comes from your photo: a redraw from words would quietly replace it (a new photo goes through About you).
+  const canDraw = !(member.role === "self" && sheet);
 
   useEffect(() => () => controller.current?.abort(), []);
 
@@ -510,16 +512,18 @@ function ReferenceSheet({
       ) : (
         <span className={styles.sheetEmpty}>Not drawn yet</span>
       )}
-      <button
-        type="button"
-        className={styles.textButton}
-        onClick={() => void draw()}
-        aria-disabled={busy || undefined}
-        aria-describedby={statusId}
-        aria-label={`${busy ? "Drawing" : sheet ? "Redraw" : "Draw"} ${member.name}'s ${label.toLowerCase()} sheet`}
-      >
-        {busy ? "Drawing…" : sheet ? "Redraw" : "Draw sheet"}
-      </button>
+      {canDraw ? (
+        <button
+          type="button"
+          className={styles.textButton}
+          onClick={() => void draw()}
+          aria-disabled={busy || undefined}
+          aria-describedby={statusId}
+          aria-label={`${busy ? "Drawing" : sheet ? "Redraw" : "Draw"} ${member.name}'s ${label.toLowerCase()} sheet`}
+        >
+          {busy ? "Drawing…" : sheet ? "Redraw" : "Draw sheet"}
+        </button>
+      ) : null}
       <p id={statusId} className={error ? styles.error : styles.sheetStatus} role={error ? "alert" : "status"}>
         {error ? <ErrorText message={error} /> : busy ? `Drawing ${member.name}. This takes about a minute.` : ""}
       </p>
@@ -681,15 +685,25 @@ function CharacterForm({ character, others, onSave, onCancel }: CharacterFormPro
           </label>
         </div>
 
-        <PhotoLook
-          name={draft.name}
-          crop={crop}
-          onDescribed={(look, cut) => {
-            set("look", look);
-            setCrop(cut);
-          }}
-          onCleared={() => setCrop(null)}
-        />
+        {isSelf ? (
+          <p className={styles.hint}>
+            You&apos;re drawn from your photo.{" "}
+            <Link href="/welcome?next=/cast" className="link">
+              Use a new photo
+            </Link>{" "}
+            in About you to redraw yourself.
+          </p>
+        ) : (
+          <PhotoLook
+            name={draft.name}
+            crop={crop}
+            onDescribed={(look, cut) => {
+              set("look", look);
+              setCrop(cut);
+            }}
+            onCleared={() => setCrop(null)}
+          />
+        )}
 
         <label className={styles.field} htmlFor={fieldId("look")}>
           <span className={styles.label}>How they look</span>
@@ -748,9 +762,11 @@ function CharacterForm({ character, others, onSave, onCancel }: CharacterFormPro
           <p>
             {crop
               ? "Comimo draws their zine sheet from the photo as soon as they're saved, then animates them. The other style is drawn the first time a comic needs it."
-              : character && ART_STYLE_IDS.some((style) => referenceSheetFor(character, style))
-                ? "Drawn. Comimo uses their sheets to keep their face the same. Changed how they look? Redraw the sheets from their card."
-                : "Comimo draws a sheet in each art style the first time a comic needs one, or draw them now from their card. The sheets keep their face the same in every panel."}
+              : isSelf
+                ? "Your sheet keeps your face the same in every panel. A new photo in About you redraws it."
+                : character && ART_STYLE_IDS.some((style) => referenceSheetFor(character, style))
+                  ? "Drawn. Comimo uses their sheets to keep their face the same. Changed how they look? Redraw the sheets from their card."
+                  : "Comimo draws a sheet in each art style the first time a comic needs one, or draw them now from their card. The sheets keep their face the same in every panel."}
           </p>
         </div>
       </div>
