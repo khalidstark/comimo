@@ -434,6 +434,20 @@ export function canAnimateNow(character: Character): boolean {
   return !spritesUnavailable && canAnimate(character);
 }
 
+/** When bringing a character to life last failed on this device (a time in ms; 0 or missing when it didn't). */
+const spriteFailedKey = (id: string) => `spriteFailed:${id}`;
+const SPRITE_RETRY_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * True when bringing this character to life failed on this device in the
+ * last day. A sprite is five paid drawings, so the cast page doesn't try
+ * again on its own; the Animate button still does.
+ */
+export async function spriteFailedLately(character: Character, now = Date.now()): Promise<boolean> {
+  const at = await getMeta(spriteFailedKey(character.id));
+  return typeof at === "number" && at > 0 && now - at < SPRITE_RETRY_MS;
+}
+
 /**
  * Give a character their animated sprite once: five Muse Image poses from
  * their reference sheet, assembled on the server. Resolves to the updated
@@ -465,6 +479,7 @@ export function animateCharacter(character: Character): Promise<Character | null
     const result = (await response.json().catch(() => null)) as SpriteResponse | ApiError | null;
     if (!response.ok || !result || !("image" in result)) {
       if ((result as ApiError | null)?.code === "unavailable") spritesUnavailable = true;
+      else await setMeta(spriteFailedKey(character.id), Date.now());
       return null;
     }
     const spriteId = `${character.id}-sprite`;

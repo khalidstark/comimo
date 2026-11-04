@@ -28,6 +28,7 @@ import {
   draftFrom,
   loadCast,
   referenceSheetFor,
+  spriteFailedLately,
   spriteSheetFor,
   validateDraft,
   type CharacterDraft,
@@ -98,9 +99,12 @@ export function CastEditor() {
     }
   }
 
-  /** Anyone drawn but still standing still (About you closed early, a sprite that failed) comes to life one at a time. */
+  /**
+   * Anyone drawn but still standing still (About you closed early) comes to life one at a time. A sprite that
+   * failed in the last day waits for the Animate button: each try is five paid drawings.
+   */
   const animateTheStill = useEffectEvent(async (loaded: Character[]) => {
-    for (const member of loaded) if (canAnimateNow(member)) await animate(member);
+    for (const member of loaded) if (canAnimateNow(member) && !(await spriteFailedLately(member))) await animate(member);
   });
 
   useEffect(() => {
