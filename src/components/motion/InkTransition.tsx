@@ -91,8 +91,9 @@ export function InkTransition() {
     const draw = (now: number) => {
       raf = requestAnimationFrame(draw);
       const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
-      const W = Math.round(window.innerWidth * dpr);
-      const H = Math.round(window.innerHeight * dpr);
+      // The canvas's own box, so the splash isn't squashed when a phone's toolbars change the viewport.
+      const W = Math.round((canvas.clientWidth || window.innerWidth) * dpr);
+      const H = Math.round((canvas.clientHeight || window.innerHeight) * dpr);
       if (canvas.width !== W || canvas.height !== H) {
         canvas.width = W;
         canvas.height = H;

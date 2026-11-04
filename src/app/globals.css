@@ -543,8 +543,8 @@ html.inking::view-transition-group(site-nav) {
   position: fixed;
   inset: 0;
   z-index: 2147483000;
-  inline-size: 100vw;
-  block-size: 100vh;
+  inline-size: 100%;
+  block-size: 100%;
   pointer-events: none;
 }
 
