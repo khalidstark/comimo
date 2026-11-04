@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { RequireAccount } from "@/components/account/RequireAccount";
 import { PageTurn } from "@/components/PageTurn";
 import { CastEditor } from "./CastEditor";
 
@@ -8,6 +9,7 @@ export default function CastPage() {
   return (
     <PageTurn>
       <main id="main" className="page">
+        <RequireAccount />
         <header className="page-head">
           <h1>Your cast</h1>
           <p className="page-head__lede">

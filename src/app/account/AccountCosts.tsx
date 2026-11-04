@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useAccount } from "@/components/account/useAccount";
 import { aboutUsd, type MyCosts } from "@/lib/costs";
 import styles from "./AboutYouCard.module.css";
 
@@ -10,8 +11,11 @@ import styles from "./AboutYouCard.module.css";
  */
 export function AccountCosts() {
   const [costs, setCosts] = useState<MyCosts | null | "unavailable">(null);
+  // Asked only once the session is known to be good: an expired one goes to sign-in instead.
+  const signedIn = useAccount().status === "signed-in";
 
   useEffect(() => {
+    if (!signedIn) return;
     let cancelled = false;
     fetch("/api/me/costs", { credentials: "same-origin", cache: "no-store" })
       .then((response) => (response.ok ? (response.json() as Promise<MyCosts>) : Promise.reject(new Error(String(response.status)))))
@@ -22,7 +26,7 @@ export function AccountCosts() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [signedIn]);
 
   return (
     <section className={`panel ${styles.card}`} aria-labelledby="costs-title" aria-busy={costs === null || undefined}>

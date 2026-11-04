@@ -6,6 +6,7 @@ import { Art } from "@/art/Art";
 import { Icon } from "@/art/Icon";
 import { art, artAt } from "@/art/manifest";
 import { BidiText } from "@/components/comic/BidiText";
+import { useAccount } from "@/components/account/useAccount";
 import { Sprite } from "@/components/Sprite";
 import { useTalkWhenShown } from "@/components/useTalkWhenShown";
 import { PhotoLook } from "@/components/PhotoLook";
@@ -59,6 +60,8 @@ export function CastEditor() {
   const [wardrobeFor] = useState(() => (typeof window === "undefined" ? null : new URLSearchParams(window.location.search).get("wardrobe")));
   /** Where focus goes after the list re-renders (a card's edit button, or the add button). */
   const focusAfter = useRef<string | null>(null);
+  /** The cast is the account's: nothing loads (or seeds, or animates) until the session is known to be good. */
+  const signedIn = useAccount().status === "signed-in";
 
   function replace(character: Character) {
     setCast((current) => (current ?? []).map((m) => (m.id === character.id ? character : m)));
@@ -93,6 +96,7 @@ export function CastEditor() {
   });
 
   useEffect(() => {
+    if (!signedIn) return;
     let cancelled = false;
     void loadCast().then((loaded) => {
       if (cancelled) return;
@@ -102,7 +106,7 @@ export function CastEditor() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [signedIn]);
 
   useEffect(() => {
     if (!focusAfter.current) return;
