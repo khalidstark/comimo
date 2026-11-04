@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { artAt } from "@/art/manifest";
 import { PageTurn } from "@/components/PageTurn";
 import { facesSummary, fixedFaces, oneOffFaces, toPanelViews, type PanelArt } from "@/components/comic/view";
@@ -24,18 +25,23 @@ export async function generateMetadata({ params }: DayPageProps): Promise<Metada
   return { title: day ? day.title : "Your day" };
 }
 
-export default async function DayPage({ params }: DayPageProps) {
+export default function DayPage({ params }: DayPageProps) {
+  // The id is only known per request for stored days, so the page streams in behind a boundary.
+  return (
+    <PageTurn>
+      <Suspense fallback={null}>
+        <DayContent params={params} />
+      </Suspense>
+    </PageTurn>
+  );
+}
+
+async function DayContent({ params }: DayPageProps) {
   const { id } = await params;
   const day = getSampleDay(id);
 
-  if (!day) {
-    // Stored days live only in this browser's IndexedDB, so the reader loads them on the client.
-    return (
-      <PageTurn>
-        <DayReader id={id} />
-      </PageTurn>
-    );
-  }
+  // Stored days live only in this browser's IndexedDB, so the reader loads them on the client.
+  if (!day) return <DayReader id={id} />;
 
   const index = sampleDays.findIndex((d) => d.id === day.id);
   const previous = sampleDays[index - 1];
@@ -44,7 +50,7 @@ export default async function DayPage({ params }: DayPageProps) {
   const snapshot = new Map(day.panels.flatMap((panel) => Object.entries(panel.names ?? {})));
   const nameOf = (characterId: string) => starterCastById[characterId]?.name ?? snapshot.get(characterId) ?? characterId;
   const panels = toPanelViews(day.panels, nameOf, (panel, which) => artOf(which === "image" ? panel.image : panel.consistency.beforeImage));
-  // The samples are real runs (03.2-06): the note says what SAM 3.1 and Muse Spark did, from what is stored on the panels.
+  // The samples are real runs: the note says what SAM 3.1 and Muse Spark did, from what is stored on the panels.
   const faces = facesSummary(
     day.panels,
     fixedFaces(day.panels, nameOf, (characterId) => artOf(starterCastById[characterId]?.portrait ?? null)),
@@ -52,15 +58,13 @@ export default async function DayPage({ params }: DayPageProps) {
   );
 
   return (
-    <PageTurn>
-      <DayView
-        day={day}
-        panels={panels}
-        faces={faces}
-        layouts={pageLayoutChain(sampleDays).get(day.id) ?? []}
-        previous={previous ? { href: `/day/${previous.id}`, title: previous.title } : undefined}
-        next={next ? { href: `/day/${next.id}`, title: next.title } : undefined}
-      />
-    </PageTurn>
+    <DayView
+      day={day}
+      panels={panels}
+      faces={faces}
+      layouts={pageLayoutChain(sampleDays).get(day.id) ?? []}
+      previous={previous ? { href: `/day/${previous.id}`, title: previous.title } : undefined}
+      next={next ? { href: `/day/${next.id}`, title: next.title } : undefined}
+    />
   );
 }
