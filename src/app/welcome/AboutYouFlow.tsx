@@ -18,7 +18,19 @@ import {
   type DrawnFace,
 } from "@/lib/aboutYou";
 import { ART_STYLE_IDS, ART_STYLES, DEFAULT_ART_STYLE, artStyleOf, type ArtStyleId } from "@/lib/artStyles";
-import { ABOUT_ASKED_KEY, SheetError, animateCharacter, draftFrom, drawSheet, loadSelf, referenceSheetFor, saveSelf, updateStoredCharacter, validateDraft } from "@/lib/cast";
+import {
+  ABOUT_ASKED_KEY,
+  SheetError,
+  animateCharacter,
+  castName,
+  draftFrom,
+  drawSheet,
+  loadSelf,
+  referenceSheetFor,
+  saveSelf,
+  updateStoredCharacter,
+  validateDraft,
+} from "@/lib/cast";
 import { withCharacterCost } from "@/lib/wardrobe";
 import { namesOf, normalizeName, parseAliases } from "@/lib/names";
 import { PhotoError, describePhoto, preparePhoto } from "@/lib/photo";
@@ -155,11 +167,11 @@ export function AboutYouFlow() {
     };
   }, []);
 
-  // New accounts: the name they signed up with.
+  // New accounts: the name they signed up with, in the letters a cast name takes ("Sara_99" is "Sara 99").
   useEffect(() => {
     if (prefilledName.current || !loaded || account.status !== "signed-in") return;
     prefilledName.current = true;
-    setName(account.name);
+    setName(castName(account.name));
   }, [account, loaded]);
 
   // Their drawn sheet (now or from before), as an object URL.

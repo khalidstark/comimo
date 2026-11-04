@@ -69,7 +69,7 @@ async function withAccountName(cast: Character[]): Promise<Character[]> {
   const at = cast.findIndex((member) => member.role === "self" && member.starter && member.name === starterCastById[member.id]?.name);
   if (at === -1) return cast;
   const me = await whoAmI().catch(() => null);
-  const first = me?.name.trim().split(/\s+/)[0]?.slice(0, 40);
+  const first = me ? castName(me.name).split(" ")[0] : "";
   if (!first) return cast;
   const renamed: Character = { ...cast[at], name: first, aliases: [] };
   await saveCharacter(renamed);
@@ -506,6 +506,21 @@ const NAME_CHARS = /^[\p{L}\p{M}\p{N} '’.-]+$/u;
 const HAS_LETTER = /\p{L}/u;
 
 const tidy = (text: string) => text.replace(/\s+/g, " ").trim();
+
+/**
+ * A sign-up name as a cast name. Sign-up takes any 40 characters ("Sara_99");
+ * a cast name is letters, numbers and a little punctuation, at most 32, so
+ * other characters become spaces and a long name is cut at a word. Empty when
+ * nothing usable is left.
+ */
+export function castName(raw: string): string {
+  const cleaned = tidy(raw.normalize("NFC").replace(/[^\p{L}\p{M}\p{N} '’.-]+/gu, " "));
+  if (!HAS_LETTER.test(cleaned)) return "";
+  if (cleaned.length <= LIMITS.name) return cleaned;
+  const cut = cleaned.slice(0, LIMITS.name + 1);
+  const space = cut.lastIndexOf(" ");
+  return (space > 0 ? cut.slice(0, space) : cleaned.slice(0, LIMITS.name)).trim();
+}
 
 export function draftFrom(character?: Character): CharacterDraft {
   return {

@@ -19,7 +19,7 @@ vi.mock("./store", () => ({
 
 vi.mock("./whoami", () => ({ whoAmI: async () => ({ name: "Salma Adel", cacheKey: "0".repeat(32) }) }));
 
-const { loadCast } = await import("./cast");
+const { castName, draftFrom, loadCast, validateDraft } = await import("./cast");
 
 beforeEach(() => {
   db.cast.clear();
@@ -52,5 +52,19 @@ describe("an account's cast", () => {
     db.meta.set("starterCastSeeded", true);
     db.meta.set("starterExtrasRemoved", true);
     expect(await loadCast()).toEqual([]);
+  });
+});
+
+describe("a sign-up name as a cast name", () => {
+  it("keeps what a cast name takes, so About you's last step accepts it", () => {
+    expect(castName("Sara_99")).toBe("Sara 99");
+    expect(castName("  Salma   Adel ")).toBe("Salma Adel");
+    expect(castName("نور 🌙")).toBe("نور");
+    expect(castName("___")).toBe("");
+    const long = "Mohamed Abdelrahman Abdelaziz Elsayed";
+    expect(castName(long)).toBe("Mohamed Abdelrahman Abdelaziz");
+    for (const raw of ["Sara_99", long, "Ana-María O'Neil"]) {
+      expect(validateDraft({ ...draftFrom(), name: castName(raw), look: "Short dark hair and a green coat" }, []).name).toBeUndefined();
+    }
   });
 });
