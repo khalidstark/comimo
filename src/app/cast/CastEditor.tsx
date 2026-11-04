@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useEffectEvent, useId, useRef, useState, type CSSProperties, type FormEvent } from "react";
+import { useEffect, useEffectEvent, useId, useRef, useState, useSyncExternalStore, type CSSProperties, type FormEvent } from "react";
 import { Art } from "@/art/Art";
 import { Icon } from "@/art/Icon";
 import { art, artAt } from "@/art/manifest";
@@ -43,6 +43,9 @@ import { Wardrobe } from "./Wardrobe";
 
 const TILTS = ["-3deg", "2deg", "-1.5deg", "3deg"];
 
+const noSubscribe = () => () => {};
+const readWardrobe = () => new URLSearchParams(window.location.search).get("wardrobe");
+
 type Editing = { kind: "new" } | { kind: "edit"; id: string } | null;
 
 /**
@@ -57,8 +60,12 @@ export function CastEditor() {
   const [notice, setNotice] = useState("");
   /** Work in progress or news per character (drawing from a photo, animating). */
   const [statuses, setStatuses] = useState<Record<string, CardStatus>>({});
-  /** The card whose wardrobe opens first (?wardrobe=<id>, from About you). */
-  const [wardrobeFor] = useState(() => (typeof window === "undefined" ? null : new URLSearchParams(window.location.search).get("wardrobe")));
+  /**
+   * The card whose wardrobe opens first (?wardrobe=<id>, from About you). Read
+   * at render, not once at first: after a client navigation the address only
+   * changes once the new page is on screen, and the cards wait for the cast.
+   */
+  const wardrobeFor = useSyncExternalStore(noSubscribe, readWardrobe, () => null);
   /** Where focus goes after the list re-renders (a card's edit button, or the add button). */
   const focusAfter = useRef<string | null>(null);
   /** The cast is the account's: nothing loads (or seeds, or animates) until the session is known to be good. */
