@@ -16,6 +16,7 @@ import { splitPages } from "@/lib/layout/comicPages";
 import {
   ComicPipeline,
   PIPELINE_STEPS,
+  localIsoDate,
   type PanelProgress,
   type PipelineState,
   type PipelineStep,
@@ -144,7 +145,7 @@ function errorAction(error: PipelineState["error"], canRecordAgain: boolean): "r
   return error?.code === "cap" || error?.code === "paused" ? "none" : "retry";
 }
 
-function captionFor(state: PipelineState, fixing: PanelProgress | undefined): string {
+function captionFor(state: PipelineState, fixing: PanelProgress | undefined, yesterday: boolean): string {
   const crisis = state.script?.safety === "crisis";
   if (state.status === "error" && state.error) return state.error.message;
   if (state.status === "cancelled") return "Stopped. Your voice note is still here.";
@@ -170,7 +171,7 @@ function captionFor(state: PipelineState, fixing: PanelProgress | undefined): st
     return `${what.charAt(0).toUpperCase()}${what.slice(1)} of ${onPage.length}…`;
   }
   if (steps.write === "active") return "Writing the script…";
-  if (steps.dress === "active" && steps.listen === "done") return "Finding your outfit in today's photos…";
+  if (steps.dress === "active" && steps.listen === "done") return `Finding your outfit in ${yesterday ? "yesterday's" : "today's"} photos…`;
   return "Listening to your day…";
 }
 
@@ -241,6 +242,8 @@ export function MakingComic({ audio, text, language, style, storyMode, photos, d
       (step !== "dress" || Boolean(photos?.length)),
   );
   const failedStep = state.error?.step;
+  // Catching up a missed day: only yesterday is offered, and today's comic carries no date.
+  const yesterday = date !== undefined && date < localIsoDate();
   // Saving can't be undone halfway (the day is kept before its photos are filed), so Cancel goes away.
   const cancellable = status !== "done" && state.steps.save !== "active";
   const action = errorAction(state.error, Boolean(onRecordAgain));
@@ -395,7 +398,7 @@ export function MakingComic({ audio, text, language, style, storyMode, photos, d
             aria-live="polite"
             dir="auto"
           >
-            {captionFor(state, fixing)}
+            {captionFor(state, fixing, yesterday)}
           </p>
           {/* Up here too, so a phone doesn't have to scroll past every panel to retry. */}
           {status === "error" && failedStep ? errorButton(styles.retryTop) : null}

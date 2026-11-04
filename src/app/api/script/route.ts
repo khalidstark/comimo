@@ -40,7 +40,7 @@ function parseCast(value: unknown): CastBrief[] | null {
 
 /**
  * POST /api/script
- * JSON: { transcript: string, cast?: CastBrief[], storyMode?: StoryMode }  (cast defaults to none, storyMode to "both")
+ * JSON: { transcript: string, cast?: CastBrief[], storyMode?: StoryMode, diary?: string, day?: "yesterday" }  (cast defaults to none, storyMode to "both")
  * The cast is the account's own people, possibly none (new people are found in the note); the invented starter cast is only for signed-out samples.
  */
 export async function POST(request: Request) {
@@ -69,6 +69,8 @@ export async function POST(request: Request) {
   const storyMode = isStoryMode(body.storyMode) ? body.storyMode : DEFAULT_STORY_MODE;
   if (body.diary !== undefined && !isText(body.diary, 60)) return jsonError(400, "`diary` must be the diary's name (up to 40 characters).");
   const diary = typeof body.diary === "string" ? body.diary.replace(/\s+/g, " ").trim().slice(0, 40) : undefined;
+  if (body.day !== undefined && body.day !== "yesterday") return jsonError(400, "`day` must be \"yesterday\" when given.");
+  const yesterday = body.day === "yesterday";
 
   const models = getModels();
   const source = models.sources.writeScript;
@@ -77,7 +79,7 @@ export async function POST(request: Request) {
   if (!check.ok) return guardResponse(check);
 
   try {
-    const script = await models.writeScript(body.transcript, cast, { visitorId: check.visitorId, signal: request.signal, meter: check.meter }, { storyMode, ...(diary ? { diary } : {}) });
+    const script = await models.writeScript(body.transcript, cast, { visitorId: check.visitorId, signal: request.signal, meter: check.meter }, { storyMode, ...(diary ? { diary } : {}), ...(yesterday ? { yesterday } : {}) });
     return withCost(json<ScriptResponse>({ mode: source, script }, source), check.meter);
   } catch (error) {
     // Refund only when nothing billable reached Meta; an abort or timeout after sending still counts.

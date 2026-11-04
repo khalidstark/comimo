@@ -116,6 +116,8 @@ export interface ScriptOptions {
   storyMode?: StoryMode;
   /** The name of the diary the entry is for (03.2-05), when it isn't the daily one. */
   diary?: string;
+  /** True when the note catches up yesterday, so the script doesn't call it today. */
+  yesterday?: boolean;
 }
 
 /** A change of clothes in words (03.2-04). */

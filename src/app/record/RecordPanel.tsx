@@ -263,7 +263,7 @@ export function RecordPanel() {
         </div>
       </fieldset>
       <DiaryPick value={diary} onChange={setDiary} />
-      <DayPhotos photos={photos} onChange={setPhotos} />
+      <DayPhotos photos={photos} onChange={setPhotos} day={day} />
     </>
   );
 

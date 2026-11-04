@@ -657,6 +657,8 @@ export class ComicPipeline {
       cast,
       storyMode: this.input.storyMode,
       ...(this.input.diary ? { diary: this.input.diary.name } : {}),
+      // Only yesterday can be caught up, so an earlier date is yesterday.
+      ...(this.input.date && this.input.date < localIsoDate(new Date(this.createdAt)) ? { day: "yesterday" as const } : {}),
     };
     const { script } = await this.call<ScriptResponse>("write", "/api/script", {
       method: "POST",
