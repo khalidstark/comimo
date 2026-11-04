@@ -2,7 +2,7 @@
 
 **Talk about your day for a minute. Get it back as a comic, starring the people in your life.**
 
-### ▶ Try it live: [comimo.vercel.app](https://comimo.vercel.app)
+### ▶ Try it live: [comimo.vercel.app](https://comimo.vercel.app) · Watch the [demo video](https://drive.google.com/file/d/1c_KThUfR8DtxKpyg53cBgnEAcvKoRhoj/view?usp=sharing)
 
 [![Comimo: the landing page](.github/readme/hero.jpg)](https://comimo.vercel.app)
 
@@ -13,6 +13,7 @@ Built from scratch for the **Meta Global AI Developer Hackathon** (October 27 to
 | | |
 |---|---|
 | **Live app** | **[comimo.vercel.app](https://comimo.vercel.app)** (sign up with any email; real Meta models) |
+| **Demo video** | [comimo-demo.mp4 on Google Drive](https://drive.google.com/file/d/1c_KThUfR8DtxKpyg53cBgnEAcvKoRhoj/view?usp=sharing) |
 | **Models** | Muse Voice Transcribe, Muse Spark (`muse-spark-1.3`), Muse Image (`muse-image-1.0`), SAM 3.1 |
 | **Stack** | Next.js 16, React 19, TypeScript, Upstash Redis, Vercel Blob |
 | **Try it offline** | `npm install && cp .env.example .env.local && npm run dev` (practice mode, no key needed) |
