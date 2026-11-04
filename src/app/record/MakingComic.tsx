@@ -180,6 +180,8 @@ interface MakingComicProps {
   date?: string;
   /** Called after the screen is cancelled and closed. */
   onClose: () => void;
+  /** Called when /record shows again after the comic opened: the run is over. */
+  onFinished: () => void;
 }
 
 /**
@@ -187,7 +189,7 @@ interface MakingComicProps {
  * finishes. Panels are pencilled from the script, inked when drawn, and a
  * panel whose face was fixed flips from before to after.
  */
-export function MakingComic({ audio, text, language, style, storyMode, photos, diary, date, onClose }: MakingComicProps) {
+export function MakingComic({ audio, text, language, style, storyMode, photos, diary, date, onClose, onFinished }: MakingComicProps) {
   const [pipeline] = useState(
     () =>
       new ComicPipeline({
@@ -227,8 +229,8 @@ export function MakingComic({ audio, text, language, style, storyMode, photos, d
   const failedStep = state.error?.step;
   const action = errorAction(state.error);
 
-  // Coming back to /record after the comic opened: the run is over, so drop the screen.
-  const leaveFinished = useEffectEvent(() => onClose());
+  // Coming back to /record after the comic opened: the run is over, so drop the screen and start fresh.
+  const leaveFinished = useEffectEvent(() => onFinished());
 
   // Open as a modal (the page behind goes inert) and announce the heading.
   // Next keeps this page mounted but hidden (Activity) after routing to the

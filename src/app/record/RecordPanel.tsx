@@ -181,6 +181,17 @@ export function RecordPanel() {
     if (file) void recorder.acceptFile(file);
   }
 
+  /** After a comic is made, /record starts fresh: no old note, words, photos, day or diary. */
+  function startFresh() {
+    setMaking(null);
+    recorder.discard();
+    setTyped("");
+    setTyping(false);
+    setPhotos([]);
+    setDay("today");
+    setDiary(null);
+  }
+
   const typedText = typed.trim();
   const typedReady = typedText.length >= TYPED_MIN;
 
@@ -307,6 +318,7 @@ export function RecordPanel() {
             diary={making.diary}
             date={making.date}
             onClose={() => setMaking(null)}
+            onFinished={startFresh}
           />
         ) : null}
       </div>
@@ -443,6 +455,7 @@ export function RecordPanel() {
           diary={making.diary}
           date={making.date}
           onClose={() => setMaking(null)}
+          onFinished={startFresh}
         />
       ) : null}
     </div>
