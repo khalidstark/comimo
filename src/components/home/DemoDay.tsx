@@ -45,7 +45,11 @@ export function DemoDay() {
     if (!page || typeof IntersectionObserver === "undefined") return;
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     const rect = page.getBoundingClientRect();
-    if (rect.top < window.innerHeight * 0.85) return; // already in view: no hiding, no waiting
+    // Already in view: no hiding, no waiting (and show it, in case an earlier visit hid it).
+    if (rect.top < window.innerHeight * 0.85) {
+      setShown(true);
+      return;
+    }
     setArmed(true);
     const observer = new IntersectionObserver(
       ([entry]) => {
