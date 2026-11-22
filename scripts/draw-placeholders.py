@@ -71,8 +71,8 @@ write("mood-rainbow.svg", svg(64, 64,
 def sprite(name, title, figure):
     w, h = 300, 360
     defs = f'<g id="fig">{figure}</g>'
-    body = (f'<use href="#fig" xlink:href="#fig" stroke="#ffffff" stroke-width="22" stroke-linejoin="round"/>'
-            f'<use href="#fig" xlink:href="#fig"/>')
+    body = ('<use href="#fig" xlink:href="#fig" stroke="#ffffff" stroke-width="22" stroke-linejoin="round"/>'
+            '<use href="#fig" xlink:href="#fig"/>')
     write(name, svg(w, h, body, defs, title=title))
 
 def person(skin, top, hair, extra="", face_extra=""):
